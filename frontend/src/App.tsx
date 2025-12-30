@@ -4,11 +4,18 @@ import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { AdminProtectedRoute } from "@/components/admin/AdminProtectedRoute";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoginPage } from "@/pages/LoginPage";
 import { AdminLoginPage } from "@/pages/AdminLoginPage";
 import { HomePage } from "@/pages/HomePage";
 import { StyleGuidePage } from "@/pages/StyleGuidePage";
-import { ComponentsPage } from "@/pages/ComponentsPage"; // components
+import { ComponentsPage } from "@/pages/ComponentsPage";
+import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
+import { AdminEventsPage } from "@/pages/admin/AdminEventsPage";
+import { AdminArticlesPage } from "@/pages/admin/AdminArticlesPage";
+import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
+import { GitHubCallbackPage } from "@/pages/GitHubCallbackPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient({
@@ -57,9 +64,32 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      {/* Admin Routes */}
       <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route
+        path="/admin"
+        element={
+          <AdminProtectedRoute>
+            <AdminLayout />
+          </AdminProtectedRoute>
+        }
+      >
+        <Route index element={<AdminDashboardPage />} />
+        <Route path="events" element={<AdminEventsPage />} />
+        <Route path="articles" element={<AdminArticlesPage />} />
+        <Route path="users" element={<AdminUsersPage />} />
+      </Route>
+      {/* Other Routes */}
       <Route path="/style-guide" element={<StyleGuidePage />} />
       <Route path="/components" element={<ComponentsPage />} />
+      <Route
+        path="/integration/github"
+        element={
+          <ProtectedRoute>
+            <GitHubCallbackPage />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 }

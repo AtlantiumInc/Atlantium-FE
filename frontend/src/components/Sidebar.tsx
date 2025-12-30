@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import {
   Home,
   Compass,
-  Target,
+  Calendar,
   MessageSquare,
   Trophy,
   ChevronLeft,
@@ -40,9 +40,9 @@ export function Sidebar({
       label: "Frontier",
     },
     {
-      id: "objectives",
-      icon: <Target size={20} />,
-      label: "Objectives",
+      id: "events",
+      icon: <Calendar size={20} />,
+      label: "Events",
     },
     {
       id: "inbox",

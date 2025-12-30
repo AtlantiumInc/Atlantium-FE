@@ -1,21 +1,44 @@
+import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Calendar,
   Clock,
-  Target,
   Trophy,
   ChevronRight,
   Sparkles,
   TrendingUp,
   Users,
+  Loader2,
+  MapPin,
+  Video,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
+import { api } from "@/lib/api";
 
 interface HQPageProps {
   user?: {
     email?: string;
   };
+}
+
+interface Event {
+  id: string;
+  title: string;
+  description?: string;
+  event_type?: "virtual" | "in_person";
+  start_time: string;
+  end_time?: string;
+  location?: string;
 }
 
 // Demo articles for the top section
@@ -36,21 +59,6 @@ const FEATURED_ARTICLES = [
   },
 ];
 
-// Demo schedule items
-const SCHEDULE_ITEMS = [
-  { time: "09:00 AM", title: "Team Standup", type: "meeting" },
-  { time: "11:30 AM", title: "Design Review", type: "meeting" },
-  { time: "02:00 PM", title: "Code Review Session", type: "work" },
-  { time: "04:00 PM", title: "1:1 with Mentor", type: "meeting" },
-];
-
-// Demo objectives
-const USER_OBJECTIVES = [
-  { title: "Complete TypeScript Course", progress: 75 },
-  { title: "Ship MVP by Q1", progress: 45 },
-  { title: "Read 12 Books", progress: 33 },
-];
-
 // Demo top builders
 const TOP_BUILDERS = [
   { rank: 1, name: "Sarah Chen", username: "sarah_dev", additions: 2453, avatar: null },
@@ -58,18 +66,105 @@ const TOP_BUILDERS = [
   { rank: 3, name: "Elena R.", username: "elena_r", additions: 1234, avatar: null },
 ];
 
-// Demo next event
-const NEXT_EVENT = {
-  title: "AI Hackathon 2025",
-  date: "Jan 15, 2025",
-  time: "10:00 AM",
-  attendees: 24,
-};
-
 export function HQPage({ user }: HQPageProps) {
+  const [upcomingEvent, setUpcomingEvent] = useState<Event | null>(null);
+  const [myEvents, setMyEvents] = useState<Event[]>([]);
+  const [isLoadingEvent, setIsLoadingEvent] = useState(true);
+  const [isLoadingMyEvents, setIsLoadingMyEvents] = useState(true);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [isRsvpLoading, setIsRsvpLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const events = await api.getPublicEvents();
+        if (events && events.length > 0) {
+          // Filter to get upcoming events (not today)
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+
+          const upcoming = events.filter((event) => {
+            const eventDate = new Date(event.start_time);
+            return eventDate >= tomorrow;
+          });
+
+          if (upcoming.length > 0) {
+            setUpcomingEvent(upcoming[0]);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch events:", error);
+      } finally {
+        setIsLoadingEvent(false);
+      }
+    };
+
+    const fetchMyRsvps = async () => {
+      try {
+        const rsvps = await api.getMyRsvps();
+        // Filter to only show upcoming events
+        const now = new Date();
+        const upcomingRsvps = rsvps.filter((event) => {
+          const eventDate = new Date(event.start_time);
+          return eventDate >= now;
+        });
+        setMyEvents(upcomingRsvps);
+      } catch (error) {
+        console.error("Failed to fetch my RSVPs:", error);
+      } finally {
+        setIsLoadingMyEvents(false);
+      }
+    };
+
+    fetchEvents();
+    fetchMyRsvps();
+  }, []);
+
   const getInitials = (email?: string) => {
     if (!email) return "U";
     return email.charAt(0).toUpperCase();
+  };
+
+  const formatEventDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const formatEventTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
+  const formatEventDateLong = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const handleCancelRsvp = async () => {
+    if (!selectedEvent) return;
+
+    setIsRsvpLoading(true);
+    try {
+      await api.cancelRsvp(selectedEvent.id);
+      setMyEvents((prev) => prev.filter((e) => e.id !== selectedEvent.id));
+      setSelectedEvent(null);
+    } catch (error) {
+      console.error("Failed to cancel RSVP:", error);
+    } finally {
+      setIsRsvpLoading(false);
+    }
   };
 
   const userName = user?.email?.split("@")[0] || "User";
@@ -131,7 +226,7 @@ export function HQPage({ user }: HQPageProps) {
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm text-muted-foreground">PRs Merged</span>
-                <Target size={16} className="text-primary" />
+                <TrendingUp size={16} className="text-primary" />
               </div>
               <div className="text-3xl font-bold">23</div>
               <p className="text-xs text-muted-foreground mt-1">This month</p>
@@ -149,46 +244,18 @@ export function HQPage({ user }: HQPageProps) {
           </Card>
         </div>
 
-        {/* Third Row - Next Event & Quick Actions */}
-        <div className="grid grid-cols-2 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Calendar size={18} className="text-primary" />
-                Next Event
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold">{NEXT_EVENT.title}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {NEXT_EVENT.date} at {NEXT_EVENT.time}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <Users size={14} />
-                  {NEXT_EVENT.attendees}
-                </div>
-              </div>
-              <Button variant="outline" size="sm" className="w-full mt-3">
-                View Details
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-primary/10 to-background">
-            <CardContent className="p-4 flex flex-col justify-center h-full">
-              <h3 className="font-semibold mb-2">Quick Actions</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="secondary" size="sm">New Post</Button>
-                <Button variant="secondary" size="sm">Start Task</Button>
-                <Button variant="secondary" size="sm">Join Chat</Button>
-                <Button variant="secondary" size="sm">View Stats</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Third Row - Quick Actions */}
+        <Card className="bg-gradient-to-br from-primary/10 to-background">
+          <CardContent className="p-4">
+            <h3 className="font-semibold mb-2">Quick Actions</h3>
+            <div className="grid grid-cols-4 gap-2">
+              <Button variant="secondary" size="sm">New Post</Button>
+              <Button variant="secondary" size="sm">Start Task</Button>
+              <Button variant="secondary" size="sm">Join Chat</Button>
+              <Button variant="secondary" size="sm">View Stats</Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Right Column - Sidebar */}
@@ -212,64 +279,45 @@ export function HQPage({ user }: HQPageProps) {
           </CardContent>
         </Card>
 
-        {/* Schedule */}
+        {/* My Events */}
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
-                <Clock size={16} />
-                Today's Schedule
+                <Calendar size={16} />
+                My Events
               </CardTitle>
-              <Button variant="ghost" size="sm" className="h-7 text-xs">
-                View all
-                <ChevronRight size={14} />
-              </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            {SCHEDULE_ITEMS.map((item, index) => (
-              <div key={index} className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground w-16">{item.time}</span>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{item.title}</p>
-                </div>
-                <div className={`w-2 h-2 rounded-full ${
-                  item.type === "meeting" ? "bg-blue-500" : "bg-green-500"
-                }`} />
+            {isLoadingMyEvents ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* Objectives */}
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Target size={16} className="text-amber-500" />
-                Your Objectives
-              </CardTitle>
-              <Button variant="ghost" size="sm" className="h-7 text-xs">
-                View all
-                <ChevronRight size={14} />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {USER_OBJECTIVES.map((obj, index) => (
-              <div key={index}>
-                <div className="flex items-center justify-between text-sm mb-1">
-                  <span className="truncate">{obj.title}</span>
-                  <span className="text-muted-foreground">{obj.progress}%</span>
+            ) : myEvents.length > 0 ? (
+              myEvents.slice(0, 4).map((event) => (
+                <div
+                  key={event.id}
+                  className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 rounded p-2 -mx-2 transition-colors"
+                  onClick={() => setSelectedEvent(event)}
+                >
+                  <span className="text-xs text-muted-foreground w-16">
+                    {formatEventTime(event.start_time)}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{event.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatEventDate(event.start_time)}
+                    </p>
+                  </div>
+                  <div className="w-2 h-2 rounded-full bg-green-500" />
                 </div>
-                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary rounded-full transition-all"
-                    style={{ width: `${obj.progress}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-2">
+                No upcoming events
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -310,6 +358,69 @@ export function HQPage({ user }: HQPageProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Event Modal */}
+      <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
+        <DialogContent className="sm:max-w-md">
+          {selectedEvent && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{selectedEvent.title}</DialogTitle>
+                <DialogDescription>
+                  {selectedEvent.event_type === "virtual" ? "Virtual Event" : "In-Person Event"}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                {selectedEvent.description && (
+                  <p className="text-sm text-muted-foreground">
+                    {selectedEvent.description}
+                  </p>
+                )}
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-3">
+                    <Calendar size={16} className="text-muted-foreground" />
+                    <span>{formatEventDateLong(selectedEvent.start_time)}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Clock size={16} className="text-muted-foreground" />
+                    <span>{formatEventTime(selectedEvent.start_time)}</span>
+                  </div>
+                  {selectedEvent.location && (
+                    <div className="flex items-center gap-3">
+                      <MapPin size={16} className="text-muted-foreground" />
+                      <span>{selectedEvent.location}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-green-500 bg-green-500/10 p-3 rounded-lg">
+                    <CheckCircle size={20} />
+                    <span className="font-medium">You're registered for this event!</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="w-full text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                    onClick={handleCancelRsvp}
+                    disabled={isRsvpLoading}
+                  >
+                    {isRsvpLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Cancel RSVP
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

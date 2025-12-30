@@ -32,9 +32,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const userData = await api.getMe();
       setUser(userData);
-    } catch {
-      api.setAuthToken(null);
-      setUser(null);
+    } catch (error) {
+      // Only clear auth on actual auth errors (401), not rate limits (429) or network issues
+      const status = (error as Error & { status?: number }).status;
+      if (status === 401) {
+        api.setAuthToken(null);
+        setUser(null);
+      }
+      // For other errors (429 rate limit, network issues), keep the user logged in
     } finally {
       setIsLoading(false);
     }

@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 // Page components
 import { HQPage } from "@/components/pages/HQPage";
 import { FrontierPage } from "@/components/pages/FrontierPage";
-import { ObjectivesPage } from "@/components/pages/ObjectivesPage";
+import { EventsPage } from "@/components/pages/EventsPage";
 import { InboxPage } from "@/components/pages/InboxPage";
 import { LeaderboardPage } from "@/components/pages/LeaderboardPage";
 
@@ -34,7 +34,7 @@ export function HomePage() {
     const titles: Record<string, string> = {
       hq: "HQ",
       frontier: "Frontier",
-      objectives: "Objectives",
+      events: "Events",
       inbox: "Inbox",
       leaderboard: "Leaderboard",
     };
@@ -47,8 +47,8 @@ export function HomePage() {
         return <HQPage user={user} />;
       case "frontier":
         return <FrontierPage />;
-      case "objectives":
-        return <ObjectivesPage />;
+      case "events":
+        return <EventsPage />;
       case "inbox":
         return <InboxPage />;
       case "leaderboard":
@@ -91,7 +91,7 @@ export function HomePage() {
         <div className="p-6 w-full">
           <div className={cn(
             "mx-auto",
-            ["inbox", "leaderboard", "hq"].includes(activePage) ? "max-w-7xl" : "max-w-4xl"
+            ["inbox", "leaderboard", "hq", "events"].includes(activePage) ? "max-w-7xl" : "max-w-4xl"
           )}>
             {renderPage()}
           </div>

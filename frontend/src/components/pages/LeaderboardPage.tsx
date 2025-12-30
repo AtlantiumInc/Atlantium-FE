@@ -2,8 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Trophy, Github, Plus, MapPin, Calendar, Linkedin, X } from "lucide-react";
+import { Trophy, Github, Plus, MapPin, Calendar, Linkedin, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
 
 interface LeaderboardEntry {
   rank: number;
@@ -132,10 +133,35 @@ function ProfileAvatar({
 
 export function LeaderboardPage({ hasGithubConnected = false }: LeaderboardPageProps) {
   const [isConnected, setIsConnected] = useState(hasGithubConnected);
+  const [githubUsername, setGithubUsername] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
 
-  const handleConnectGithub = () => {
-    toast.info("Redirecting to GitHub OAuth...");
+  useEffect(() => {
+    const checkGitHubStatus = async () => {
+      try {
+        const status = await api.getGitHubStatus();
+        setIsConnected(status.connected);
+        setGithubUsername(status.github_username);
+      } catch (error) {
+        console.error("Failed to check GitHub status:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    checkGitHubStatus();
+  }, []);
+
+  const handleConnectGithub = async () => {
+    setIsConnecting(true);
+    try {
+      const { url } = await api.getGitHubAuthUrl();
+      window.location.href = url;
+    } catch (error) {
+      toast.error("Failed to get GitHub authorization URL");
+      setIsConnecting(false);
+    }
   };
 
   const top3 = LEADERBOARD_DATA.slice(0, 3);
@@ -171,18 +197,30 @@ export function LeaderboardPage({ hasGithubConnected = false }: LeaderboardPageP
               </button>
             ))}
           </div>
-          {!isConnected && (
-            <Button onClick={handleConnectGithub} size="sm" className="gap-2 ml-4">
-              <Github size={16} />
-              <Plus size={14} />
-              Connect
+          {!isLoading && !isConnected && (
+            <Button onClick={handleConnectGithub} size="sm" className="gap-2 ml-4" disabled={isConnecting}>
+              {isConnecting ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <>
+                  <Github size={16} />
+                  <Plus size={14} />
+                </>
+              )}
+              {isConnecting ? "Connecting..." : "Connect"}
             </Button>
+          )}
+          {isConnected && githubUsername && (
+            <div className="flex items-center gap-2 ml-4 text-sm text-muted-foreground">
+              <Github size={16} />
+              <span>@{githubUsername}</span>
+            </div>
           )}
         </div>
       </div>
 
       {/* GitHub Connection Banner */}
-      {!isConnected && (
+      {!isLoading && !isConnected && (
         <Card className="border-dashed border-2 bg-muted/30">
           <CardContent className="py-6">
             <div className="flex items-center justify-between">
@@ -197,9 +235,13 @@ export function LeaderboardPage({ hasGithubConnected = false }: LeaderboardPageP
                   </p>
                 </div>
               </div>
-              <Button onClick={handleConnectGithub} className="gap-2">
-                <Github size={18} />
-                Connect with GitHub
+              <Button onClick={handleConnectGithub} className="gap-2" disabled={isConnecting}>
+                {isConnecting ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <Github size={18} />
+                )}
+                {isConnecting ? "Connecting..." : "Connect with GitHub"}
               </Button>
             </div>
           </CardContent>
