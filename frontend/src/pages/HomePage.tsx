@@ -2,7 +2,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Sidebar } from "@/components/Sidebar";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ProfileDropdown } from "@/components/ProfileDropdown";
 import { useAuth } from "@/contexts/AuthContext";
 
 // Page components
@@ -23,11 +23,6 @@ export function HomePage() {
 
   const handleToggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
-  };
-
-  const getInitials = (email?: string) => {
-    if (!email) return "U";
-    return email.charAt(0).toUpperCase();
   };
 
   const getPageTitle = () => {
@@ -80,10 +75,7 @@ export function HomePage() {
           <h1 className="text-lg font-semibold">{getPageTitle()}</h1>
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            <Avatar className="h-8 w-8">
-              <AvatarImage src="" />
-              <AvatarFallback>{getInitials(user?.email)}</AvatarFallback>
-            </Avatar>
+            <ProfileDropdown user={user} onLogout={logout} />
           </div>
         </header>
 

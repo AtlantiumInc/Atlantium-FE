@@ -38,6 +38,10 @@ export interface User {
   email: string;
   is_email_verified: boolean;
   created_at: string;
+  avatar?: string;
+  display_name?: string;
+  first_name?: string;
+  last_name?: string;
 }
 
 class ApiClient {
@@ -195,10 +199,35 @@ class ApiClient {
   }
 
   // Profile methods
+  async getProfile(): Promise<{
+    id: string;
+    user_id: string;
+    username: string;
+    display_name: string;
+    first_name?: string;
+    last_name?: string;
+    bio?: string;
+    avatar_url?: string;
+    location?: string;
+    website_url?: string;
+    created_at?: string;
+    updated_at?: string;
+  }> {
+    return this.request("/profile/me", {
+      method: "GET",
+    }, APP_API_BASE_URL);
+  }
+
   async updateProfile(data: Record<string, unknown>): Promise<Record<string, unknown>> {
     return this.request<Record<string, unknown>>("/profile/edit", {
       method: "POST",
       body: JSON.stringify(data),
+    }, APP_API_BASE_URL);
+  }
+
+  async deleteAccount(): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>("/account/delete", {
+      method: "POST",
     }, APP_API_BASE_URL);
   }
 
