@@ -143,7 +143,7 @@ export function PrivacyPage() {
                 <div className="space-y-3">
                   {section.content.map((item, index) => (
                     <div key={index} className="text-muted-foreground">
-                      {item.subtitle ? (
+                      {"subtitle" in item && item.subtitle ? (
                         <p>
                           <span className="font-medium text-foreground">{item.subtitle}:</span>{" "}
                           {item.text}
