@@ -1,8 +1,8 @@
 import type { Article, ArticlesListResponse, CreateArticleInput, UpdateArticleInput } from "./types";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-const APP_API_BASE_URL = import.meta.env.VITE_APP_API_BASE_URL;
-const ADMIN_API_BASE_URL = import.meta.env.VITE_ADMIN_API_BASE_URL;
+const API_BASE_URL = "https://cloud.atlantium.ai/api:o01duYuZ";
+const APP_API_BASE_URL = "https://cloud.atlantium.ai/api:_c66cUCc";
+const ADMIN_API_BASE_URL = "https://cloud.atlantium.ai/api:ud37c7Xg";
 
 export interface ApiError {
   message: string;

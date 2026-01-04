@@ -80,7 +80,7 @@ export function LoginPage() {
     try {
       const response = await api.verifyOtp(email, otpCode);
       login(response.auth_token, response.user);
-      navigate("/");
+      navigate("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid OTP code");
     } finally {

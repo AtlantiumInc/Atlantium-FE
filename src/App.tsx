@@ -9,6 +9,8 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoginPage } from "@/pages/LoginPage";
 import { AdminLoginPage } from "@/pages/AdminLoginPage";
 import { HomePage } from "@/pages/HomePage";
+import { LandingPage } from "@/pages/LandingPage";
+import { PrivacyPage } from "@/pages/PrivacyPage";
 import { StyleGuidePage } from "@/pages/StyleGuidePage";
 import { ComponentsPage } from "@/pages/ComponentsPage";
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
@@ -39,7 +41,7 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
@@ -48,6 +50,9 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   return (
     <Routes>
+      {/* Public Pages */}
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
       <Route
         path="/login"
         element={
@@ -57,7 +62,7 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/"
+        path="/dashboard"
         element={
           <ProtectedRoute>
             <HomePage />
