@@ -39,7 +39,7 @@ export function HomePage() {
   const renderPage = () => {
     switch (activePage) {
       case "hq":
-        return <HQPage user={user} />;
+        return <HQPage user={user ?? undefined} />;
       case "frontier":
         return <FrontierPage />;
       case "events":
@@ -49,7 +49,7 @@ export function HomePage() {
       case "leaderboard":
         return <LeaderboardPage hasGithubConnected={false} />;
       default:
-        return <HQPage user={user} />;
+        return <HQPage user={user ?? undefined} />;
     }
   };
 

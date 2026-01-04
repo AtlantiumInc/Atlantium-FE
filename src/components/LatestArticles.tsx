@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Newspaper } from "lucide-react";
 import { ArticleCard } from "./ArticleCard";
@@ -66,16 +66,18 @@ export function LatestArticles({ limit = 3, useDemoData = true }: LatestArticles
   const [articles, setArticles] = useState<Article[]>(useDemoData ? DEMO_ARTICLES.slice(0, limit) : []);
 
   // Fetch real articles from API when not using demo data
-  const { isLoading, error } = useQuery({
+  const { isLoading, error, data } = useQuery({
     queryKey: ["latestArticles", limit],
     queryFn: () => api.getLatestArticles(limit),
     enabled: !useDemoData,
-    onSuccess: (data) => {
-      if (data && data.length > 0) {
-        setArticles(data);
-      }
-    },
   });
+
+  // Update articles when data is fetched
+  useEffect(() => {
+    if (data && data.length > 0 && !useDemoData) {
+      setArticles(data);
+    }
+  }, [data, useDemoData]);
 
   const handleReadMore = (article: Article) => {
     toast.info(`Opening: ${article.title}`);

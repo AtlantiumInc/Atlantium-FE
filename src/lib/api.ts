@@ -17,11 +17,7 @@ export interface OtpResponse {
 export interface VerifyResponse {
   success: boolean;
   auth_token: string;
-  user: {
-    id: string;
-    email: string;
-    is_email_verified: boolean;
-  };
+  user: User;
 }
 
 export interface AdminLoginResponse {
@@ -37,7 +33,7 @@ export interface User {
   id: string;
   email: string;
   is_email_verified: boolean;
-  created_at: string;
+  created_at?: string;
   avatar?: string;
   display_name?: string;
   first_name?: string;

@@ -13,13 +13,10 @@ import {
   Calendar,
   Clock,
   Trophy,
-  ChevronRight,
   Sparkles,
   TrendingUp,
-  Users,
   Loader2,
   MapPin,
-  Video,
   CheckCircle,
   XCircle,
 } from "lucide-react";
@@ -67,9 +64,9 @@ const TOP_BUILDERS = [
 ];
 
 export function HQPage({ user }: HQPageProps) {
-  const [upcomingEvent, setUpcomingEvent] = useState<Event | null>(null);
+  const [_upcomingEvent, setUpcomingEvent] = useState<Event | null>(null);
   const [myEvents, setMyEvents] = useState<Event[]>([]);
-  const [isLoadingEvent, setIsLoadingEvent] = useState(true);
+  const [_isLoadingEvent, setIsLoadingEvent] = useState(true);
   const [isLoadingMyEvents, setIsLoadingMyEvents] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isRsvpLoading, setIsRsvpLoading] = useState(false);
