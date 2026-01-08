@@ -12,10 +12,8 @@ import {
   Calendar,
   Clock,
   MapPin,
-  Users,
   Loader2,
   Video,
-  CheckCircle,
   XCircle,
 } from "lucide-react";
 import { api } from "@/lib/api";

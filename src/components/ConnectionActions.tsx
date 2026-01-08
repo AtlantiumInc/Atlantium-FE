@@ -1,13 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   UserPlus,
   MessageCircle,
   Clock,
@@ -16,7 +9,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { ConnectionStatus } from "@/lib/types";
+import type { ConnectionStatus } from "@/lib/types";
 
 interface ConnectionActionsProps {
   userId: string;
@@ -27,14 +20,12 @@ interface ConnectionActionsProps {
 
 export function ConnectionActions({
   userId,
-  displayName,
   onStatusChange,
   onMessageClick,
 }: ConnectionActionsProps) {
   const [status, setStatus] = useState<ConnectionStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isActioning, setIsActioning] = useState(false);
-  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
 
   // Fetch connection status on mount
   const fetchStatus = async () => {
@@ -100,20 +91,6 @@ export function ConnectionActions({
       }
     } catch (error) {
       console.error("Failed to decline invitation:", error);
-    } finally {
-      setIsActioning(false);
-    }
-  };
-
-  const handleBlock = async () => {
-    try {
-      setIsActioning(true);
-      await api.blockUser(userId);
-      setStatus("blocked_by_me");
-      onStatusChange?.("blocked_by_me");
-      setIsConfirmDialogOpen(false);
-    } catch (error) {
-      console.error("Failed to block user:", error);
     } finally {
       setIsActioning(false);
     }

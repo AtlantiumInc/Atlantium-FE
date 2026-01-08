@@ -4,11 +4,8 @@ import type {
   CreateArticleInput,
   UpdateArticleInput,
   Connection,
-  ConnectionInvitations,
   ConnectionStatus,
-  Thread,
   ThreadDetail,
-  ThreadMessage,
   ThreadsListResponse,
   MessagesResponse,
 } from "./types";
@@ -16,7 +13,6 @@ import type {
 const AUTH_API_BASE_URL = "https://cloud.atlantium.ai/api:o01duYuZ";
 const APP_API_BASE_URL = "https://cloud.atlantium.ai/api:_c66cUCc";
 const ADMIN_API_BASE_URL = "https://cloud.atlantium.ai/api:ud37c7Xg";
-const PUBLIC_API_BASE_URL = "https://cloud.atlantium.ai/api:-ulnKZsX";
 
 export interface ApiError {
   message: string;
@@ -81,7 +77,7 @@ class ApiClient {
   private async request<T>(
     endpoint: string,
     options: RequestInit = {},
-    baseUrl: string = API_BASE_URL,
+    baseUrl: string = APP_API_BASE_URL,
     useAdminToken: boolean = false
   ): Promise<T> {
     const headers: HeadersInit = {
@@ -250,6 +246,15 @@ class ApiClient {
     start_time: string;
     end_time?: string;
     location?: string;
+    user_rsvp?: {
+      rsvp_status: "going" | "not_going" | "maybe" | "waitlist";
+      checked_in: boolean;
+      rsvp_at: number;
+      checked_in_at: number;
+    };
+    going_count?: number;
+    featured_image?: string;
+    address?: string;
   }>> {
     return this.request("/events", {
       method: "GET",

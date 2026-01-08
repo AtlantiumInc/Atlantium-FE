@@ -17,7 +17,6 @@ import {
   TrendingUp,
   Loader2,
   MapPin,
-  CheckCircle,
   XCircle,
 } from "lucide-react";
 import { api } from "@/lib/api";
