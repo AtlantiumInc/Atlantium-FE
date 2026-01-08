@@ -22,7 +22,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { Thread, ThreadMessage, ThreadDetail } from "@/lib/types";
+import type { Thread, ThreadMessage, ThreadDetail } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export function MessagesPage() {
@@ -149,7 +149,7 @@ export function MessagesPage() {
   };
 
   const filteredThreads = threads.filter((thread) => {
-    const threadName = thread.name || thread.participants[0]?.username || "";
+    const threadName = thread.name || thread.participants?.[0]?.username || "";
     return threadName.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
@@ -159,6 +159,9 @@ export function MessagesPage() {
   const getThreadDisplayName = (thread: Thread) => {
     if (thread.type === "group" && thread.name) {
       return thread.name;
+    }
+    if (!thread.participants || thread.participants.length === 0) {
+      return "Unknown";
     }
     const otherParticipant = thread.participants.find((p) => p.user_id !== "current-user-id");
     return otherParticipant?.username || "Unknown";
@@ -267,7 +270,7 @@ export function MessagesPage() {
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   {selectedThread.type === "group" &&
-                    `${selectedThread.participants.length} members`}
+                    `${selectedThread.participants?.length || 0} members`}
                 </p>
               </div>
               <Button size="sm" variant="ghost">
@@ -389,7 +392,7 @@ export function MessagesPage() {
                 <div>
                   <h4 className="text-sm font-medium mb-2">Members</h4>
                   <div className="space-y-2">
-                    {threadDetails.participants.map((participant) => (
+                    {threadDetails.participants?.map((participant) => (
                       <div key={participant.user_id} className="flex items-center gap-2">
                         <Avatar className="h-6 w-6">
                           <AvatarImage src={participant.avatar_url} />

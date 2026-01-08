@@ -19,7 +19,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { Connection, ConnectionInvitation } from "@/lib/types";
+import type { Connection, ConnectionInvitation } from "@/lib/types";
 
 export function ConnectionsPage() {
   const [connections, setConnections] = useState<Connection[]>([]);
