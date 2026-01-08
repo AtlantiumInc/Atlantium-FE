@@ -1,8 +1,22 @@
-import type { Article, ArticlesListResponse, CreateArticleInput, UpdateArticleInput } from "./types";
+import type {
+  Article,
+  ArticlesListResponse,
+  CreateArticleInput,
+  UpdateArticleInput,
+  Connection,
+  ConnectionInvitations,
+  ConnectionStatus,
+  Thread,
+  ThreadDetail,
+  ThreadMessage,
+  ThreadsListResponse,
+  MessagesResponse,
+} from "./types";
 
-const API_BASE_URL = "https://cloud.atlantium.ai/api:o01duYuZ";
+const AUTH_API_BASE_URL = "https://cloud.atlantium.ai/api:o01duYuZ";
 const APP_API_BASE_URL = "https://cloud.atlantium.ai/api:_c66cUCc";
 const ADMIN_API_BASE_URL = "https://cloud.atlantium.ai/api:ud37c7Xg";
+const PUBLIC_API_BASE_URL = "https://cloud.atlantium.ai/api:-ulnKZsX";
 
 export interface ApiError {
   message: string;
@@ -101,26 +115,26 @@ class ApiClient {
     return this.request<OtpResponse>("/auth/otp", {
       method: "POST",
       body: JSON.stringify({ email }),
-    });
+    }, AUTH_API_BASE_URL);
   }
 
   async verifyOtp(email: string, code: string): Promise<VerifyResponse> {
     return this.request<VerifyResponse>("/auth/verify", {
       method: "POST",
       body: JSON.stringify({ email, code }),
-    });
+    }, AUTH_API_BASE_URL);
   }
 
   async getMe(): Promise<User> {
     return this.request<User>("/auth/me", {
       method: "GET",
-    });
+    }, AUTH_API_BASE_URL);
   }
 
   async logout(): Promise<void> {
     await this.request("/auth/logout", {
       method: "POST",
-    });
+    }, AUTH_API_BASE_URL);
     this.setAuthToken(null);
   }
 
@@ -232,20 +246,20 @@ class ApiClient {
     id: string;
     title: string;
     description?: string;
-    event_type: "virtual" | "in_person";
+    event_type: "virtual" | "in_person" | "hybrid";
     start_time: string;
     end_time?: string;
     location?: string;
   }>> {
-    return this.request("/events/list", {
+    return this.request("/events", {
       method: "GET",
     }, APP_API_BASE_URL);
   }
 
-  async rsvpEvent(eventId: string): Promise<{ success: boolean; message: string }> {
+  async rsvpEvent(eventId: string, rsvpStatus: "going" | "not_going" | "maybe" | "waitlist" = "going"): Promise<{ success: boolean; rsvp: Record<string, unknown> }> {
     return this.request("/events/rsvp", {
       method: "POST",
-      body: JSON.stringify({ event_id: eventId }),
+      body: JSON.stringify({ event_id: eventId, rsvp_status: rsvpStatus }),
     }, APP_API_BASE_URL);
   }
 
@@ -253,12 +267,18 @@ class ApiClient {
     id: string;
     title: string;
     description?: string;
-    event_type: "virtual" | "in_person";
+    event_type: "virtual" | "in_person" | "hybrid";
     start_time: string;
     end_time?: string;
     location?: string;
+    user_rsvp?: {
+      rsvp_status: "going" | "not_going" | "maybe" | "waitlist";
+      checked_in: boolean;
+      rsvp_at: number;
+      checked_in_at: number;
+    };
   }>> {
-    return this.request("/events/my-rsvps", {
+    return this.request("/events/my_rsvps", {
       method: "GET",
     }, APP_API_BASE_URL);
   }
@@ -343,6 +363,158 @@ class ApiClient {
 
   async disconnectGitHub(): Promise<{ success: boolean; message: string }> {
     return this.request<{ success: boolean; message: string }>("/auth/github/disconnect", {
+      method: "POST",
+    }, APP_API_BASE_URL);
+  }
+
+  // Connection methods
+  async getConnections(): Promise<{ success: boolean; connections: Connection[] }> {
+    return this.request<{ success: boolean; connections: Connection[] }>("/connections/list", {
+      method: "GET",
+    }, APP_API_BASE_URL);
+  }
+
+  async getConnectionInvitations(): Promise<{ success: boolean; received: any[]; sent: any[] }> {
+    return this.request<{ success: boolean; received: any[]; sent: any[] }>("/connections/invitations", {
+      method: "GET",
+    }, APP_API_BASE_URL);
+  }
+
+  async sendConnectionInvitation(toUserId: string): Promise<{ success: boolean; message: string; invitation_id: string }> {
+    return this.request<{ success: boolean; message: string; invitation_id: string }>("/connections/invite", {
+      method: "POST",
+      body: JSON.stringify({ to_user_id: toUserId }),
+    }, APP_API_BASE_URL);
+  }
+
+  async acceptConnectionInvitation(invitationId: string): Promise<{ success: boolean; message: string; connection_id: string }> {
+    return this.request<{ success: boolean; message: string; connection_id: string }>("/connections/accept", {
+      method: "POST",
+      body: JSON.stringify({ invitation_id: invitationId }),
+    }, APP_API_BASE_URL);
+  }
+
+  async declineConnectionInvitation(invitationId: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>("/connections/decline", {
+      method: "POST",
+      body: JSON.stringify({ invitation_id: invitationId }),
+    }, APP_API_BASE_URL);
+  }
+
+  async blockUser(userId: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>("/connections/block", {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId }),
+    }, APP_API_BASE_URL);
+  }
+
+  async unblockUser(userId: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>("/connections/unblock", {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId }),
+    }, APP_API_BASE_URL);
+  }
+
+  async getConnectionStatus(userId: string): Promise<{ success: boolean; status: ConnectionStatus }> {
+    return this.request<{ success: boolean; status: ConnectionStatus }>(`/connections/status?user_id=${userId}`, {
+      method: "GET",
+    }, APP_API_BASE_URL);
+  }
+
+  // Thread and messaging methods
+  async getThreads(): Promise<ThreadsListResponse> {
+    return this.request<ThreadsListResponse>("/threads/list", {
+      method: "GET",
+    }, APP_API_BASE_URL);
+  }
+
+  async getThreadDetails(threadId: string): Promise<{ success: boolean; thread: ThreadDetail }> {
+    return this.request<{ success: boolean; thread: ThreadDetail }>(`/threads/${threadId}`, {
+      method: "GET",
+    }, APP_API_BASE_URL);
+  }
+
+  async getThreadMessages(
+    threadId: string,
+    page: number = 1,
+    perPage: number = 50
+  ): Promise<MessagesResponse> {
+    return this.request<MessagesResponse>(
+      `/threads/${threadId}/messages?page=${page}&per_page=${perPage}`,
+      {
+        method: "GET",
+      },
+      APP_API_BASE_URL
+    );
+  }
+
+  async createDirectThread(recipientUserId: string): Promise<{ success: boolean; thread_id: string; message: string }> {
+    return this.request<{ success: boolean; thread_id: string; message: string }>("/threads/create-direct", {
+      method: "POST",
+      body: JSON.stringify({ recipient_user_id: recipientUserId }),
+    }, APP_API_BASE_URL);
+  }
+
+  async createGroupThread(
+    name: string,
+    participantUserIds: string[]
+  ): Promise<{ success: boolean; thread_id: string; message: string }> {
+    return this.request<{ success: boolean; thread_id: string; message: string }>("/threads/create-group", {
+      method: "POST",
+      body: JSON.stringify({ name, participant_user_ids: participantUserIds }),
+    }, APP_API_BASE_URL);
+  }
+
+  async sendMessage(
+    threadId: string,
+    content: string,
+    isReply: boolean = false,
+    parentMessageId?: string
+  ): Promise<{ success: boolean; message_id: string; thread_id: string; created_at: string }> {
+    return this.request<{ success: boolean; message_id: string; thread_id: string; created_at: string }>(
+      "/messages/send",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          thread_id: threadId,
+          content,
+          is_reply: isReply,
+          parent_message_id: parentMessageId,
+        }),
+      },
+      APP_API_BASE_URL
+    );
+  }
+
+  async markThreadAsRead(threadId: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/threads/${threadId}/read`, {
+      method: "POST",
+    }, APP_API_BASE_URL);
+  }
+
+  async pinThread(threadId: string, pinned: boolean): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/threads/${threadId}/pin`, {
+      method: "POST",
+      body: JSON.stringify({ pinned }),
+    }, APP_API_BASE_URL);
+  }
+
+  async addThreadParticipant(threadId: string, userId: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/threads/${threadId}/add-participant`, {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId }),
+    }, APP_API_BASE_URL);
+  }
+
+  async removeThreadParticipant(threadId: string, userId: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/threads/${threadId}/remove-participant`, {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId }),
+    }, APP_API_BASE_URL);
+  }
+
+  async leaveThread(threadId: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/threads/${threadId}/leave`, {
       method: "POST",
     }, APP_API_BASE_URL);
   }

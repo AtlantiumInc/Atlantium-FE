@@ -10,6 +10,8 @@ import {
   ChevronRight,
   LogOut,
   Menu,
+  MessageCircle,
+  UserPlus,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -48,6 +50,16 @@ export function Sidebar({
       id: "inbox",
       icon: <MessageSquare size={20} />,
       label: "Inbox",
+    },
+    {
+      id: "messages",
+      icon: <MessageCircle size={20} />,
+      label: "Messages",
+    },
+    {
+      id: "connections",
+      icon: <UserPlus size={20} />,
+      label: "Connections",
     },
     {
       id: "leaderboard",

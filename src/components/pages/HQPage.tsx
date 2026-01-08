@@ -28,14 +28,27 @@ interface HQPageProps {
   };
 }
 
+type RsvpStatus = "going" | "not_going" | "maybe" | "waitlist";
+
+interface UserRsvp {
+  rsvp_status: RsvpStatus;
+  checked_in: boolean;
+  rsvp_at: number;
+  checked_in_at: number;
+}
+
 interface Event {
   id: string;
   title: string;
   description?: string;
-  event_type?: "virtual" | "in_person";
+  event_type?: "virtual" | "in_person" | "hybrid";
   start_time: string;
   end_time?: string;
   location?: string;
+  user_rsvp?: UserRsvp;
+  going_count?: number;
+  featured_image?: string;
+  address?: string;
 }
 
 // Demo articles for the top section
@@ -71,52 +84,56 @@ export function HQPage({ user }: HQPageProps) {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isRsvpLoading, setIsRsvpLoading] = useState(false);
 
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const events = await api.getPublicEvents();
-        if (events && events.length > 0) {
-          // Filter to get upcoming events (not today)
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const tomorrow = new Date(today);
-          tomorrow.setDate(tomorrow.getDate() + 1);
+  const fetchEvents = async () => {
+    try {
+      const events = await api.getPublicEvents();
+      if (events && events.length > 0) {
+        // Filter to get upcoming events (not today)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
 
-          const upcoming = events.filter((event) => {
-            const eventDate = new Date(event.start_time);
-            return eventDate >= tomorrow;
-          });
-
-          if (upcoming.length > 0) {
-            setUpcomingEvent(upcoming[0]);
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch events:", error);
-      } finally {
-        setIsLoadingEvent(false);
-      }
-    };
-
-    const fetchMyRsvps = async () => {
-      try {
-        const rsvps = await api.getMyRsvps();
-        // Filter to only show upcoming events
-        const now = new Date();
-        const upcomingRsvps = rsvps.filter((event) => {
+        const upcoming = events.filter((event) => {
           const eventDate = new Date(event.start_time);
-          return eventDate >= now;
+          return eventDate >= tomorrow;
         });
-        setMyEvents(upcomingRsvps);
-      } catch (error) {
-        console.error("Failed to fetch my RSVPs:", error);
-      } finally {
-        setIsLoadingMyEvents(false);
-      }
-    };
 
-    fetchEvents();
-    fetchMyRsvps();
+        if (upcoming.length > 0) {
+          setUpcomingEvent(upcoming[0]);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch events:", error);
+    } finally {
+      setIsLoadingEvent(false);
+    }
+  };
+
+  const fetchMyRsvps = async () => {
+    try {
+      const allEvents = await api.getPublicEvents();
+      // Filter to show only events the user has registered for (has user_rsvp)
+      const now = new Date();
+      const myRsvpEvents = allEvents.filter((event) => {
+        const eventDate = new Date(event.start_time);
+        // Show events where user has RSVP'd and event is upcoming or today
+        return event.user_rsvp && eventDate >= now;
+      });
+      setMyEvents(myRsvpEvents);
+    } catch (error) {
+      console.error("Failed to fetch my RSVPs:", error);
+    } finally {
+      setIsLoadingMyEvents(false);
+    }
+  };
+
+  const fetchAllEvents = async () => {
+    await Promise.all([fetchEvents(), fetchMyRsvps()]);
+  };
+
+  useEffect(() => {
+    fetchAllEvents();
   }, []);
 
   const getInitials = (email?: string) => {
@@ -149,18 +166,62 @@ export function HQPage({ user }: HQPageProps) {
     });
   };
 
+  const handleRsvp = async (status: RsvpStatus) => {
+    if (!selectedEvent) return;
+
+    setIsRsvpLoading(true);
+    try {
+      await api.rsvpEvent(selectedEvent.id, status);
+      await fetchAllEvents();
+    } catch (error) {
+      console.error("Failed to RSVP:", error);
+    } finally {
+      setIsRsvpLoading(false);
+    }
+  };
+
   const handleCancelRsvp = async () => {
     if (!selectedEvent) return;
 
     setIsRsvpLoading(true);
     try {
       await api.cancelRsvp(selectedEvent.id);
-      setMyEvents((prev) => prev.filter((e) => e.id !== selectedEvent.id));
+      await fetchAllEvents();
       setSelectedEvent(null);
     } catch (error) {
       console.error("Failed to cancel RSVP:", error);
     } finally {
       setIsRsvpLoading(false);
+    }
+  };
+
+  const getRsvpStatusLabel = (status: RsvpStatus): string => {
+    switch (status) {
+      case "going":
+        return "Going";
+      case "not_going":
+        return "Not Going";
+      case "maybe":
+        return "Maybe";
+      case "waitlist":
+        return "Waitlist";
+      default:
+        return status;
+    }
+  };
+
+  const getRsvpStatusColor = (status?: RsvpStatus): string => {
+    switch (status) {
+      case "going":
+        return "text-green-500 bg-green-500/10";
+      case "maybe":
+        return "text-amber-500 bg-amber-500/10";
+      case "not_going":
+        return "text-red-500 bg-red-500/10";
+      case "waitlist":
+        return "text-blue-500 bg-blue-500/10";
+      default:
+        return "";
     }
   };
 
@@ -295,10 +356,10 @@ export function HQPage({ user }: HQPageProps) {
               myEvents.slice(0, 4).map((event) => (
                 <div
                   key={event.id}
-                  className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 rounded p-2 -mx-2 transition-colors"
+                  className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 rounded p-2 -mx-2 transition-colors"
                   onClick={() => setSelectedEvent(event)}
                 >
-                  <span className="text-xs text-muted-foreground w-16">
+                  <span className="text-xs text-muted-foreground w-14">
                     {formatEventTime(event.start_time)}
                   </span>
                   <div className="flex-1 min-w-0">
@@ -307,7 +368,11 @@ export function HQPage({ user }: HQPageProps) {
                       {formatEventDate(event.start_time)}
                     </p>
                   </div>
-                  <div className="w-2 h-2 rounded-full bg-green-500" />
+                  {event.user_rsvp && (
+                    <span className={`text-xs font-medium px-2 py-1 rounded ${getRsvpStatusColor(event.user_rsvp.rsvp_status)}`}>
+                      {getRsvpStatusLabel(event.user_rsvp.rsvp_status)}
+                    </span>
+                  )}
                 </div>
               ))
             ) : (
@@ -390,28 +455,46 @@ export function HQPage({ user }: HQPageProps) {
                   )}
                 </div>
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-green-500 bg-green-500/10 p-3 rounded-lg">
-                    <CheckCircle size={20} />
-                    <span className="font-medium">You're registered for this event!</span>
+                  <p className="text-sm font-medium text-muted-foreground">Your RSVP Status:</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["going", "maybe", "not_going", "waitlist"] as RsvpStatus[]).map((status) => {
+                      const isSelected = selectedEvent.user_rsvp?.rsvp_status === status;
+                      return (
+                        <Button
+                          key={status}
+                          variant={isSelected ? "default" : "outline"}
+                          onClick={() => handleRsvp(status)}
+                          disabled={isRsvpLoading}
+                        >
+                          {isRsvpLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            getRsvpStatusLabel(status)
+                          )}
+                        </Button>
+                      );
+                    })}
                   </div>
-                  <Button
-                    variant="outline"
-                    className="w-full text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                    onClick={handleCancelRsvp}
-                    disabled={isRsvpLoading}
-                  >
-                    {isRsvpLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="mr-2 h-4 w-4" />
-                        Cancel RSVP
-                      </>
-                    )}
-                  </Button>
+                  {selectedEvent.user_rsvp && (
+                    <Button
+                      variant="outline"
+                      className="w-full text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                      onClick={handleCancelRsvp}
+                      disabled={isRsvpLoading}
+                    >
+                      {isRsvpLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="mr-2 h-4 w-4" />
+                          Cancel RSVP
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
               </div>
             </>
