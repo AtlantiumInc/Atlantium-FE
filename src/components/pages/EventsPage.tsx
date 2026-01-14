@@ -63,7 +63,7 @@ export function EventsPage() {
         });
         setUserRsvps(rsvpMap);
       } catch {
-        console.log("No RSVPs found");
+        // No RSVPs found - normal for new users
       }
     } catch (error) {
       console.error("Failed to fetch events:", error);

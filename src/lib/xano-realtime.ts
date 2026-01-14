@@ -14,22 +14,10 @@ let xanoClientInstance: XanoClient | null = null;
  */
 export function getXanoClient(): XanoClient {
   if (!xanoClientInstance) {
-    if (!XANO_REALTIME_HASH) {
-      console.warn(
-        "VITE_XANO_REALTIME_HASH is not set. Realtime features will not work."
-      );
-    }
-
-    console.log("[XanoClient] Creating new client instance");
-    console.log("[XanoClient] Instance URL:", XANO_INSTANCE_URL);
-    console.log("[XanoClient] Realtime Hash:", XANO_REALTIME_HASH ? `${XANO_REALTIME_HASH.substring(0, 8)}...` : "NOT SET");
-
     xanoClientInstance = new XanoClient({
       instanceBaseUrl: XANO_INSTANCE_URL,
       realtimeConnectionHash: XANO_REALTIME_HASH,
     });
-
-    console.log("[XanoClient] Client created successfully");
   }
   return xanoClientInstance;
 }
