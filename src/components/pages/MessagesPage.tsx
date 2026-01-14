@@ -119,21 +119,23 @@ export function MessagesPage() {
   }, [selectedThread]);
 
   useEffect(() => {
-    if (messages.length > 0 && messagesContainerRef.current) {
+    // Only scroll after loading completes and we have messages
+    if (!isLoadingMessages && messages.length > 0 && messagesContainerRef.current) {
       const container = messagesContainerRef.current;
       if (isInitialLoadRef.current) {
-        // Instant scroll to bottom on initial load
-        // Use setTimeout to ensure DOM is fully rendered
-        setTimeout(() => {
-          container.scrollTop = container.scrollHeight;
-        }, 0);
+        // Wait for DOM to paint, then scroll to bottom
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            container.scrollTop = container.scrollHeight;
+          });
+        });
         isInitialLoadRef.current = false;
       } else {
         // Smooth scroll for new messages
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }
     }
-  }, [messages]);
+  }, [messages, isLoadingMessages]);
 
   const handleSendMessage = async () => {
     if (!selectedThread || !messageInput.trim()) return;
