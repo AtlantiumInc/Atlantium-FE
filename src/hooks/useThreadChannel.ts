@@ -57,53 +57,38 @@ export function useThreadChannel({
 
   // Subscribe to thread channel
   useEffect(() => {
-    console.log("[useThreadChannel] Effect triggered", {
-      hasClient: !!client,
-      isConnected,
-      threadId,
-    });
-
     if (!client || !isConnected || !threadId) {
-      console.log("[useThreadChannel] Skipping subscription - missing requirements");
       channelRef.current = null;
       return;
     }
 
     const channelName = getThreadChannelName(threadId);
-    console.log("[useThreadChannel] Subscribing to channel:", channelName);
 
     try {
       const channel = client.channel(channelName);
       channelRef.current = channel;
-      console.log("[useThreadChannel] Channel object created:", channel);
 
-      // Also subscribe to parent "thread" channel to test
+      // Also subscribe to parent "thread" channel
       const parentChannel = client.channel("thread");
       parentChannel.on((msg: RealtimeMessage) => {
-        console.log("[useThreadChannel] PARENT 'thread' channel message:", msg);
+        handleIncomingMessage(msg);
       });
 
       // Listen for "event" action specifically (what api.realtime_event sends)
       channel.on("event" as any, (message: RealtimeMessage) => {
-        console.log("[useThreadChannel] EVENT action received:", message);
         handleIncomingMessage(message);
       });
 
       // Also listen for all messages as fallback
       channel.on((message: RealtimeMessage) => {
-        console.log("[useThreadChannel] RAW MESSAGE RECEIVED:", JSON.stringify(message, null, 2));
         handleIncomingMessage(message);
       });
 
       function handleIncomingMessage(message: RealtimeMessage) {
-        console.log("[useThreadChannel] Processing message:", message);
-
         // Handle different message formats from Xano
         let action = message.action;
         const msgAny = message as any;
         let payload = msgAny.payload || msgAny.data || message;
-
-        console.log("[useThreadChannel] Initial - action:", action, "payload:", payload);
 
         // If this is an "event" from api.realtime_event, unwrap it
         // Xano wraps the data as: { action: "event", payload: { data: { action: "new_message", payload: {...} }, dbo_id, row_id } }
@@ -114,12 +99,10 @@ export function useThreadChannel({
           if (eventData.data && eventData.data.action) {
             action = eventData.data.action;
             payload = eventData.data.payload || eventData.data;
-            console.log("[useThreadChannel] Unwrapped from data field - action:", action, "payload:", payload);
           } else if (eventData.action) {
             // Direct structure: { action: "new_message", payload: {...} }
             action = eventData.action;
             payload = eventData.payload || eventData;
-            console.log("[useThreadChannel] Unwrapped directly - action:", action, "payload:", payload);
           }
         }
 
@@ -127,7 +110,6 @@ export function useThreadChannel({
           case "new_message":
           case "message": {
             const msgPayload = payload as NewMessagePayload;
-            console.log("[useThreadChannel] new_message case - msgPayload:", msgPayload);
 
             // Validate it's a new message payload
             if (msgPayload.message_id && msgPayload.thread_id) {
@@ -143,10 +125,7 @@ export function useThreadChannel({
                 parent_message: msgPayload.parent_message,
                 created_at: msgPayload.created_at,
               };
-              console.log("[useThreadChannel] Calling onNewMessage callback with:", threadMessage);
               onNewMessageRef.current?.(threadMessage);
-            } else {
-              console.log("[useThreadChannel] Validation failed - missing message_id or thread_id");
             }
             break;
           }
@@ -199,22 +178,15 @@ export function useThreadChannel({
             }
             break;
           }
-
-          default:
-            // Log unknown actions for debugging
-            console.log("Unknown thread channel action:", action, payload);
         }
       }
-
-      console.log("[useThreadChannel] Successfully subscribed to:", channelName);
     } catch (error) {
-      console.error("[useThreadChannel] Failed to subscribe:", error);
+      console.error("Failed to subscribe to thread channel:", error);
       channelRef.current = null;
     }
 
     // Cleanup on unmount or thread change
     return () => {
-      console.log("[useThreadChannel] Unsubscribing from channel:", channelName);
       channelRef.current = null;
       setTypingUsers([]);
 
@@ -257,7 +229,6 @@ export function useThreadChannel({
           action: "new_message",
           payload: message,
         });
-        console.log("Broadcasted message:", message.message_id);
       } catch (error) {
         console.error("Failed to broadcast message:", error);
       }

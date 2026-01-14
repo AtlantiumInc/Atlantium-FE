@@ -9,7 +9,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { HQPage } from "@/components/pages/HQPage";
 import { FrontierPage } from "@/components/pages/FrontierPage";
 import { EventsPage } from "@/components/pages/EventsPage";
-import { InboxPage } from "@/components/pages/InboxPage";
 import { LeaderboardPage } from "@/components/pages/LeaderboardPage";
 import { MessagesPage } from "@/components/pages/MessagesPage";
 import { ConnectionsPage } from "@/components/pages/ConnectionsPage";
@@ -32,7 +31,6 @@ export function HomePage() {
       hq: "HQ",
       frontier: "Frontier",
       events: "Events",
-      inbox: "Inbox",
       messages: "Messages",
       connections: "Connections",
       leaderboard: "Leaderboard",
@@ -48,8 +46,6 @@ export function HomePage() {
         return <FrontierPage />;
       case "events":
         return <EventsPage />;
-      case "inbox":
-        return <InboxPage />;
       case "messages":
         return <MessagesPage />;
       case "connections":
@@ -91,7 +87,7 @@ export function HomePage() {
         <div className="p-6 w-full">
           <div className={cn(
             "mx-auto",
-            ["inbox", "messages", "connections", "leaderboard", "hq", "events"].includes(activePage) ? "max-w-7xl" : "max-w-4xl"
+            ["messages", "connections", "leaderboard", "hq", "events"].includes(activePage) ? "max-w-7xl" : "max-w-4xl"
           )}>
             {renderPage()}
           </div>

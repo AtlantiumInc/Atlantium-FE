@@ -42,18 +42,15 @@ export function MessagesPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Realtime state
-  const { isConnected, connectionState, presenceMap } = useXanoRealtime();
+  const { connectionState, presenceMap } = useXanoRealtime();
 
   // Handle incoming realtime messages
   const handleRealtimeMessage = useCallback((message: ThreadMessage) => {
-    console.log("[MessagesPage] handleRealtimeMessage called with:", message);
     setMessages((prev) => {
       // Avoid duplicates (in case message was sent by current user)
       if (prev.some((m) => m.message_id === message.message_id)) {
-        console.log("[MessagesPage] Duplicate message, skipping:", message.message_id);
         return prev;
       }
-      console.log("[MessagesPage] Adding new message to state:", message.message_id);
       return [...prev, message];
     });
   }, []);
@@ -512,7 +509,7 @@ function ChatListItem({
   thread,
   isSelected,
   onSelect,
-  onPin,
+  onPin: _onPin,
   getDisplayName,
   getInitials,
   compact = false,

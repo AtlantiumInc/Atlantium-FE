@@ -58,19 +58,12 @@ export function XanoRealtimeProvider({ children }: { children: ReactNode }) {
       const xanoClient = getXanoClient();
       const token = api.getAuthToken();
 
-      console.log("[XanoRealtime] Initializing client...");
-      console.log("[XanoRealtime] Auth token present:", !!token);
-      console.log("[XanoRealtime] User ID:", user.id);
-
       if (token) {
         xanoClient.setRealtimeAuthToken(token);
-        console.log("[XanoRealtime] Auth token set on client");
       }
 
       setClient(xanoClient);
       setConnectionState("connected");
-
-      console.log("[XanoRealtime] Client initialized and connected");
     } else if (!isAuthenticated) {
       // Disconnect when logged out
       isInitializedRef.current = false;
@@ -103,8 +96,6 @@ export function XanoRealtimeProvider({ children }: { children: ReactNode }) {
       presenceChannelRef.current = presenceChannel;
 
       presenceChannel.on((message: RealtimeMessage) => {
-        console.log("Presence channel message:", message);
-
         if (
           message.action === "presence_update" ||
           message.action === "message"
@@ -149,8 +140,6 @@ export function XanoRealtimeProvider({ children }: { children: ReactNode }) {
           status: "online",
         },
       });
-
-      console.log("Subscribed to presence channel");
     } catch (error) {
       console.error("Failed to subscribe to presence channel:", error);
     }

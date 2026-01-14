@@ -4,7 +4,6 @@ import {
   Home,
   Compass,
   Calendar,
-  MessageSquare,
   Trophy,
   ChevronLeft,
   ChevronRight,
@@ -45,11 +44,6 @@ export function Sidebar({
       id: "events",
       icon: <Calendar size={20} />,
       label: "Events",
-    },
-    {
-      id: "inbox",
-      icon: <MessageSquare size={20} />,
-      label: "Inbox",
     },
     {
       id: "messages",

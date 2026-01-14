@@ -20,7 +20,7 @@ export function MembershipGate({
   children,
   fallback,
 }: MembershipGateProps) {
-  const { subscription, hasClubAccess, isLoading } = useSubscription();
+  const { hasClubAccess, isLoading } = useSubscription();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   // While loading, don't show anything to prevent flash

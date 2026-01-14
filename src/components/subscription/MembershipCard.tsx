@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { UpgradeModal } from "./UpgradeModal";
 
 export function MembershipCard() {
-  const { subscription, isLoading, hasClubAccess, refreshSubscription } = useSubscription();
+  const { subscription, isLoading, refreshSubscription } = useSubscription();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isLoadingPortal, setIsLoadingPortal] = useState(false);
 

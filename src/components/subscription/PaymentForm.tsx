@@ -129,11 +129,7 @@ export function PaymentForm({ clientSecret, onSuccess, onCancel }: PaymentFormPr
           }}
           onChange={(e) => {
             setPaymentReady(e.complete);
-            if (e.error) {
-              setError(e.error.message || null);
-            } else {
-              setError(null);
-            }
+            setError(null);
           }}
         />
       </div>
