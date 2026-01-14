@@ -40,6 +40,7 @@ export function MessagesPage() {
   const [threadDetails, setThreadDetails] = useState<ThreadDetail | null>(null);
   const [showFiles, setShowFiles] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const isInitialLoadRef = useRef(true);
 
   // Realtime state
@@ -118,12 +119,19 @@ export function MessagesPage() {
   }, [selectedThread]);
 
   useEffect(() => {
-    if (messages.length > 0) {
-      // Use instant scroll on initial load, smooth scroll for new messages
-      messagesEndRef.current?.scrollIntoView({
-        behavior: isInitialLoadRef.current ? "instant" : "smooth",
-      });
-      isInitialLoadRef.current = false;
+    if (messages.length > 0 && messagesContainerRef.current) {
+      const container = messagesContainerRef.current;
+      if (isInitialLoadRef.current) {
+        // Instant scroll to bottom on initial load
+        // Use setTimeout to ensure DOM is fully rendered
+        setTimeout(() => {
+          container.scrollTop = container.scrollHeight;
+        }, 0);
+        isInitialLoadRef.current = false;
+      } else {
+        // Smooth scroll for new messages
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }
     }
   }, [messages]);
 
@@ -315,7 +323,7 @@ export function MessagesPage() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
               {isLoadingMessages ? (
                 <div className="flex justify-center items-center h-full">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
