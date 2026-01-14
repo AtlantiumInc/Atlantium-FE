@@ -40,6 +40,7 @@ export function MessagesPage() {
   const [threadDetails, setThreadDetails] = useState<ThreadDetail | null>(null);
   const [showFiles, setShowFiles] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isInitialLoadRef = useRef(true);
 
   // Realtime state
   const { connectionState, presenceMap } = useXanoRealtime();
@@ -110,13 +111,20 @@ export function MessagesPage() {
 
   useEffect(() => {
     if (selectedThread) {
+      isInitialLoadRef.current = true;
       fetchMessages(selectedThread.thread_id);
       fetchThreadDetails(selectedThread.thread_id);
     }
   }, [selectedThread]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length > 0) {
+      // Use instant scroll on initial load, smooth scroll for new messages
+      messagesEndRef.current?.scrollIntoView({
+        behavior: isInitialLoadRef.current ? "instant" : "smooth",
+      });
+      isInitialLoadRef.current = false;
+    }
   }, [messages]);
 
   const handleSendMessage = async () => {
