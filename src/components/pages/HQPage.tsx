@@ -20,6 +20,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { MembershipCard, MembershipGate, UpgradePrompt } from "@/components/subscription";
 
 interface HQPageProps {
   user?: {
@@ -336,6 +337,9 @@ export function HQPage({ user }: HQPageProps) {
           </CardContent>
         </Card>
 
+        {/* Membership Card */}
+        <MembershipCard />
+
         {/* My Events */}
         <Card>
           <CardHeader className="pb-2">
@@ -453,48 +457,53 @@ export function HQPage({ user }: HQPageProps) {
                     </div>
                   )}
                 </div>
-                <div className="space-y-3">
-                  <p className="text-sm font-medium text-muted-foreground">Your RSVP Status:</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(["going", "maybe", "not_going", "waitlist"] as RsvpStatus[]).map((status) => {
-                      const isSelected = selectedEvent.user_rsvp?.rsvp_status === status;
-                      return (
-                        <Button
-                          key={status}
-                          variant={isSelected ? "default" : "outline"}
-                          onClick={() => handleRsvp(status)}
-                          disabled={isRsvpLoading}
-                        >
-                          {isRsvpLoading ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            getRsvpStatusLabel(status)
-                          )}
-                        </Button>
-                      );
-                    })}
+                <MembershipGate
+                  requiredTier="club"
+                  fallback={<UpgradePrompt message="Upgrade to RSVP to events" />}
+                >
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-muted-foreground">Your RSVP Status:</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(["going", "maybe", "not_going", "waitlist"] as RsvpStatus[]).map((status) => {
+                        const isSelected = selectedEvent.user_rsvp?.rsvp_status === status;
+                        return (
+                          <Button
+                            key={status}
+                            variant={isSelected ? "default" : "outline"}
+                            onClick={() => handleRsvp(status)}
+                            disabled={isRsvpLoading}
+                          >
+                            {isRsvpLoading ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              getRsvpStatusLabel(status)
+                            )}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    {selectedEvent.user_rsvp && (
+                      <Button
+                        variant="outline"
+                        className="w-full text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                        onClick={handleCancelRsvp}
+                        disabled={isRsvpLoading}
+                      >
+                        {isRsvpLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="mr-2 h-4 w-4" />
+                            Cancel RSVP
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
-                  {selectedEvent.user_rsvp && (
-                    <Button
-                      variant="outline"
-                      className="w-full text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                      onClick={handleCancelRsvp}
-                      disabled={isRsvpLoading}
-                    >
-                      {isRsvpLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="mr-2 h-4 w-4" />
-                          Cancel RSVP
-                        </>
-                      )}
-                    </Button>
-                  )}
-                </div>
+                </MembershipGate>
               </div>
             </>
           )}

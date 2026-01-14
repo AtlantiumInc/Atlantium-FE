@@ -8,10 +8,15 @@ import type {
   ThreadDetail,
   ThreadsListResponse,
   MessagesResponse,
+  SubscriptionResponse,
+  SetupIntentResponse,
+  SubscribeResponse,
+  PortalSessionResponse,
 } from "./types";
 
 const AUTH_API_BASE_URL = "https://cloud.atlantium.ai/api:o01duYuZ";
 const APP_API_BASE_URL = "https://cloud.atlantium.ai/api:_c66cUCc";
+const STRIPE_API_BASE_URL = "https://cloud.atlantium.ai/api:-ulnKZsX";
 const ADMIN_API_BASE_URL = "https://cloud.atlantium.ai/api:ud37c7Xg";
 
 export interface ApiError {
@@ -522,6 +527,39 @@ class ApiClient {
     return this.request<{ success: boolean; message: string }>(`/threads/${threadId}/leave`, {
       method: "POST",
     }, APP_API_BASE_URL);
+  }
+
+  // Stripe subscription methods
+  async getSubscription(): Promise<SubscriptionResponse> {
+    return this.request<SubscriptionResponse>("/stripe/subscription", {
+      method: "GET",
+    }, STRIPE_API_BASE_URL);
+  }
+
+  async createSetupIntent(): Promise<SetupIntentResponse> {
+    return this.request<SetupIntentResponse>("/stripe/setup-intent", {
+      method: "POST",
+    }, STRIPE_API_BASE_URL);
+  }
+
+  async subscribe(paymentMethodId: string): Promise<SubscribeResponse> {
+    return this.request<SubscribeResponse>("/stripe/subscribe", {
+      method: "POST",
+      body: JSON.stringify({ payment_method_id: paymentMethodId }),
+    }, STRIPE_API_BASE_URL);
+  }
+
+  async cancelSubscription(immediate: boolean = false): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>("/stripe/cancel", {
+      method: "POST",
+      body: JSON.stringify({ immediate }),
+    }, STRIPE_API_BASE_URL);
+  }
+
+  async getPortalSession(): Promise<PortalSessionResponse> {
+    return this.request<PortalSessionResponse>("/stripe/portal-session", {
+      method: "POST",
+    }, STRIPE_API_BASE_URL);
   }
 }
 

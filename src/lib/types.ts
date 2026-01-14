@@ -135,7 +135,10 @@ export interface Thread {
   last_message_at?: string;
   unread_count: number;
   pinned: boolean;
-  participants: ThreadParticipant[];
+  participants?: ThreadParticipant[];
+  other_user_id?: string;
+  other_user_username?: string;
+  other_user_avatar?: string;
   created_at: string;
   updated_at: string;
 }
@@ -161,4 +164,49 @@ export interface MessagesResponse {
     total: number;
     total_pages: number;
   };
+}
+
+// Subscription types
+export type MembershipTier = "free" | "club";
+export type SubscriptionStatus = "active" | "past_due" | "canceled" | "unpaid" | "incomplete" | null;
+
+export interface PaymentMethod {
+  brand: string;
+  last4: string;
+}
+
+export interface Subscription {
+  membership_tier: MembershipTier;
+  subscription_status: SubscriptionStatus;
+  has_club_access: boolean;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  grace_period_end: string | null;
+  payment_method: PaymentMethod | null;
+}
+
+export interface SubscriptionResponse {
+  success: boolean;
+  subscription: Subscription;
+}
+
+export interface SetupIntentResponse {
+  success: boolean;
+  client_secret: string;
+}
+
+export interface SubscribeResponse {
+  success: boolean;
+  subscription: {
+    id: string;
+    status: string;
+    current_period_end: string;
+  };
+  requires_action: boolean;
+  client_secret: string | null;
+}
+
+export interface PortalSessionResponse {
+  success: boolean;
+  portal_url: string;
 }

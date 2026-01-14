@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
+import { XanoRealtimeProvider } from "@/contexts/XanoRealtimeContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminProtectedRoute } from "@/components/admin/AdminProtectedRoute";
@@ -11,6 +13,7 @@ import { AdminLoginPage } from "@/pages/AdminLoginPage";
 import { HomePage } from "@/pages/HomePage";
 import { LandingPage } from "@/pages/LandingPage";
 import { PrivacyPage } from "@/pages/PrivacyPage";
+import { TermsPage } from "@/pages/TermsPage";
 import { StyleGuidePage } from "@/pages/StyleGuidePage";
 import { ComponentsPage } from "@/pages/ComponentsPage";
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
@@ -53,6 +56,7 @@ function AppRoutes() {
       {/* Public Pages */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/policies" element={<TermsPage />} />
       <Route
         path="/login"
         element={
@@ -105,8 +109,12 @@ function App() {
       <ThemeProvider>
         <BrowserRouter>
           <AuthProvider>
-            <AppRoutes />
-            <Toaster richColors position="top-right" />
+            <XanoRealtimeProvider>
+              <SubscriptionProvider>
+                <AppRoutes />
+                <Toaster richColors position="top-right" />
+              </SubscriptionProvider>
+            </XanoRealtimeProvider>
           </AuthProvider>
         </BrowserRouter>
       </ThemeProvider>
