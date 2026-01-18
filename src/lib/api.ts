@@ -55,6 +55,31 @@ export interface User {
   last_name?: string;
 }
 
+export interface FrontierArticle {
+  id: string;
+  content: {
+    title: string;
+    body: string;
+    tags: string[];
+    tldr: string[];
+    author: {
+      name: string;
+      avatar_url: string;
+    };
+    publisher: {
+      name: string;
+      logo_url: string;
+      published_at: string;
+    };
+    featured_image: {
+      url: string;
+      alt: string;
+      caption: string;
+    };
+  };
+  created_at: number;
+}
+
 class ApiClient {
   private authToken: string | null = null;
 
@@ -560,6 +585,12 @@ class ApiClient {
     return this.request<PortalSessionResponse>("/stripe/portal-session", {
       method: "POST",
     }, STRIPE_API_BASE_URL);
+  }
+
+  async getFrontierArticles(): Promise<FrontierArticle[]> {
+    return this.request<FrontierArticle[]>("/thread/frontier", {
+      method: "GET",
+    }, APP_API_BASE_URL);
   }
 }
 

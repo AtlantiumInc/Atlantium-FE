@@ -12,6 +12,7 @@ import { EventsPage } from "@/components/pages/EventsPage";
 import { LeaderboardPage } from "@/components/pages/LeaderboardPage";
 import { MessagesPage } from "@/components/pages/MessagesPage";
 import { ConnectionsPage } from "@/components/pages/ConnectionsPage";
+import { ProjectsPage } from "@/components/pages/ProjectsPage";
 
 export function HomePage() {
   const { user, logout } = useAuth();
@@ -33,6 +34,7 @@ export function HomePage() {
       events: "Events",
       messages: "Messages",
       connections: "Connections",
+      projects: "Projects",
       leaderboard: "Leaderboard",
     };
     return titles[activePage] || "HQ";
@@ -50,6 +52,8 @@ export function HomePage() {
         return <MessagesPage />;
       case "connections":
         return <ConnectionsPage />;
+      case "projects":
+        return <ProjectsPage />;
       case "leaderboard":
         return <LeaderboardPage hasGithubConnected={false} />;
       default:
@@ -87,7 +91,7 @@ export function HomePage() {
         <div className="p-6 w-full">
           <div className={cn(
             "mx-auto",
-            ["messages", "connections", "leaderboard", "hq", "events"].includes(activePage) ? "max-w-7xl" : "max-w-4xl"
+            ["messages", "connections", "leaderboard", "hq", "events", "projects"].includes(activePage) ? "max-w-7xl" : "max-w-4xl"
           )}>
             {renderPage()}
           </div>

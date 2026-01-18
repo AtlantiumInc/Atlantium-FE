@@ -22,6 +22,31 @@ import {
 import { api } from "@/lib/api";
 import { MembershipCard, MembershipGate, UpgradePrompt } from "@/components/subscription";
 
+interface FrontierArticle {
+  id: string;
+  content: {
+    title: string;
+    body: string;
+    tags: string[];
+    tldr: string[];
+    author: {
+      name: string;
+      avatar_url: string;
+    };
+    publisher: {
+      name: string;
+      logo_url: string;
+      published_at: string;
+    };
+    featured_image: {
+      url: string;
+      alt: string;
+      caption: string;
+    };
+  };
+  created_at: number;
+}
+
 interface HQPageProps {
   user?: {
     email?: string;
@@ -51,24 +76,6 @@ interface Event {
   address?: string;
 }
 
-// Demo articles for the top section
-const FEATURED_ARTICLES = [
-  {
-    id: "1",
-    title: "Claude 3.5 Sonnet Now Available",
-    source: "Anthropic",
-    image: null,
-    tag: "AI Models",
-  },
-  {
-    id: "2",
-    title: "GPT-5 Research Preview",
-    source: "OpenAI",
-    image: null,
-    tag: "Research",
-  },
-];
-
 // Demo top builders
 const TOP_BUILDERS = [
   { rank: 1, name: "Sarah Chen", username: "sarah_dev", additions: 2453, avatar: null },
@@ -83,6 +90,19 @@ export function HQPage({ user }: HQPageProps) {
   const [isLoadingMyEvents, setIsLoadingMyEvents] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isRsvpLoading, setIsRsvpLoading] = useState(false);
+  const [featuredArticles, setFeaturedArticles] = useState<FrontierArticle[]>([]);
+  const [isLoadingArticles, setIsLoadingArticles] = useState(true);
+
+  const fetchFrontierArticles = async () => {
+    try {
+      const articles = await api.getFrontierArticles();
+      setFeaturedArticles(articles.slice(0, 2));
+    } catch (error) {
+      console.error("Failed to fetch frontier articles:", error);
+    } finally {
+      setIsLoadingArticles(false);
+    }
+  };
 
   const fetchEvents = async () => {
     try {
@@ -134,6 +154,7 @@ export function HQPage({ user }: HQPageProps) {
 
   useEffect(() => {
     fetchAllEvents();
+    fetchFrontierArticles();
   }, []);
 
   const getInitials = (email?: string) => {
@@ -243,29 +264,55 @@ export function HQPage({ user }: HQPageProps) {
       <div className="flex-1 space-y-6 min-w-0">
         {/* Featured Articles - Top Row */}
         <div className="grid grid-cols-2 gap-4">
-          {FEATURED_ARTICLES.map((article) => (
-            <Card key={article.id} className="overflow-hidden group cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all">
-              <div className="aspect-video bg-gradient-to-br from-primary/20 via-primary/10 to-background relative">
-                <div className="absolute top-3 left-3">
-                  <span className="px-2 py-1 bg-primary text-primary-foreground text-xs rounded-full">
-                    {article.tag}
-                  </span>
+          {isLoadingArticles ? (
+            <>
+              {[1, 2].map((i) => (
+                <Card key={i} className="overflow-hidden">
+                  <div className="aspect-video bg-gradient-to-br from-primary/20 via-primary/10 to-background relative">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary/40" />
+                    </div>
+                  </div>
+                  <CardContent className="p-4">
+                    <div className="h-4 bg-muted rounded w-20 mb-2" />
+                    <div className="h-5 bg-muted rounded w-full" />
+                  </CardContent>
+                </Card>
+              ))}
+            </>
+          ) : (
+            featuredArticles.map((article) => (
+              <Card key={article.id} className="overflow-hidden group cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all">
+                <div className="aspect-video bg-gradient-to-br from-primary/20 via-primary/10 to-background relative">
+                  {article.content.featured_image?.url ? (
+                    <img
+                      src={article.content.featured_image.url}
+                      alt={article.content.featured_image.alt || article.content.title}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Sparkles className="h-12 w-12 text-primary/40" />
+                    </div>
+                  )}
+                  <div className="absolute top-3 left-3">
+                    <span className="px-2 py-1 bg-primary text-primary-foreground text-xs rounded-full">
+                      {article.content.tags?.[0] || "Article"}
+                    </span>
+                  </div>
                 </div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Sparkles className="h-12 w-12 text-primary/40" />
-                </div>
-              </div>
-              <CardContent className="p-4">
-                <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                  <Sparkles size={12} />
-                  {article.source}
-                </p>
-                <h3 className="font-semibold line-clamp-2 group-hover:text-primary transition-colors">
-                  {article.title}
-                </h3>
-              </CardContent>
-            </Card>
-          ))}
+                <CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                    <Sparkles size={12} />
+                    {article.content.publisher?.name || "Unknown"}
+                  </p>
+                  <h3 className="font-semibold line-clamp-2 group-hover:text-primary transition-colors">
+                    {article.content.title}
+                  </h3>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
 
         {/* Second Row - Stats Cards */}
