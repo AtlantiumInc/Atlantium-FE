@@ -30,8 +30,8 @@ interface Event {
   title: string;
   description?: string;
   event_type: "virtual" | "in_person" | "hybrid";
-  start_time: number;
-  end_time?: number;
+  start_time: string;
+  end_time?: string;
   location?: string;
   user_rsvp?: UserRsvp;
   going_count?: number;
@@ -82,7 +82,7 @@ export function EventsPage() {
     fetchEvents();
   }, []);
 
-  const formatDate = (timestamp: number) => {
+  const formatDate = (timestamp: string | number) => {
     return new Date(timestamp).toLocaleDateString("en-US", {
       weekday: "long",
       month: "long",
@@ -91,7 +91,7 @@ export function EventsPage() {
     });
   };
 
-  const formatTime = (timestamp: number) => {
+  const formatTime = (timestamp: string | number) => {
     return new Date(timestamp).toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
@@ -164,7 +164,7 @@ export function EventsPage() {
     }
   };
 
-  const getEventCategory = (timestamp: number): "today" | "upcoming" | "past" => {
+  const getEventCategory = (timestamp: string | number): "today" | "upcoming" | "past" => {
     const eventDate = new Date(timestamp);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -409,7 +409,7 @@ export function EventsPage() {
                     </div>
                   )}
                 </div>
-                {selectedEvent.access_level === "club" && !hasClubAccess ? (
+                {!canUserRsvp(selectedEvent.access_level) ? (
                   <UpgradePrompt message="Upgrade to Club to RSVP to this event" />
                 ) : (
                   <div className="space-y-3">
