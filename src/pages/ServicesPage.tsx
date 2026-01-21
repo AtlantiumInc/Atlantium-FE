@@ -158,8 +158,8 @@ export function ServicesPage() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 backdrop-blur-md border border-white/10 mb-8 animate-fade-in">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
             </span>
             <span className="text-sm text-white/80 font-medium">
               Now accepting new clients
@@ -167,12 +167,12 @@ export function ServicesPage() {
           </div>
 
           {/* Headline */}
-          <h1 className="text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter text-white mb-6 leading-[0.85]">
+          <h1 className="text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter text-white mb-6 leading-[0.85] text-glow">
             <span className="block animate-slide-up" style={{ animationDelay: "0.1s" }}>
               BUILD THE
             </span>
             <span
-              className="block bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent animate-slide-up"
+              className="block bg-gradient-to-r from-blue-400 via-sky-300 to-cyan-400 bg-clip-text text-transparent animate-slide-up text-glow-strong"
               style={{ animationDelay: "0.2s" }}
             >
               FUTURE
@@ -196,7 +196,7 @@ export function ServicesPage() {
             <a href="mailto:team@atlantium.ai">
               <Button
                 size="lg"
-                className="bg-white text-black hover:bg-white/90 font-bold text-lg px-8 py-6 shadow-2xl shadow-white/20 hover:scale-105 transition-transform"
+                className="bg-white text-black hover:bg-white/90 font-bold text-lg px-8 py-6 shadow-2xl shadow-white/20 hover:scale-105 transition-all duration-300 glow"
               >
                 Start a Project
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -241,7 +241,7 @@ export function ServicesPage() {
             {services.map((service) => (
               <div
                 key={service.title}
-                className="group bg-card border border-border rounded-2xl p-8 hover:border-primary/30 transition-colors"
+                className="group bg-card border border-border rounded-2xl p-8 hover:border-primary/30 transition-all duration-300 glow-hover"
               >
                 <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
                   <service.icon className="h-6 w-6 text-primary" />
@@ -281,7 +281,7 @@ export function ServicesPage() {
             Let's discuss how Atlantium can help your business grow.
           </p>
           <a href="mailto:team@atlantium.ai">
-            <Button size="lg" className="font-semibold">
+            <Button size="lg" className="font-semibold glow">
               Contact Us
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>

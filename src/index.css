@@ -53,73 +53,78 @@
 
 :root {
   --radius: 0.375rem;
-  /* Light mode: Warm Authority - clean cream with commanding forest green */
-  --background: oklch(0.97 0.012 85);
-  --foreground: oklch(0.16 0.04 150);
-  --card: oklch(0.99 0.008 85);
-  --card-foreground: oklch(0.16 0.04 150);
-  --popover: oklch(0.99 0.008 85);
-  --popover-foreground: oklch(0.16 0.04 150);
-  --primary: oklch(0.30 0.14 152);
-  --primary-foreground: oklch(0.98 0.008 85);
-  --secondary: oklch(0.94 0.015 85);
-  --secondary-foreground: oklch(0.22 0.04 150);
-  --muted: oklch(0.92 0.012 85);
-  --muted-foreground: oklch(0.42 0.02 150);
-  --accent: oklch(0.94 0.015 85);
-  --accent-foreground: oklch(0.22 0.04 150);
-  --destructive: oklch(0.48 0.24 28);
-  --border: oklch(0.88 0.015 85);
-  --input: oklch(0.92 0.012 85);
-  --ring: oklch(0.30 0.14 152);
-  --chart-1: oklch(0.38 0.16 152);
-  --chart-2: oklch(0.48 0.14 130);
-  --chart-3: oklch(0.44 0.12 175);
-  --chart-4: oklch(0.56 0.16 95);
-  --chart-5: oklch(0.52 0.14 55);
-  --sidebar: oklch(0.95 0.012 85);
-  --sidebar-foreground: oklch(0.16 0.04 150);
-  --sidebar-primary: oklch(0.30 0.14 152);
-  --sidebar-primary-foreground: oklch(0.98 0.008 85);
-  --sidebar-accent: oklch(0.92 0.012 85);
-  --sidebar-accent-foreground: oklch(0.22 0.04 150);
-  --sidebar-border: oklch(0.88 0.015 85);
-  --sidebar-ring: oklch(0.30 0.14 152);
+  /* Light mode: Brushed Steel - clean neutral with gunmetal accents */
+  --background: oklch(0.97 0.003 250);
+  --foreground: oklch(0.18 0.015 240);
+  --card: oklch(0.99 0.002 250);
+  --card-foreground: oklch(0.18 0.015 240);
+  --popover: oklch(0.99 0.002 250);
+  --popover-foreground: oklch(0.18 0.015 240);
+  --primary: oklch(0.45 0.12 240);
+  --primary-foreground: oklch(0.98 0.003 250);
+  --secondary: oklch(0.93 0.005 245);
+  --secondary-foreground: oklch(0.25 0.015 240);
+  --muted: oklch(0.91 0.005 245);
+  --muted-foreground: oklch(0.45 0.01 240);
+  --accent: oklch(0.50 0.14 245);
+  --accent-foreground: oklch(0.98 0.003 250);
+  --destructive: oklch(0.50 0.24 25);
+  --border: oklch(0.86 0.008 245);
+  --input: oklch(0.93 0.005 245);
+  --ring: oklch(0.45 0.12 240);
+  --chart-1: oklch(0.45 0.12 240);
+  --chart-2: oklch(0.50 0.10 220);
+  --chart-3: oklch(0.42 0.08 260);
+  --chart-4: oklch(0.55 0.08 200);
+  --chart-5: oklch(0.40 0.14 245);
+  --sidebar: oklch(0.95 0.004 250);
+  --sidebar-foreground: oklch(0.18 0.015 240);
+  --sidebar-primary: oklch(0.45 0.12 240);
+  --sidebar-primary-foreground: oklch(0.98 0.003 250);
+  --sidebar-accent: oklch(0.91 0.006 245);
+  --sidebar-accent-foreground: oklch(0.25 0.015 240);
+  --sidebar-border: oklch(0.86 0.008 245);
+  --sidebar-ring: oklch(0.45 0.12 240);
 }
 
 .dark {
-  /* Dark mode: Power Depth - abyss jungle with rich emerald accents */
-  --background: oklch(0.05 0.02 152);
-  --foreground: oklch(0.94 0.012 85);
-  --card: oklch(0.09 0.03 152);
-  --card-foreground: oklch(0.94 0.012 85);
-  --popover: oklch(0.09 0.03 152);
-  --popover-foreground: oklch(0.94 0.012 85);
-  --primary: oklch(0.52 0.18 152);
-  --primary-foreground: oklch(0.05 0.02 152);
-  --secondary: oklch(0.12 0.03 152);
-  --secondary-foreground: oklch(0.92 0.012 85);
-  --muted: oklch(0.12 0.03 152);
-  --muted-foreground: oklch(0.58 0.02 100);
-  --accent: oklch(0.14 0.04 152);
-  --accent-foreground: oklch(0.92 0.012 85);
-  --destructive: oklch(0.58 0.22 28);
-  --border: oklch(0.20 0.04 152);
-  --input: oklch(0.12 0.03 152);
-  --ring: oklch(0.52 0.18 152);
-  --chart-1: oklch(0.52 0.18 152);
-  --chart-2: oklch(0.58 0.15 130);
-  --chart-3: oklch(0.50 0.12 175);
-  --chart-4: oklch(0.65 0.16 95);
-  --chart-5: oklch(0.60 0.14 55);
-  --sidebar: oklch(0.07 0.025 152);
-  --sidebar-foreground: oklch(0.94 0.012 85);
-  --sidebar-primary: oklch(0.52 0.18 152);
-  --sidebar-primary-foreground: oklch(0.05 0.02 152);
-  --sidebar-accent: oklch(0.14 0.04 152);
-  --sidebar-accent-foreground: oklch(0.92 0.012 85);
-  --sidebar-border: oklch(0.20 0.04 152);
-  --sidebar-ring: oklch(0.52 0.18 152);
+  /* Dark mode: Deep Navy + Pearl White Glow aesthetic */
+  --background: oklch(0.15 0.04 250);
+  --foreground: oklch(0.97 0.005 250);
+  --card: oklch(0.18 0.035 248);
+  --card-foreground: oklch(0.97 0.005 250);
+  --popover: oklch(0.18 0.035 248);
+  --popover-foreground: oklch(0.97 0.005 250);
+  --primary: oklch(0.70 0.15 250);
+  --primary-foreground: oklch(0.15 0.04 250);
+  --secondary: oklch(0.22 0.03 250);
+  --secondary-foreground: oklch(0.92 0.005 250);
+  --muted: oklch(0.22 0.03 250);
+  --muted-foreground: oklch(0.65 0.02 250);
+  --accent: oklch(0.65 0.18 255);
+  --accent-foreground: oklch(0.97 0.005 250);
+  --destructive: oklch(0.55 0.22 25);
+  --border: oklch(0.25 0.03 250);
+  --input: oklch(0.20 0.03 250);
+  --ring: oklch(0.70 0.15 250);
+  --chart-1: oklch(0.70 0.15 250);
+  --chart-2: oklch(0.60 0.12 230);
+  --chart-3: oklch(0.65 0.10 260);
+  --chart-4: oklch(0.72 0.10 220);
+  --chart-5: oklch(0.55 0.16 250);
+  --sidebar: oklch(0.16 0.035 250);
+  --sidebar-foreground: oklch(0.97 0.005 250);
+  --sidebar-primary: oklch(0.70 0.15 250);
+  --sidebar-primary-foreground: oklch(0.15 0.04 250);
+  --sidebar-accent: oklch(0.24 0.03 250);
+  --sidebar-accent-foreground: oklch(0.92 0.005 250);
+  --sidebar-border: oklch(0.25 0.03 250);
+  --sidebar-ring: oklch(0.70 0.15 250);
+
+  /* Glow colors for dark mode - soft ambient */
+  --glow-color: oklch(0.70 0.12 250 / 0.25);
+  --glow-strong: oklch(0.75 0.14 250 / 0.35);
+  --glow-subtle: oklch(0.65 0.10 250 / 0.12);
 }
 
 @layer base {
@@ -130,5 +135,30 @@
     @apply bg-background text-foreground;
     font-family: "JetBrains Mono", monospace;
   }
+}
+
+/* Glow utility classes - soft ambient for dark mode */
+.dark .text-glow {
+  text-shadow:
+    0 0 40px var(--glow-subtle),
+    0 0 80px var(--glow-subtle);
+}
+
+.dark .text-glow-strong {
+  text-shadow:
+    0 0 20px var(--glow-color),
+    0 0 60px var(--glow-subtle);
+}
+
+.dark .glow {
+  box-shadow: 0 0 30px var(--glow-subtle);
+}
+
+.dark .glow-hover {
+  transition: box-shadow 0.4s ease;
+}
+
+.dark .glow-hover:hover {
+  box-shadow: 0 0 40px var(--glow-color);
 }
 

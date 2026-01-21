@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -15,23 +16,27 @@ import {
   Loader2,
   Video,
   XCircle,
+  Crown,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { MembershipGate, UpgradePrompt } from "@/components/subscription";
+import { useAuth } from "@/contexts/AuthContext";
+import { UpgradePrompt } from "@/components/subscription";
 
 type RsvpStatus = "going" | "not_going" | "maybe" | "waitlist";
+type AccessLevel = "anyone" | "free" | "club";
 
 interface Event {
   id: string;
   title: string;
   description?: string;
   event_type: "virtual" | "in_person" | "hybrid";
-  start_time: string;
-  end_time?: string;
+  start_time: number;
+  end_time?: number;
   location?: string;
   user_rsvp?: UserRsvp;
   going_count?: number;
   featured_image?: string;
+  access_level?: AccessLevel;
 }
 
 interface UserRsvp {
@@ -42,6 +47,7 @@ interface UserRsvp {
 }
 
 export function EventsPage() {
+  const { hasClubAccess } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -76,8 +82,8 @@ export function EventsPage() {
     fetchEvents();
   }, []);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleDateString("en-US", {
       weekday: "long",
       month: "long",
       day: "numeric",
@@ -85,8 +91,8 @@ export function EventsPage() {
     });
   };
 
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString("en-US", {
+  const formatTime = (timestamp: number) => {
+    return new Date(timestamp).toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
@@ -158,8 +164,8 @@ export function EventsPage() {
     }
   };
 
-  const getEventCategory = (dateString: string): "today" | "upcoming" | "past" => {
-    const eventDate = new Date(dateString);
+  const getEventCategory = (timestamp: number): "today" | "upcoming" | "past" => {
+    const eventDate = new Date(timestamp);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -168,6 +174,25 @@ export function EventsPage() {
     if (eventDate < today) return "past";
     if (eventDate < tomorrow) return "today";
     return "upcoming";
+  };
+
+  const getAccessLevelBadge = (accessLevel?: AccessLevel) => {
+    if (accessLevel === "club") {
+      return (
+        <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 hover:bg-yellow-500/10">
+          <Crown size={12} />
+          Club Member
+        </Badge>
+      );
+    }
+    return null;
+  };
+
+  const canUserRsvp = (accessLevel?: AccessLevel): boolean => {
+    if (!accessLevel || accessLevel === "anyone" || accessLevel === "free") {
+      return true;
+    }
+    return hasClubAccess;
   };
 
   const todayEvents = events.filter((e) => getEventCategory(e.start_time) === "today");
@@ -220,11 +245,14 @@ export function EventsPage() {
                         {event.event_type.replace("_", " ")}
                       </span>
                     </div>
-                    {event.user_rsvp && (
-                      <span className={`text-xs font-medium px-2 py-1 rounded ${getRsvpStatusColor(event.user_rsvp.rsvp_status)}`}>
-                        {getRsvpStatusLabel(event.user_rsvp.rsvp_status)}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {getAccessLevelBadge(event.access_level)}
+                      {event.user_rsvp && (
+                        <span className={`text-xs font-medium px-2 py-1 rounded ${getRsvpStatusColor(event.user_rsvp.rsvp_status)}`}>
+                          {getRsvpStatusLabel(event.user_rsvp.rsvp_status)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <h4 className="font-semibold mb-2">{event.title}</h4>
                   <div className="space-y-1 text-sm text-muted-foreground">
@@ -269,11 +297,14 @@ export function EventsPage() {
                         {event.event_type.replace("_", " ")}
                       </span>
                     </div>
-                    {event.user_rsvp && (
-                      <span className={`text-xs font-medium px-2 py-1 rounded ${getRsvpStatusColor(event.user_rsvp.rsvp_status)}`}>
-                        {getRsvpStatusLabel(event.user_rsvp.rsvp_status)}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {getAccessLevelBadge(event.access_level)}
+                      {event.user_rsvp && (
+                        <span className={`text-xs font-medium px-2 py-1 rounded ${getRsvpStatusColor(event.user_rsvp.rsvp_status)}`}>
+                          {getRsvpStatusLabel(event.user_rsvp.rsvp_status)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <h4 className="font-semibold mb-2">{event.title}</h4>
                   <div className="space-y-1 text-sm text-muted-foreground">
@@ -348,7 +379,10 @@ export function EventsPage() {
           {selectedEvent && (
             <>
               <DialogHeader>
-                <DialogTitle>{selectedEvent.title}</DialogTitle>
+                <div className="flex items-center justify-between">
+                  <DialogTitle>{selectedEvent.title}</DialogTitle>
+                  {getAccessLevelBadge(selectedEvent.access_level)}
+                </div>
                 <DialogDescription>
                   {selectedEvent.event_type === "virtual" ? "Virtual Event" : "In-Person Event"}
                 </DialogDescription>
@@ -375,10 +409,9 @@ export function EventsPage() {
                     </div>
                   )}
                 </div>
-                <MembershipGate
-                  requiredTier="club"
-                  fallback={<UpgradePrompt message="Upgrade to RSVP to events" />}
-                >
+                {selectedEvent.access_level === "club" && !hasClubAccess ? (
+                  <UpgradePrompt message="Upgrade to Club to RSVP to this event" />
+                ) : (
                   <div className="space-y-3">
                     <p className="text-sm font-medium text-muted-foreground">Your RSVP Status:</p>
                     <div className="grid grid-cols-2 gap-2">
@@ -423,7 +456,7 @@ export function EventsPage() {
                       </Button>
                     )}
                   </div>
-                </MembershipGate>
+                )}
               </div>
             </>
           )}

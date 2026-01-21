@@ -12,6 +12,9 @@ import type {
   SetupIntentResponse,
   SubscribeResponse,
   PortalSessionResponse,
+  UserSubscription,
+  UserIntegrations,
+  UserSettings,
 } from "./types";
 
 const AUTH_API_BASE_URL = "https://cloud.atlantium.ai/api:o01duYuZ";
@@ -49,10 +52,14 @@ export interface User {
   email: string;
   is_email_verified: boolean;
   created_at?: string;
+  is_admin?: boolean;
   avatar?: string;
   display_name?: string;
   first_name?: string;
   last_name?: string;
+  _subscription?: UserSubscription;
+  _integrations?: UserIntegrations;
+  _settings?: UserSettings;
 }
 
 export interface FrontierArticle {

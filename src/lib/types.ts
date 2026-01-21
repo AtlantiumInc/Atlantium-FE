@@ -169,6 +169,28 @@ export interface MessagesResponse {
 // Subscription types
 export type MembershipTier = "free" | "club";
 export type SubscriptionStatus = "active" | "past_due" | "canceled" | "unpaid" | "incomplete" | null;
+export type ChatConfig = "connection_required" | "anyone" | "off";
+
+// User subscription info (embedded in auth/me response)
+export interface UserSubscription {
+  membership_tier: MembershipTier;
+  subscription_status: SubscriptionStatus;
+  has_club_access: boolean;
+}
+
+// User integrations info (embedded in auth/me response)
+export interface UserIntegrations {
+  github: {
+    connected: boolean;
+    username: string | null;
+  };
+}
+
+// User settings info (embedded in auth/me response)
+export interface UserSettings {
+  connections_enabled: boolean;
+  chat_config: ChatConfig;
+}
 
 export interface PaymentMethod {
   brand: string;

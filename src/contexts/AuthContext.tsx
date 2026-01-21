@@ -11,6 +11,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  hasClubAccess: boolean;
   login: (token: string, user: User) => void;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
@@ -70,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         isAuthenticated: !!user,
+        hasClubAccess: user?._subscription?.has_club_access ?? false,
         login,
         logout,
         checkAuth,
