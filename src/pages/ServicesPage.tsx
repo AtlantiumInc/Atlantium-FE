@@ -1,297 +1,517 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { useEffect, useRef, useState } from "react";
+import SpotlightCard from "@/components/ui/SpotlightCard";
+import ShinyText from "@/components/ui/ShinyText";
+import CountUp from "@/components/ui/CountUp";
+import Aurora from "@/components/Aurora";
 import {
   ArrowRight,
   Code,
   Lightbulb,
   Handshake,
   Palette,
-  ChevronDown,
+  Rocket,
+  CheckCircle2,
+  Clock,
+  Zap,
+  Star,
+  TrendingUp,
 } from "lucide-react";
+import { motion, useSpring } from "motion/react";
+import { useRef } from "react";
 
 const services = [
   {
     icon: Code,
     title: "Development",
-    description:
-      "Build robust, scalable software solutions tailored to your business needs.",
+    description: "Production-ready code for your MVP or scale-up.",
+    color: "blue",
     items: [
-      { name: "Enterprise grade software development" },
-      { name: "Refactor legacy systems" },
-      { name: "Accelerated MVP development", note: "Requires GTM Strategy service" },
-      { name: "System integration" },
+      "Enterprise-grade software",
+      "Accelerated MVP builds",
+      "Legacy system refactors",
+      "System integration",
     ],
+    price: "10,000",
+    priceLabel: "Starting at",
+    highlight: true,
   },
   {
     icon: Lightbulb,
-    title: "Strategy",
-    description:
-      "Strategic guidance to help you navigate the technology landscape and reach your goals.",
+    title: "GTM Strategy",
+    description: "Go-to-market playbooks that actually work.",
+    color: "amber",
     items: [
-      { name: "GTM Playbook" },
-      { name: "AI consultation" },
+      "GTM Playbook creation",
+      "AI product consultation",
+      "Market positioning",
+      "Launch strategy",
     ],
+    price: "2,500",
+    priceLabel: "Starting at",
   },
   {
     icon: Handshake,
     title: "Introductions",
-    description:
-      "Connect with the right people to accelerate your growth and expand your network.",
+    description: "Warm intros to the right people.",
+    color: "emerald",
     items: [
-      { name: "Partnership introductions", note: "Connect with potential business partners and collaborators" },
+      "Investor introductions",
+      "Partnership connections",
+      "Talent referrals",
     ],
+    price: "Included",
+    priceLabel: "With services",
+    isText: true,
   },
   {
     icon: Palette,
     title: "Design",
-    description:
-      "Create intuitive, beautiful experiences that delight your users.",
+    description: "Interfaces that users love.",
+    color: "violet",
     items: [
-      { name: "UI/UX guidance" },
+      "UI/UX design",
+      "Design systems",
+      "Prototyping",
     ],
+    price: "Custom",
+    priceLabel: "Pricing",
+    isText: true,
   },
 ];
 
-export function ServicesPage() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
-  const [scrollY, setScrollY] = useState(0);
+const colorMap: Record<string, { bg: string; border: string; text: string; spotlight: string; gradient: string }> = {
+  blue: {
+    bg: "bg-blue-500/10",
+    border: "border-blue-500/20",
+    text: "text-blue-500",
+    spotlight: "rgba(59, 130, 246, 0.15)",
+    gradient: "from-blue-500 to-cyan-500",
+  },
+  amber: {
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/20",
+    text: "text-amber-500",
+    spotlight: "rgba(245, 158, 11, 0.15)",
+    gradient: "from-amber-500 to-orange-500",
+  },
+  emerald: {
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/20",
+    text: "text-emerald-500",
+    spotlight: "rgba(16, 185, 129, 0.15)",
+    gradient: "from-emerald-500 to-teal-500",
+  },
+  violet: {
+    bg: "bg-violet-500/10",
+    border: "border-violet-500/20",
+    text: "text-violet-500",
+    spotlight: "rgba(139, 92, 246, 0.15)",
+    gradient: "from-violet-500 to-purple-500",
+  },
+};
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrollY(window.scrollY);
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+// Tilt Card wrapper for service cards
+function TiltCard({ children, className }: { children: React.ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
 
-  const scrollToServices = () => {
-    document.getElementById("services-section")?.scrollIntoView({ behavior: "smooth" });
-  };
+  const rotateX = useSpring(0, { stiffness: 150, damping: 20 });
+  const rotateY = useSpring(0, { stiffness: 150, damping: 20 });
+
+  function handleMouse(e: React.MouseEvent) {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const rotateXVal = ((e.clientY - centerY) / (rect.height / 2)) * -8;
+    const rotateYVal = ((e.clientX - centerX) / (rect.width / 2)) * 8;
+    rotateX.set(rotateXVal);
+    rotateY.set(rotateYVal);
+  }
+
+  function handleMouseLeave() {
+    rotateX.set(0);
+    rotateY.set(0);
+  }
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
-      {/* Navigation */}
-      <nav
-        className="fixed top-0 left-0 right-0 z-50 transition-all duration-500"
+    <motion.div
+      ref={ref}
+      onMouseMove={handleMouse}
+      onMouseLeave={handleMouseLeave}
+      style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
+      className={`[perspective:1000px] ${className}`}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+export function ServicesPage() {
+  return (
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Aurora Background */}
+      <div className="fixed inset-0 z-0 opacity-30 dark:opacity-50">
+        <Aurora
+          colorStops={["#8b5cf6", "#6366f1", "#3b82f6"]}
+          amplitude={1.0}
+          blend={0.6}
+          speed={0.4}
+        />
+      </div>
+
+      {/* Noise texture */}
+      <div
+        className="fixed inset-0 z-[1] pointer-events-none opacity-[0.02] dark:opacity-[0.04]"
         style={{
-          backgroundColor: scrollY > 100 ? "rgba(0,0,0,0.85)" : "transparent",
-          backdropFilter: scrollY > 100 ? "blur(20px)" : "none",
-          borderBottom: scrollY > 100 ? "1px solid rgba(255,255,255,0.1)" : "none",
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
         }}
-      >
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link to="/" className="group">
-            <span className="text-2xl font-black tracking-tighter text-white drop-shadow-lg transition-all duration-300 group-hover:tracking-normal">
-              ATLANTIUM
-            </span>
+      />
+
+      {/* Navigation */}
+      <nav className="sticky top-0 z-50 bg-background/70 backdrop-blur-xl border-b border-border/30">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <Link to="/">
+            <motion.span
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="text-xl font-bold tracking-tight"
+            >
+              Atlantium
+            </motion.span>
           </Link>
-          <div className="flex items-center gap-3">
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-2"
+          >
             <ThemeToggle />
-            <Link to="/services">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-white/90 hover:text-white hover:bg-white/10"
-              >
-                Services
+            <Link to="/">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                Home
               </Button>
             </Link>
             <Link to="/login">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-white/90 hover:text-white hover:bg-white/10"
-              >
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                 Sign In
               </Button>
             </Link>
-            <Link to="/dashboard">
-              <Button
-                size="sm"
-                className="bg-white text-black hover:bg-white/90 font-semibold"
-              >
-                Dashboard
-                <ArrowRight className="ml-2 h-4 w-4" />
+            <a href="mailto:team@atlantium.ai">
+              <Button size="sm" className="gap-2">
+                <Rocket className="h-4 w-4" />
+                Start Project
               </Button>
-            </Link>
-          </div>
+            </a>
+          </motion.div>
         </div>
       </nav>
 
-      {/* Hero Section - Full Screen Video */}
-      <section className="relative h-screen flex flex-col items-center justify-center overflow-hidden">
-        {/* Video Background */}
-        <div className="absolute inset-0 z-0">
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            loop
-            playsInline
-            onLoadedData={() => setIsVideoLoaded(true)}
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
-              isVideoLoaded ? "opacity-100" : "opacity-0"
-            }`}
-            style={{ filter: "brightness(0.4) contrast(1.1)" }}
+      {/* Main Content */}
+      <main className="relative z-10 max-w-7xl mx-auto px-6 py-10">
+        {/* Bento Grid */}
+        <div className="grid grid-cols-12 gap-4 auto-rows-[minmax(100px,auto)]">
+
+          {/* Hero Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="col-span-12 lg:col-span-8 row-span-2"
           >
-            <source
-              src="https://videos.pexels.com/video-files/3129671/3129671-uhd_2560_1440_30fps.mp4"
-              type="video/mp4"
-            />
-          </video>
-
-          {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/70" />
-        </div>
-
-        {/* Hero Content */}
-        <div
-          className="relative z-10 max-w-5xl mx-auto px-6 text-center"
-          style={{
-            transform: `translateY(${scrollY * 0.3}px)`,
-            opacity: Math.max(0, 1 - scrollY / 600),
-          }}
-        >
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 backdrop-blur-md border border-white/10 mb-8 animate-fade-in">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-            </span>
-            <span className="text-sm text-white/80 font-medium">
-              Now accepting new clients
-            </span>
-          </div>
-
-          {/* Headline */}
-          <h1 className="text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter text-white mb-6 leading-[0.85] text-glow">
-            <span className="block animate-slide-up" style={{ animationDelay: "0.1s" }}>
-              BUILD THE
-            </span>
-            <span
-              className="block bg-gradient-to-r from-blue-400 via-sky-300 to-cyan-400 bg-clip-text text-transparent animate-slide-up text-glow-strong"
-              style={{ animationDelay: "0.2s" }}
+            <SpotlightCard
+              className="h-full p-8 lg:p-12 grid place-items-center overflow-hidden"
+              spotlightColor="rgba(139, 92, 246, 0.15)"
             >
-              FUTURE
-            </span>
-          </h1>
+              {/* Decorative gradient orb */}
+              <div className="absolute -top-20 -right-20 w-64 h-64 bg-gradient-to-br from-violet-500/20 via-purple-500/10 to-transparent rounded-full blur-3xl" />
 
-          {/* Subheadline */}
-          <p
-            className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-12 font-light animate-fade-in"
-            style={{ animationDelay: "0.4s" }}
-          >
-            Atlantium partners with visionary businesses to architect, build, and scale
-            transformative technology solutions.
-          </p>
+              <div className="relative w-full max-w-xl text-center">
+                {/* Badge */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.2, duration: 0.5 }}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-8"
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                  </span>
+                  <span className="text-xs font-medium text-emerald-500 uppercase tracking-wider">Accepting clients</span>
+                </motion.div>
 
-          {/* CTA Buttons */}
-          <div
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 animate-fade-in"
-            style={{ animationDelay: "0.5s" }}
-          >
-            <a href="mailto:team@atlantium.ai">
-              <Button
-                size="lg"
-                className="bg-white text-black hover:bg-white/90 font-bold text-lg px-8 py-6 shadow-2xl shadow-white/20 hover:scale-105 transition-all duration-300 glow"
-              >
-                Start a Project
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </a>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={scrollToServices}
-              className="border-white/30 text-white hover:bg-white/10 font-semibold text-lg px-8 py-6"
-            >
-              Explore Services
-            </Button>
-          </div>
-        </div>
+                {/* Headline */}
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-5">
+                  <span className="text-foreground">From Zero</span>
+                  <br />
+                  <ShinyText
+                    text="To Shipped"
+                    speed={3}
+                    color="hsl(var(--primary))"
+                    shineColor="#ffffff"
+                    className="text-4xl sm:text-5xl lg:text-6xl font-bold"
+                  />
+                </h1>
 
-        {/* Scroll Indicator - Fixed at bottom */}
-        <button
-          onClick={scrollToServices}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1 text-white/40 hover:text-white/70 transition-colors"
-        >
-          <span className="text-[10px] uppercase tracking-[0.2em]">Scroll</span>
-          <ChevronDown className="h-4 w-4 animate-bounce" />
-        </button>
-      </section>
+                {/* Subhead */}
+                <p className="text-muted-foreground text-lg mb-8 mx-auto">
+                  GTM strategy, production code, and warm intros. Your extended team for the 0-to-1 phase.
+                </p>
 
-      {/* Services Section - Simplified */}
-      <section id="services-section" className="py-24 bg-background">
-        <div className="max-w-6xl mx-auto px-6">
-          {/* Section Header */}
-          <div className="mb-16">
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
-              Our <span className="text-primary">Services</span>
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-xl">
-              End-to-end solutions for ambitious teams.
-            </p>
-          </div>
-
-          {/* Services Grid */}
-          <div className="grid md:grid-cols-2 gap-6">
-            {services.map((service) => (
-              <div
-                key={service.title}
-                className="group bg-card border border-border rounded-2xl p-8 hover:border-primary/30 transition-all duration-300 glow-hover"
-              >
-                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
-                  <service.icon className="h-6 w-6 text-primary" />
+                {/* CTA */}
+                <div className="flex flex-wrap justify-center gap-3 mb-8">
+                  <a href="mailto:team@atlantium.ai">
+                    <Button size="lg" className="gap-2 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-shadow">
+                      <Rocket className="h-5 w-5" />
+                      Start a Project
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </a>
                 </div>
 
-                <h3 className="text-2xl font-bold mb-3">{service.title}</h3>
-                <p className="text-muted-foreground mb-6">{service.description}</p>
-
-                <ul className="space-y-3">
-                  {service.items.map((item) => (
-                    <li key={item.name} className="flex items-start gap-3">
-                      <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
-                      <div>
-                        <span className="text-foreground">{item.name}</span>
-                        {item.note && (
-                          <span className="block text-sm text-muted-foreground mt-0.5">
-                            {item.note}
-                          </span>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                {/* Trust indicators */}
+                <div className="flex flex-wrap justify-center items-center gap-4 pt-6 border-t border-border/30 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    <span>20+ projects shipped</span>
+                  </div>
+                  <span className="text-muted-foreground/50">•</span>
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="h-4 w-4 text-blue-500" />
+                    <span>2-4 week MVPs</span>
+                  </div>
+                  <span className="text-muted-foreground/50">•</span>
+                  <div className="flex items-center gap-1.5">
+                    <Zap className="h-4 w-4 text-amber-500" />
+                    <span>24hr response</span>
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
+            </SpotlightCard>
+          </motion.div>
 
-      {/* CTA Section - Simplified */}
-      <section className="py-20 bg-muted/30">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Ready to get started?
-          </h2>
-          <p className="text-muted-foreground mb-8">
-            Let's discuss how Atlantium can help your business grow.
-          </p>
-          <a href="mailto:team@atlantium.ai">
-            <Button size="lg" className="font-semibold glow">
-              Contact Us
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </a>
+          {/* Stats Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.6 }}
+            className="col-span-12 sm:col-span-6 lg:col-span-4 row-span-2"
+          >
+            <SpotlightCard
+              className="h-full p-6 flex flex-col"
+              spotlightColor="rgba(99, 102, 241, 0.15)"
+            >
+              <div className="flex-1 space-y-4">
+                <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/30 border border-border/50">
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border border-emerald-500/20 flex items-center justify-center">
+                    <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-foreground">
+                      <CountUp to={20} duration={2} suffix="+" />
+                    </div>
+                    <div className="text-sm text-muted-foreground">Projects shipped</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/30 border border-border/50">
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 border border-blue-500/20 flex items-center justify-center">
+                    <Clock className="h-6 w-6 text-blue-500" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-foreground">2-4 wks</div>
+                    <div className="text-sm text-muted-foreground">Avg. MVP timeline</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/30 border border-border/50">
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 border border-amber-500/20 flex items-center justify-center">
+                    <Star className="h-6 w-6 text-amber-500" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-foreground">White Glove</div>
+                    <div className="text-sm text-muted-foreground">High-touch service</div>
+                  </div>
+                </div>
+              </div>
+            </SpotlightCard>
+          </motion.div>
+
+          {/* Service Cards */}
+          {services.map((service, index) => {
+            const colors = colorMap[service.color];
+            return (
+              <motion.div
+                key={service.title}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 + index * 0.05, duration: 0.6 }}
+                className="col-span-12 sm:col-span-6 lg:col-span-3 row-span-2"
+              >
+                <TiltCard className="h-full">
+                  <SpotlightCard
+                    className={`h-full p-6 flex flex-col ${service.highlight ? 'ring-1 ring-primary/30' : ''}`}
+                    spotlightColor={colors.spotlight}
+                  >
+                    {service.highlight && (
+                      <div className="absolute -top-px left-1/2 -translate-x-1/2 px-3 py-1 rounded-b-lg bg-primary text-primary-foreground text-xs font-medium">
+                        Most Popular
+                      </div>
+                    )}
+
+                    <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${colors.gradient} p-[1px] mb-4`}>
+                      <div className="h-full w-full rounded-xl bg-card flex items-center justify-center">
+                        <service.icon className={`h-5 w-5 ${colors.text}`} />
+                      </div>
+                    </div>
+
+                    <h3 className="text-lg font-bold text-foreground mb-1">{service.title}</h3>
+                    <p className="text-sm text-muted-foreground mb-4">{service.description}</p>
+
+                    <ul className="space-y-2 mb-auto">
+                      {service.items.map((item) => (
+                        <li key={item} className="flex items-center gap-2 text-sm">
+                          <Zap className={`h-3 w-3 ${colors.text}`} />
+                          <span className="text-muted-foreground">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <div className="pt-4 mt-4 border-t border-border/50">
+                      <a href="mailto:team@atlantium.ai" className="group block">
+                        <div className="text-xs text-muted-foreground mb-1 group-hover:text-primary transition-colors">Get started</div>
+                        <div className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors flex items-center gap-2">
+                          Let's talk
+                          <ArrowRight className="h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                        </div>
+                      </a>
+                    </div>
+                  </SpotlightCard>
+                </TiltCard>
+              </motion.div>
+            );
+          })}
+
+          {/* Process Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.6 }}
+            className="col-span-12 lg:col-span-8 row-span-1"
+          >
+            <SpotlightCard
+              className="h-full p-6 lg:p-8"
+              spotlightColor="rgba(139, 92, 246, 0.1)"
+            >
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                <div>
+                  <h3 className="text-xl font-bold text-foreground mb-2">How We Work</h3>
+                  <p className="text-muted-foreground text-sm">
+                    Simple. Fast. No surprises.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 lg:gap-3">
+                  {[
+                    { label: "Discovery", color: "emerald", num: 1 },
+                    { label: "Scope", color: "blue", num: 2 },
+                    { label: "Build", color: "violet", num: 3 },
+                    { label: "Ship", color: "amber", num: 4 },
+                  ].map((step, i) => (
+                    <div key={step.label} className="flex items-center gap-2">
+                      <div className={`flex items-center gap-2 px-4 py-2 rounded-full bg-${step.color}-500/10 border border-${step.color}-500/20`}>
+                        <span className={`h-5 w-5 rounded-full bg-${step.color}-500 text-white text-xs font-bold flex items-center justify-center`}>
+                          {step.num}
+                        </span>
+                        <span className="text-sm font-medium">{step.label}</span>
+                      </div>
+                      {i < 3 && <ArrowRight className="h-4 w-4 text-muted-foreground hidden lg:block" />}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </SpotlightCard>
+          </motion.div>
+
+          {/* Testimonial/Trust Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45, duration: 0.6 }}
+            className="col-span-12 lg:col-span-4 row-span-1"
+          >
+            <SpotlightCard
+              className="h-full p-6 flex flex-col justify-center"
+              spotlightColor="rgba(245, 158, 11, 0.12)"
+            >
+              <div className="flex items-center gap-1 mb-3">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="h-4 w-4 fill-amber-500 text-amber-500" />
+                ))}
+              </div>
+              <p className="text-sm text-muted-foreground italic mb-3">
+                "Atlantium helped us ship our MVP in 3 weeks. Incredible execution."
+              </p>
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
+                  JD
+                </div>
+                <div className="text-sm font-medium">Founder, Stealth Startup</div>
+              </div>
+            </SpotlightCard>
+          </motion.div>
+
+          {/* CTA Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.6 }}
+            className="col-span-12 row-span-1"
+          >
+            <SpotlightCard
+              className="p-8 lg:p-12 overflow-hidden"
+              spotlightColor="rgba(139, 92, 246, 0.15)"
+            >
+              {/* Decorative elements */}
+              <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-gradient-to-tr from-blue-500/20 to-transparent rounded-full blur-2xl" />
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-gradient-to-bl from-violet-500/20 to-transparent rounded-full blur-2xl" />
+
+              <div className="relative flex flex-col lg:flex-row items-center justify-between gap-6">
+                <div className="text-center lg:text-left">
+                  <div className="flex items-center justify-center lg:justify-start gap-2 mb-3">
+                    <TrendingUp className="h-5 w-5 text-emerald-500" />
+                    <span className="text-sm font-medium text-emerald-500">24hr response time</span>
+                  </div>
+                  <h3 className="text-2xl lg:text-3xl font-bold text-foreground mb-2">
+                    Ready to ship?
+                  </h3>
+                  <p className="text-muted-foreground max-w-lg">
+                    Tell us about your project. We'll scope it out and get you a quote within a day.
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <a href="mailto:team@atlantium.ai">
+                    <Button size="lg" className="gap-2 shadow-lg shadow-primary/25 px-8">
+                      <Rocket className="h-5 w-5" />
+                      Start a Project
+                    </Button>
+                  </a>
+                  <Link to="/">
+                    <Button variant="outline" size="lg" className="gap-2">
+                      Back to Home
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </SpotlightCard>
+          </motion.div>
+
         </div>
-      </section>
+      </main>
 
       {/* Footer */}
-      <footer className="py-8 px-6 border-t border-border">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <footer className="relative z-10 py-8 px-6 border-t border-border/30 mt-8">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <span className="text-sm text-muted-foreground">
             &copy; {new Date().getFullYear()} Atlantium. All rights reserved.
           </span>
@@ -308,35 +528,6 @@ export function ServicesPage() {
           </div>
         </div>
       </footer>
-
-      {/* Animations */}
-      <style>{`
-        @keyframes fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-
-        @keyframes slide-up {
-          from {
-            opacity: 0;
-            transform: translateY(100%);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fade-in {
-          animation: fade-in 1s ease-out forwards;
-          opacity: 0;
-        }
-
-        .animate-slide-up {
-          animation: slide-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-          opacity: 0;
-        }
-      `}</style>
     </div>
   );
 }

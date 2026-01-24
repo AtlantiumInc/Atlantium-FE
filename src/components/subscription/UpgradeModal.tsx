@@ -19,10 +19,10 @@ interface UpgradeModalProps {
 }
 
 const benefits = [
-  "RSVP to exclusive tech events",
-  "Network with local builders",
-  "Access to member-only meetups",
-  "Priority event registration",
+  "RSVP to exclusive events with founders, investors & operators",
+  "Access the member directory — connect with 500+ builders",
+  "Get priority registration for high-demand events",
+  "Unlock member-only content and founder resources",
 ];
 
 export function UpgradeModal({ open, onOpenChange, onSuccess }: UpgradeModalProps) {
