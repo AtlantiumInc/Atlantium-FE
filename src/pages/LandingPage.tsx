@@ -11,7 +11,6 @@ import {
   Users,
   Apple,
   ArrowRight,
-  Zap,
   Sparkles,
   Quote,
   Star,
