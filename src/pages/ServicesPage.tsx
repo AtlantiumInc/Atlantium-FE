@@ -172,7 +172,14 @@ export function ServicesPage() {
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-background/70 backdrop-blur-xl border-b border-border/30">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/">
+          <Link to="/" className="flex items-center gap-3">
+            <motion.img
+              src="/logo.png"
+              alt="Atlantium"
+              className="h-8 w-8"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+            />
             <motion.span
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}

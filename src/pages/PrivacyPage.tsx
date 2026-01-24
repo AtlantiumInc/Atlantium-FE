@@ -113,6 +113,7 @@ export function PrivacyPage() {
         <div className="max-w-3xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
             <ArrowLeft className="h-4 w-4 text-muted-foreground" />
+            <img src="/logo.png" alt="Atlantium" className="h-6 w-6" />
             <span className="text-xl font-bold text-primary">Atlantium</span>
           </Link>
           <ThemeToggle />

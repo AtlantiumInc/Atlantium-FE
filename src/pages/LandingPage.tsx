@@ -258,10 +258,13 @@ export function LandingPage() {
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="text-center"
+            className="flex items-center gap-3"
           >
-            <span className="text-xl font-bold tracking-tight">Atlantium</span>
-            <p className="text-[10px] text-muted-foreground tracking-wide">Research Community Services</p>
+            <img src="/logo.png" alt="Atlantium" className="h-8 w-8" />
+            <div>
+              <span className="text-xl font-bold tracking-tight">Atlantium</span>
+              <p className="text-[10px] text-muted-foreground tracking-wide">Research Community Services</p>
+            </div>
           </motion.div>
           <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -320,7 +323,7 @@ export function LandingPage() {
                   <ShinyText
                     text="Free on iOS"
                     className="text-xs font-medium uppercase tracking-wider"
-                    color="#60a5fa"
+                    color="#00d4ff"
                     shineColor="#ffffff"
                     speed={3}
                   />
