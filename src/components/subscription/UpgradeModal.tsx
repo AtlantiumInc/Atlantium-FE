@@ -20,6 +20,7 @@ interface UpgradeModalProps {
 
 const benefits = [
   "RSVP to exclusive events with founders, investors & operators",
+  "Join weekly group office hours with the Atlantium team",
   "Access the member directory — connect with 500+ builders",
   "Get priority registration for high-demand events",
   "Unlock member-only content and founder resources",

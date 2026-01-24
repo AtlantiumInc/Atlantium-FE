@@ -10,7 +10,6 @@ import {
   Newspaper,
   Briefcase,
   Users,
-  Apple,
   ArrowRight,
   Sparkles,
   Quote,
@@ -284,8 +283,8 @@ export function LandingPage() {
             </Link>
             <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
               <Button size="sm" className="gap-1.5 sm:gap-2 bg-white text-black hover:bg-gray-100 border-0 text-xs sm:text-sm">
-                <Apple className="h-3.5 w-3.5 sm:h-4 sm:w-4 fill-current" />
-                <span className="hidden xs:inline">Get</span> App
+                <img src="/apple-logo.svg" alt="Apple" className="h-4 sm:h-4 w-auto" />
+                Get App
               </Button>
             </a>
           </motion.div>
@@ -347,7 +346,7 @@ export function LandingPage() {
                 <div className="flex flex-wrap justify-center gap-3 mb-10">
                   <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
                     <Button size="lg" className="gap-2 bg-white text-black hover:bg-gray-100 shadow-lg shadow-black/20 border-0">
-                      <Apple className="h-5 w-5 fill-current" />
+                      <img src="/apple-logo.svg" alt="Apple" className="h-5 w-auto" />
                       Download for iOS
                     </Button>
                   </a>
@@ -586,7 +585,7 @@ export function LandingPage() {
                 </div>
               </div>
               <p className="text-sm text-muted-foreground">
-                Exclusive events, member directory, priority access.
+                Exclusive events, group office hours, member directory, priority access.
               </p>
             </SpotlightCard>
           </motion.div>
@@ -631,7 +630,7 @@ export function LandingPage() {
                 <div className="flex gap-3">
                   <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
                     <Button className="gap-2 bg-white text-black hover:bg-gray-100 shadow-lg shadow-black/20 border-0">
-                      <Apple className="h-4 w-4 fill-current" />
+                      <img src="/apple-logo.svg" alt="Apple" className="h-4 w-auto" />
                       Get the App
                     </Button>
                   </a>
