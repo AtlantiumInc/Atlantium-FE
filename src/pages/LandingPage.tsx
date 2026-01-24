@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import SpotlightCard from "@/components/ui/SpotlightCard";
 import CountUp from "@/components/ui/CountUp";
+import ShinyText from "@/components/ui/ShinyText";
 import Aurora from "@/components/Aurora";
 import {
   Calendar,
@@ -316,15 +317,21 @@ export function LandingPage() {
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
                   </span>
-                  <span className="text-xs font-medium text-primary uppercase tracking-wider">Now on iOS</span>
+                  <ShinyText
+                    text="Free on iOS"
+                    className="text-xs font-medium uppercase tracking-wider"
+                    color="#60a5fa"
+                    shineColor="#ffffff"
+                    speed={3}
+                  />
                 </motion.div>
 
                 {/* Headline */}
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight leading-[1.05] mb-5">
-                  <span className="text-foreground">Welcome to</span>
+                  <span className="text-foreground">Your Path to</span>
                   <br />
                   <span className="bg-gradient-to-r from-slate-400 via-blue-500 to-cyan-400 bg-clip-text text-transparent">
-                    The Future
+                    the Frontier
                   </span>
                 </h1>
 
