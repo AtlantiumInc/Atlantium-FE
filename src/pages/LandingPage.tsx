@@ -261,7 +261,7 @@ export function LandingPage() {
             className="text-center"
           >
             <span className="text-xl font-bold tracking-tight">Atlantium</span>
-            <p className="text-[10px] text-muted-foreground tracking-wide">your path to the frontier</p>
+            <p className="text-[10px] text-muted-foreground tracking-wide">Research Community Services</p>
           </motion.div>
           <motion.div
             initial={{ opacity: 0, x: 20 }}
