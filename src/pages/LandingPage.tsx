@@ -258,34 +258,34 @@ export function LandingPage() {
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-3"
+            className="flex items-center gap-2 sm:gap-3"
           >
-            <img src="/logo.png" alt="Atlantium" className="h-8 w-8" />
+            <img src="/logo.png" alt="Atlantium" className="h-7 w-7 sm:h-8 sm:w-8" />
             <div>
-              <span className="text-xl font-bold tracking-tight">Atlantium</span>
-              <p className="text-[10px] text-muted-foreground tracking-wide">Research Community Services</p>
+              <span className="text-lg sm:text-xl font-bold tracking-tight">Atlantium</span>
+              <p className="hidden sm:block text-[10px] text-muted-foreground tracking-wide">Research Community Services</p>
             </div>
           </motion.div>
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1 sm:gap-2"
           >
             <ThemeToggle />
-            <Link to="/services">
+            <Link to="/services" className="hidden sm:block">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                 Services
               </Button>
             </Link>
-            <Link to="/login">
+            <Link to="/login" className="hidden sm:block">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                 Sign In
               </Button>
             </Link>
             <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
-              <Button size="sm" className="gap-2 bg-white text-black hover:bg-gray-100 border-0">
-                <Apple className="h-4 w-4 fill-current" />
-                Get App
+              <Button size="sm" className="gap-1.5 sm:gap-2 bg-white text-black hover:bg-gray-100 border-0 text-xs sm:text-sm">
+                <Apple className="h-3.5 w-3.5 sm:h-4 sm:w-4 fill-current" />
+                <span className="hidden xs:inline">Get</span> App
               </Button>
             </a>
           </motion.div>
