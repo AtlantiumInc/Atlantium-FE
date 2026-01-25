@@ -162,3 +162,13 @@
   box-shadow: 0 0 40px var(--glow-color);
 }
 
+/* Message slide animation with steps */
+@keyframes slideMessages {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+

@@ -9,7 +9,6 @@ import {
   Calendar,
   Newspaper,
   Briefcase,
-  Users,
   ArrowRight,
   Sparkles,
   Quote,
@@ -46,6 +45,7 @@ const feedItems = [
   { time: "4h", title: "Nvidia stock surges on datacenter demand", tag: "Markets" },
   { time: "5h", title: "DeepMind achieves breakthrough in protein design", tag: "Research" },
 ];
+
 
 function EventsMarquee() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -489,13 +489,7 @@ export function LandingPage() {
                     <p className="text-xs text-muted-foreground">Weekly meetups with builders & investors</p>
                   </div>
                 </div>
-                <Link to="/events">
-                  <Button variant="ghost" size="sm" className="text-xs gap-1">
-                    View all
-                    <ArrowRight className="h-3 w-3" />
-                  </Button>
-                </Link>
-              </div>
+                              </div>
 
               {/* Auto-scrolling events marquee */}
               <EventsMarquee />
@@ -541,20 +535,24 @@ export function LandingPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.6 }}
-            className="col-span-6 lg:col-span-4 row-span-2"
+            transition={{ delay: 0.28, duration: 0.6 }}
+            className="col-span-12 lg:col-span-6 row-span-2"
           >
             <SpotlightCard
               className="h-full p-6"
               spotlightColor="rgba(167, 139, 250, 0.15)"
             >
-              <div className="h-10 w-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-4">
-                <Briefcase className="h-5 w-5 text-purple-500" />
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="h-10 w-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-4">
+                    <Briefcase className="h-5 w-5 text-purple-500" />
+                  </div>
+                  <h3 className="text-lg font-bold text-foreground mb-2">Services</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Ship faster with dev support, GTM strategy, and warm intros.
+                  </p>
+                </div>
               </div>
-              <h3 className="text-lg font-bold text-foreground mb-2">Services</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Ship faster with dev support, GTM strategy, and warm intros.
-              </p>
               <Link to="/services">
                 <Button variant="outline" size="sm" className="gap-2">
                   Learn more
@@ -568,46 +566,53 @@ export function LandingPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35, duration: 0.6 }}
-            className="col-span-6 lg:col-span-4 row-span-2"
-          >
-            <SpotlightCard
-              className="h-full p-6 flex flex-col justify-between"
-              spotlightColor="rgba(139, 92, 246, 0.15)"
-            >
-              <div>
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/20 flex items-center justify-center mb-4">
-                  <Sparkles className="h-5 w-5 text-blue-500" />
-                </div>
-                <div className="text-sm text-muted-foreground mb-1">Club Membership</div>
-                <div className="text-3xl font-bold text-foreground">
-                  <CountUp to={49} duration={2} prefix="$" suffix="/mo" />
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Exclusive events, group office hours, member directory, priority access.
-              </p>
-            </SpotlightCard>
-          </motion.div>
-
-          {/* Community Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.6 }}
-            className="col-span-6 lg:col-span-4 row-span-2"
+            transition={{ delay: 0.32, duration: 0.6 }}
+            className="col-span-12 lg:col-span-6 row-span-2"
           >
             <SpotlightCard
               className="h-full p-6"
-              spotlightColor="rgba(147, 197, 253, 0.15)"
+              spotlightColor="rgba(139, 92, 246, 0.15)"
             >
-              <div className="h-10 w-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center mb-4">
-                <Users className="h-5 w-5 text-sky-500" />
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/20 flex items-center justify-center mb-4">
+                    <Sparkles className="h-5 w-5 text-blue-500" />
+                  </div>
+                  <div className="text-sm text-muted-foreground mb-1">Club Membership</div>
+                  <div className="text-3xl font-bold text-foreground">
+                    <CountUp to={49} duration={2} prefix="$" suffix="/mo" />
+                  </div>
+                </div>
+                <div className="flex -space-x-2">
+                  {["from-emerald-500 to-teal-500", "from-cyan-500 to-blue-500", "from-violet-500 to-purple-500", "from-amber-500 to-orange-500"].map((gradient, i) => (
+                    <div
+                      key={i}
+                      className={`h-8 w-8 rounded-full bg-gradient-to-br ${gradient} ring-2 ring-card flex items-center justify-center text-white text-[10px] font-bold`}
+                    />
+                  ))}
+                  <div className="h-8 w-8 rounded-full bg-muted ring-2 ring-card flex items-center justify-center text-xs text-muted-foreground font-medium">
+                    +50
+                  </div>
+                </div>
               </div>
-              <h3 className="text-lg font-bold text-foreground mb-2">Network</h3>
-              <p className="text-sm text-muted-foreground">
-                Connect with builders, investors, and operators who ship.
-              </p>
+              <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  Exclusive events
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  Group office hours
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  Member messaging
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  Member directory
+                </div>
+              </div>
             </SpotlightCard>
           </motion.div>
 
