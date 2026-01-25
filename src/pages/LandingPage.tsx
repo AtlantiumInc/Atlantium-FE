@@ -569,51 +569,59 @@ export function LandingPage() {
             transition={{ delay: 0.32, duration: 0.6 }}
             className="col-span-12 lg:col-span-6 row-span-2"
           >
-            <SpotlightCard
-              className="h-full p-6"
-              spotlightColor="rgba(139, 92, 246, 0.15)"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/20 flex items-center justify-center mb-4">
-                    <Sparkles className="h-5 w-5 text-blue-500" />
-                  </div>
-                  <div className="text-sm text-muted-foreground mb-1">Club Membership</div>
-                  <div className="text-3xl font-bold text-foreground">
-                    <CountUp to={49} duration={2} prefix="$" suffix="/mo" />
-                  </div>
+            <div className="relative h-full group">
+              {/* Animated gradient border */}
+              <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-500 opacity-30 group-hover:opacity-60 blur-sm transition-opacity duration-500" />
+              <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-500 opacity-20 group-hover:opacity-40 transition-opacity duration-500" />
+
+              <SpotlightCard
+                className="relative h-full p-6"
+                spotlightColor="rgba(0, 212, 255, 0.15)"
+              >
+                {/* Badge */}
+                <div className="absolute top-4 right-4">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/30">
+                    <Sparkles className="h-3 w-3 text-cyan-400" />
+                    <span className="text-[10px] font-semibold text-cyan-400 uppercase tracking-wider">Join Us</span>
+                  </span>
                 </div>
-                <div className="flex -space-x-2">
-                  {["from-emerald-500 to-teal-500", "from-cyan-500 to-blue-500", "from-violet-500 to-purple-500", "from-amber-500 to-orange-500"].map((gradient, i) => (
-                    <div
-                      key={i}
-                      className={`h-8 w-8 rounded-full bg-gradient-to-br ${gradient} ring-2 ring-card flex items-center justify-center text-white text-[10px] font-bold`}
+
+                <div className="mb-5">
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/20 flex items-center justify-center mb-4">
+                    <Sparkles className="h-5 w-5 text-cyan-400" />
+                  </div>
+                  <div className="text-sm text-muted-foreground mb-2">Club Membership</div>
+                  <div className="text-3xl font-bold">
+                    <ShinyText
+                      text="$49/mo"
+                      className="text-3xl font-bold"
+                      color="#00d4ff"
+                      shineColor="#ffffff"
+                      speed={4}
                     />
-                  ))}
-                  <div className="h-8 w-8 rounded-full bg-muted ring-2 ring-card flex items-center justify-center text-xs text-muted-foreground font-medium">
-                    +50
                   </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                  Exclusive events
+
+                <div className="grid grid-cols-2 gap-3 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
+                    Exclusive events
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
+                    Group office hours
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
+                    Member messaging
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
+                    Member directory
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                  Group office hours
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                  Member messaging
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                  Member directory
-                </div>
-              </div>
-            </SpotlightCard>
+              </SpotlightCard>
+            </div>
           </motion.div>
 
           {/* CTA Card - Full width */}
