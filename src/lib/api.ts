@@ -277,16 +277,16 @@ class ApiClient {
     }, APP_API_BASE_URL);
   }
 
-  async uploadFile(file: File): Promise<{ url: string; name: string; size: number }> {
+  async uploadImage(file: File): Promise<{ success: boolean; url: string }> {
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("image", file);
 
     const headers: HeadersInit = {};
     if (this.authToken) {
       headers["Authorization"] = `Bearer ${this.authToken}`;
     }
 
-    const response = await fetch(`${APP_API_BASE_URL}/files/create`, {
+    const response = await fetch(`${APP_API_BASE_URL}/image/upload`, {
       method: "POST",
       headers,
       body: formData,

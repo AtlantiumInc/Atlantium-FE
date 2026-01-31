@@ -53,7 +53,11 @@ export function OnboardingPage() {
         first_name,
         last_name,
         display_name,
-        avatar_url: avatar_url || googleAvatarUrl || undefined,
+        avatar_url: avatar_url || googleAvatarUrl || null,
+        bio: profile?.bio || null,
+        location: profile?.location || null,
+        website_url: profile?.website_url || null,
+        linkedin_url: profile?.linkedin_url || null,
         registration_details: registrationDetails,
       });
 
