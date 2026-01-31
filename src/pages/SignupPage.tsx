@@ -3,13 +3,12 @@ import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, Mail, ArrowLeft, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Form,
   FormControl,
@@ -20,11 +19,11 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/lib/api";
 
-const emailSchema = z.object({
+const signupSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
 });
 
-type EmailFormValues = z.infer<typeof emailSchema>;
+type SignupFormValues = z.infer<typeof signupSchema>;
 
 const OTP_LENGTH = 6;
 
@@ -34,29 +33,29 @@ function maskEmail(email: string): string {
   return `${local[0]}${"*".repeat(local.length - 2)}${local[local.length - 1]}@${domain}`;
 }
 
-const testimonials = [
+const slides = [
   {
-    image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&q=80",
-    quote: "The Frontier Feed changed how I stay ahead in AI. I was shipping features before my competitors even heard the news.",
-    name: "Marcus Rivera",
-    role: "CTO, Synth Labs",
+    image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&q=80",
+    quote: "I joined Atlantium two months ago and already landed three consulting clients through the member network.",
+    name: "Ava Chen",
+    role: "AI Consultant",
   },
   {
-    image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&q=80",
-    quote: "Atlantium's events connected me with the exact investors I needed. Closed our seed round in three weeks.",
-    name: "Priya Sharma",
-    role: "Founder, NeuralPath",
+    image: "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=1200&q=80",
+    quote: "The curated news feed alone is worth it. I stopped scrolling Twitter and started shipping instead.",
+    name: "Daniel Okafor",
+    role: "Founder, Luma Robotics",
   },
   {
-    image: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1200&q=80",
-    quote: "The community here is different. Everyone is building, shipping, and helping each other win. No noise, just signal.",
-    name: "Jordan Kim",
-    role: "Engineer, Scale AI",
+    image: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=1200&q=80",
+    quote: "From the first event I attended, I knew this was my community. Real builders, real conversations, real momentum.",
+    name: "Sophie Laurent",
+    role: "Product Lead, Waymark",
   },
 ];
 
-export function LoginPage() {
-  const [step, setStep] = useState<"email" | "otp">("email");
+export function SignupPage() {
+  const [step, setStep] = useState<"details" | "otp">("details");
   const [email, setEmail] = useState("");
   const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [isLoading, setIsLoading] = useState(false);
@@ -66,17 +65,17 @@ export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const emailForm = useForm<EmailFormValues>({
-    resolver: zodResolver(emailSchema),
+  const signupForm = useForm<SignupFormValues>({
+    resolver: zodResolver(signupSchema),
     defaultValues: { email: "" },
   });
 
   const nextSlide = useCallback(() => {
-    setCurrentSlide((prev) => (prev + 1) % testimonials.length);
+    setCurrentSlide((prev) => (prev + 1) % slides.length);
   }, []);
 
   const prevSlide = useCallback(() => {
-    setCurrentSlide((prev) => (prev - 1 + testimonials.length) % testimonials.length);
+    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
   }, []);
 
   useEffect(() => {
@@ -84,7 +83,7 @@ export function LoginPage() {
     return () => clearInterval(interval);
   }, [nextSlide]);
 
-  const handleEmailSubmit = async (values: EmailFormValues) => {
+  const handleSignupSubmit = async (values: SignupFormValues) => {
     setIsLoading(true);
     setError(null);
 
@@ -92,9 +91,9 @@ export function LoginPage() {
       await api.requestOtp(values.email);
       setEmail(values.email);
       setStep("otp");
-      toast.success("OTP sent to your email");
+      toast.success("Verification code sent to your email");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to send OTP";
+      const message = err instanceof Error ? err.message : "Failed to create account";
       setError(message);
       toast.error(message);
     } finally {
@@ -119,7 +118,7 @@ export function LoginPage() {
       login(response.auth_token, response.user);
       navigate("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid OTP code");
+      setError(err instanceof Error ? err.message : "Invalid verification code");
     } finally {
       setIsLoading(false);
     }
@@ -156,7 +155,7 @@ export function LoginPage() {
   };
 
   const handleBack = () => {
-    setStep("email");
+    setStep("details");
     setError(null);
     setOtpDigits(Array(OTP_LENGTH).fill(""));
   };
@@ -167,9 +166,9 @@ export function LoginPage() {
 
     try {
       await api.requestOtp(email);
-      toast.success("OTP resent to your email");
+      toast.success("Code resent to your email");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to resend OTP";
+      const message = err instanceof Error ? err.message : "Failed to resend code";
       setError(message);
       toast.error(message);
     } finally {
@@ -177,8 +176,8 @@ export function LoginPage() {
     }
   };
 
-  const handleGoogleSignIn = () => {
-    toast.info("Google sign-in coming soon");
+  const handleGoogleSignUp = () => {
+    toast.info("Google sign-up coming soon");
   };
 
   return (
@@ -197,19 +196,19 @@ export function LoginPage() {
         <div className="flex-1 flex items-center justify-center px-6 sm:px-12 lg:px-16">
           <div className="w-full max-w-[420px]">
             <AnimatePresence mode="wait">
-              {step === "email" ? (
+              {step === "details" ? (
                 <motion.div
-                  key="email-step"
+                  key="details-step"
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 10 }}
                   transition={{ duration: 0.2 }}
                 >
                   <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-2">
-                    Welcome back
+                    Create your account
                   </h1>
                   <p className="text-muted-foreground mb-8">
-                    Sign in to your Atlantium account to continue.
+                    Join 500+ builders on the frontier. It's free to start.
                   </p>
 
                   {error && (
@@ -218,13 +217,13 @@ export function LoginPage() {
                     </div>
                   )}
 
-                  <Form {...emailForm}>
+                  <Form {...signupForm}>
                     <form
-                      onSubmit={emailForm.handleSubmit(handleEmailSubmit)}
+                      onSubmit={signupForm.handleSubmit(handleSignupSubmit)}
                       className="space-y-4"
                     >
                       <FormField
-                        control={emailForm.control}
+                        control={signupForm.control}
                         name="email"
                         render={({ field }) => (
                           <FormItem>
@@ -248,7 +247,7 @@ export function LoginPage() {
                         {isLoading ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Sending code...
+                            Creating account...
                           </>
                         ) : (
                           "Continue"
@@ -267,12 +266,12 @@ export function LoginPage() {
                     </div>
                   </div>
 
-                  {/* Google sign in */}
+                  {/* Google sign up */}
                   <Button
                     type="button"
                     variant="outline"
                     className="w-full h-12 text-base font-medium gap-3"
-                    onClick={handleGoogleSignIn}
+                    onClick={handleGoogleSignUp}
                   >
                     <svg className="h-5 w-5" viewBox="0 0 24 24">
                       <path
@@ -295,11 +294,22 @@ export function LoginPage() {
                     Continue with Google
                   </Button>
 
-                  {/* Sign up link */}
-                  <p className="mt-8 text-sm text-muted-foreground text-center">
-                    Don't have an account?{" "}
-                    <Link to="/signup" className="font-medium text-foreground underline underline-offset-4 hover:text-muted-foreground transition-colors">
-                      Sign up
+                  {/* Terms + sign in link */}
+                  <p className="mt-8 text-xs text-muted-foreground text-center leading-relaxed">
+                    By creating an account, you agree with our{" "}
+                    <Link to="/policies" className="underline underline-offset-4 hover:text-foreground transition-colors">
+                      Terms & Conditions
+                    </Link>{" "}
+                    and{" "}
+                    <Link to="/privacy" className="underline underline-offset-4 hover:text-foreground transition-colors">
+                      Privacy Statement
+                    </Link>
+                  </p>
+
+                  <p className="mt-4 text-sm text-muted-foreground text-center">
+                    Already have an account?{" "}
+                    <Link to="/login" className="font-medium text-foreground underline underline-offset-4 hover:text-muted-foreground transition-colors">
+                      Sign in
                     </Link>
                   </p>
                 </motion.div>
@@ -381,7 +391,7 @@ export function LoginPage() {
                   </form>
 
                   <p className="mt-8 text-xs text-muted-foreground text-center leading-relaxed">
-                    By signing in or creating an account, you agree with our{" "}
+                    By creating an account, you agree with our{" "}
                     <Link to="/policies" className="underline underline-offset-4 hover:text-foreground transition-colors font-medium">
                       Terms & Conditions
                     </Link>{" "}
@@ -403,7 +413,7 @@ export function LoginPage() {
           <AnimatePresence mode="wait">
             <motion.img
               key={currentSlide}
-              src={testimonials[currentSlide].image}
+              src={slides[currentSlide].image}
               alt=""
               className="absolute inset-0 h-full w-full object-cover"
               initial={{ opacity: 0, scale: 1.05 }}
@@ -427,15 +437,15 @@ export function LoginPage() {
                 transition={{ duration: 0.4, delay: 0.2 }}
               >
                 <blockquote className="text-xl lg:text-2xl font-medium text-white leading-relaxed mb-6">
-                  "{testimonials[currentSlide].quote}"
+                  "{slides[currentSlide].quote}"
                 </blockquote>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-white font-semibold">
-                      {testimonials[currentSlide].name}
+                      {slides[currentSlide].name}
                     </p>
                     <p className="text-white/60 text-sm">
-                      {testimonials[currentSlide].role}
+                      {slides[currentSlide].role}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -458,7 +468,7 @@ export function LoginPage() {
 
             {/* Slide indicators */}
             <div className="flex gap-1.5 mt-5">
-              {testimonials.map((_, i) => (
+              {slides.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => setCurrentSlide(i)}

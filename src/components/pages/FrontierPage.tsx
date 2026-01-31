@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LatestArticles } from "@/components/LatestArticles";
+import { FrontierFeed } from "@/components/FrontierFeed";
 import { Compass } from "lucide-react";
 
 export function FrontierPage() {
@@ -17,9 +17,9 @@ export function FrontierPage() {
       </div>
 
       {/* All Articles */}
-      <LatestArticles limit={10} useDemoData={true} />
+      <FrontierFeed limit={10} />
 
-      {/* Placeholder for more content */}
+      {/* Trending Topics */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Trending Topics</CardTitle>

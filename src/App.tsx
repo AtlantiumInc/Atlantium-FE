@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminProtectedRoute } from "@/components/admin/AdminProtectedRoute";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoginPage } from "@/pages/LoginPage";
+import { SignupPage } from "@/pages/SignupPage";
 import { AdminLoginPage } from "@/pages/AdminLoginPage";
 import { HomePage } from "@/pages/HomePage";
 import { LandingPage } from "@/pages/LandingPage";
@@ -64,6 +65,14 @@ function AppRoutes() {
         element={
           <AuthRedirect>
             <LoginPage />
+          </AuthRedirect>
+        }
+      />
+      <Route
+        path="/signup"
+        element={
+          <AuthRedirect>
+            <SignupPage />
           </AuthRedirect>
         }
       />

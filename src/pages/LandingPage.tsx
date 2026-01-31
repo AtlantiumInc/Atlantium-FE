@@ -342,7 +342,7 @@ export function LandingPage() {
                 </p>
 
                 {/* CTAs */}
-                <div className="flex flex-wrap justify-center gap-3 mb-10">
+                <div className="flex flex-wrap justify-center gap-3 mb-4">
                   <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
                     <Button size="lg" className="gap-2 bg-white text-black hover:bg-gray-100 shadow-lg shadow-black/20 border-0">
                       <img src="/apple-logo.svg" alt="Apple" className="h-5 w-auto" />
@@ -354,6 +354,11 @@ export function LandingPage() {
                       Explore Services
                       <ArrowRight className="h-4 w-4" />
                     </Button>
+                  </Link>
+                </div>
+                <div className="mb-10">
+                  <Link to="/signup" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    or <span className="underline underline-offset-4">sign up on web</span>
                   </Link>
                 </div>
 
@@ -639,19 +644,24 @@ export function LandingPage() {
                   <h3 className="text-xl font-bold text-foreground mb-1">Ready to join the frontier?</h3>
                   <p className="text-muted-foreground">Download the app and start building with us today.</p>
                 </div>
-                <div className="flex gap-3">
-                  <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
-                    <Button className="gap-2 bg-white text-black hover:bg-gray-100 shadow-lg shadow-black/20 border-0">
-                      <img src="/apple-logo.svg" alt="Apple" className="h-4 w-auto" />
-                      Get the App
-                    </Button>
-                  </a>
-                  <a href="mailto:team@atlantium.ai">
-                    <Button variant="ghost" className="gap-2">
-                      Contact
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </a>
+                <div className="flex flex-col items-center md:items-end gap-2">
+                  <div className="flex gap-3">
+                    <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
+                      <Button className="gap-2 bg-white text-black hover:bg-gray-100 shadow-lg shadow-black/20 border-0">
+                        <img src="/apple-logo.svg" alt="Apple" className="h-4 w-auto" />
+                        Get the App
+                      </Button>
+                    </a>
+                    <a href="mailto:team@atlantium.ai">
+                      <Button variant="ghost" className="gap-2">
+                        Contact
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </a>
+                  </div>
+                  <Link to="/signup" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    or <span className="underline underline-offset-4">sign up on web</span>
+                  </Link>
                 </div>
               </div>
             </SpotlightCard>

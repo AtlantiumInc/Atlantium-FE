@@ -64,6 +64,15 @@ export interface User {
 
 export interface FrontierArticle {
   id: string;
+  thread_id: string;
+  sender_id: string;
+  message_type: string;
+  created_at: number;
+  updated_at: number;
+  is_edited: boolean;
+  is_reply: boolean;
+  parent_message_id: string | null;
+  status: string;
   content: {
     title: string;
     body: string;
@@ -84,7 +93,6 @@ export interface FrontierArticle {
       caption: string;
     };
   };
-  created_at: number;
 }
 
 class ApiClient {

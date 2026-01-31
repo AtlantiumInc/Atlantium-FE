@@ -1,14 +1,12 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
-  Home,
   Compass,
   Calendar,
   Trophy,
   ChevronLeft,
   ChevronRight,
   LogOut,
-  Menu,
   MessageCircle,
   UserPlus,
   FolderKanban,
@@ -31,11 +29,6 @@ export function Sidebar({
 }: SidebarProps) {
 
   const navItems = [
-    {
-      id: "hq",
-      icon: <Home size={20} />,
-      label: "HQ",
-    },
     {
       id: "frontier",
       icon: <Compass size={20} />,
@@ -77,23 +70,41 @@ export function Sidebar({
     >
       {/* Header */}
       <div className={cn(
-        "flex items-center h-14 border-b border-border px-3",
+        "relative flex items-center h-14 border-b border-border px-3",
         collapsed ? "justify-center" : "justify-between"
       )}>
-        {!collapsed && (
-          <div className="flex items-center gap-2">
-            <Menu size={20} className="text-muted-foreground" />
-            <span className="font-semibold">Atlantium</span>
-          </div>
+        {collapsed ? (
+          <>
+            <button onClick={() => onNavigate?.("hq")} className="hover:opacity-80 transition-opacity">
+              <img src="/logo.png" alt="Atlantium" className="h-8 w-8" />
+            </button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleCollapse}
+              className="h-6 w-6 absolute -right-3 top-1/2 -translate-y-1/2 bg-card border border-border rounded-full shadow-sm"
+            >
+              <ChevronRight size={14} />
+            </Button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={() => onNavigate?.("hq")}
+              className="font-semibold hover:text-primary transition-colors"
+            >
+              Atlantium
+            </button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleCollapse}
+              className="h-8 w-8"
+            >
+              <ChevronLeft size={16} />
+            </Button>
+          </>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggleCollapse}
-          className="h-8 w-8"
-        >
-          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-        </Button>
       </div>
 
       {/* Navigation */}
