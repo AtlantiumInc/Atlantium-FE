@@ -19,6 +19,7 @@ import { StepName } from "../components/onboarding/steps/StepName";
 import { StepTimezone } from "../components/onboarding/steps/StepTimezone";
 import { StepPrimaryGoal } from "../components/onboarding/steps/StepPrimaryGoal";
 import { StepInterests } from "../components/onboarding/steps/StepInterests";
+import { StepPricing } from "../components/onboarding/steps/StepPricing";
 import { StepProjectStatus } from "../components/onboarding/steps/StepProjectStatus";
 import { StepProjectDescription } from "../components/onboarding/steps/StepProjectDescription";
 import { StepTechnicalLevel } from "../components/onboarding/steps/StepTechnicalLevel";
@@ -92,9 +93,11 @@ export function OnboardingPage() {
     onComplete: handleComplete,
   });
 
-  // Handle keyboard navigation
+  // Handle keyboard navigation (disabled on pricing step)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip keyboard nav on pricing step (has its own flow)
+      if (currentStep === 5) return;
       if (e.key === "Enter" && !e.shiftKey) {
         // Don't trigger on textareas
         if ((e.target as HTMLElement)?.tagName === "TEXTAREA") return;
@@ -109,7 +112,7 @@ export function OnboardingPage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isLastStep, nextStep, submit]);
+  }, [currentStep, isLastStep, nextStep, submit]);
 
   const handleNext = async () => {
     if (isLastStep) {
@@ -122,6 +125,11 @@ export function OnboardingPage() {
     } else {
       nextStep();
     }
+  };
+
+  // Handle pricing step plan selection
+  const handlePlanSelected = () => {
+    nextStep();
   };
 
   const renderStep = () => {
@@ -141,18 +149,26 @@ export function OnboardingPage() {
       case 4:
         return <StepInterests {...stepProps} />;
       case 5:
-        return <StepProjectStatus {...stepProps} />;
+        return (
+          <StepPricing
+            {...stepProps}
+            onPlanSelected={handlePlanSelected}
+            onBack={prevStep}
+          />
+        );
       case 6:
-        return <StepProjectDescription {...stepProps} />;
+        return <StepProjectStatus {...stepProps} />;
       case 7:
-        return <StepTechnicalLevel {...stepProps} />;
+        return <StepProjectDescription {...stepProps} />;
       case 8:
-        return <StepCommunityHopes {...stepProps} />;
+        return <StepTechnicalLevel {...stepProps} />;
       case 9:
-        return <StepTimeCommitment {...stepProps} />;
+        return <StepCommunityHopes {...stepProps} />;
       case 10:
-        return <StepSuccessDefinition {...stepProps} />;
+        return <StepTimeCommitment {...stepProps} />;
       case 11:
+        return <StepSuccessDefinition {...stepProps} />;
+      case 12:
         return <StepAvatar {...stepProps} googleAvatarUrl={googleAvatarUrl} />;
       default:
         return null;
@@ -173,46 +189,48 @@ export function OnboardingPage() {
         {/* Step content with animation */}
         <AnimatePresence mode="wait">{renderStep()}</AnimatePresence>
 
-        {/* Navigation buttons */}
-        <div className="flex items-center justify-between pt-4">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={prevStep}
-            disabled={!canGoBack || isSubmitting}
-            className={canGoBack ? "" : "invisible"}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
+        {/* Navigation buttons - hidden on pricing step (has its own buttons) */}
+        {currentStep !== 5 && (
+          <div className="flex items-center justify-between pt-4">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={prevStep}
+              disabled={!canGoBack || isSubmitting}
+              className={canGoBack ? "" : "invisible"}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
 
-          <Button
-            type="button"
-            onClick={handleNext}
-            disabled={isSubmitting}
-            className="min-w-[120px]"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : isLastStep ? (
-              <>
-                <Check className="h-4 w-4 mr-2" />
-                Complete
-              </>
-            ) : (
-              <>
-                Continue
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </>
-            )}
-          </Button>
-        </div>
+            <Button
+              type="button"
+              onClick={handleNext}
+              disabled={isSubmitting}
+              className="min-w-[120px]"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : isLastStep ? (
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  Complete
+                </>
+              ) : (
+                <>
+                  Continue
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </>
+              )}
+            </Button>
+          </div>
+        )}
 
         {/* Skip hint for optional steps */}
-        {(currentStep === 9 || currentStep === 10 || currentStep === 11) && (
+        {(currentStep === 10 || currentStep === 11 || currentStep === 12) && (
           <p className="text-center text-sm text-muted-foreground">
             Press Enter or click Continue to skip this step
           </p>

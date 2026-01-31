@@ -69,6 +69,10 @@ export const interestsSchema = z.object({
     .min(1, "Please select at least one interest"),
 });
 
+export const membershipTierSchema = z.object({
+  membership_tier: z.enum(["free", "club", "club_annual"]).optional(),
+});
+
 export const projectStatusSchema = z.object({
   working_on_project: z.enum(projectStatusValues, {
     message: "Please select your project status",
@@ -127,6 +131,7 @@ export const onboardingFormSchema = z
     timezone: z.enum(timezoneValues),
     primary_goal: z.enum(primaryGoalValues),
     interests: z.array(z.enum(interestValues)).min(1),
+    membership_tier: z.enum(["free", "club", "club_annual"]).optional(),
     working_on_project: z.enum(projectStatusValues),
     project_description: z.string().max(1000).optional(),
     technical_level: z.enum(technicalLevelValues),
@@ -157,6 +162,7 @@ export type NameStepData = z.infer<typeof nameSchema>;
 export type TimezoneStepData = z.infer<typeof timezoneSchema>;
 export type PrimaryGoalStepData = z.infer<typeof primaryGoalSchema>;
 export type InterestsStepData = z.infer<typeof interestsSchema>;
+export type MembershipTierStepData = z.infer<typeof membershipTierSchema>;
 export type ProjectStatusStepData = z.infer<typeof projectStatusSchema>;
 export type ProjectDescriptionStepData = z.infer<
   typeof projectDescriptionSchema
@@ -177,13 +183,14 @@ export function validateStep(
     2: timezoneSchema,
     3: primaryGoalSchema,
     4: interestsSchema,
-    5: projectStatusSchema,
-    6: projectDescriptionSchema,
-    7: technicalLevelSchema,
-    8: communityHopesSchema,
-    9: timeCommitmentSchema,
-    10: successDefinitionSchema,
-    11: avatarSchema,
+    5: membershipTierSchema,
+    6: projectStatusSchema,
+    7: projectDescriptionSchema,
+    8: technicalLevelSchema,
+    9: communityHopesSchema,
+    10: timeCommitmentSchema,
+    11: successDefinitionSchema,
+    12: avatarSchema,
   };
 
   const schema = schemas[step];
@@ -200,8 +207,8 @@ export function shouldShowStep(
   step: number,
   data: Partial<OnboardingFormData>
 ): boolean {
-  // Step 6 (project description) only shown if working on a project
-  if (step === 6) {
+  // Step 7 (project description) only shown if working on a project
+  if (step === 7) {
     return (
       data.working_on_project === "yes_actively" ||
       data.working_on_project === "yes_early"
