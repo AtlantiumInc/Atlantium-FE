@@ -23,6 +23,7 @@ import { AdminEventsPage } from "@/pages/admin/AdminEventsPage";
 import { AdminArticlesPage } from "@/pages/admin/AdminArticlesPage";
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
 import { GitHubCallbackPage } from "@/pages/GitHubCallbackPage";
+import { GoogleCallbackPage } from "@/pages/GoogleCallbackPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient({
@@ -99,6 +100,8 @@ function AppRoutes() {
         <Route path="articles" element={<AdminArticlesPage />} />
         <Route path="users" element={<AdminUsersPage />} />
       </Route>
+      {/* Google OAuth callback */}
+      <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
       {/* Other Routes */}
       <Route path="/style-guide" element={<StyleGuidePage />} />
       <Route path="/components" element={<ComponentsPage />} />

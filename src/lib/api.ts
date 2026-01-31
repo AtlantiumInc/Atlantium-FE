@@ -602,6 +602,24 @@ class ApiClient {
     }, STRIPE_API_BASE_URL);
   }
 
+  // Google OAuth methods
+  async getGoogleAuthUrl(redirectUri?: string): Promise<{ url: string }> {
+    const params = redirectUri ? `?redirect_uri=${encodeURIComponent(redirectUri)}` : "";
+    return this.request<{ url: string }>(`/auth/google/url${params}`, {
+      method: "GET",
+    }, APP_API_BASE_URL);
+  }
+
+  async googleAuth(code: string, redirectUri?: string): Promise<VerifyResponse> {
+    let url = `/auth/google?code=${encodeURIComponent(code)}`;
+    if (redirectUri) {
+      url += `&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    }
+    return this.request<VerifyResponse>(url, {
+      method: "GET",
+    }, APP_API_BASE_URL);
+  }
+
   async getFrontierArticles(): Promise<FrontierArticle[]> {
     return this.request<FrontierArticle[]>("/thread/frontier", {
       method: "GET",

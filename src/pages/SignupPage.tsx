@@ -176,8 +176,16 @@ export function SignupPage() {
     }
   };
 
-  const handleGoogleSignUp = () => {
-    toast.info("Google sign-up coming soon");
+  const handleGoogleSignUp = async () => {
+    try {
+      setIsLoading(true);
+      const { url } = await api.getGoogleAuthUrl();
+      window.location.href = url;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to start Google sign-up";
+      toast.error(message);
+      setIsLoading(false);
+    }
   };
 
   return (
