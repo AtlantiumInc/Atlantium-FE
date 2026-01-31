@@ -270,10 +270,37 @@ class ApiClient {
   }
 
   async updateProfile(data: Record<string, unknown>): Promise<Record<string, unknown>> {
+    // Wrap data in profile object as expected by the API
     return this.request<Record<string, unknown>>("/profile/edit", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify({ profile: data }),
     }, APP_API_BASE_URL);
+  }
+
+  async uploadFile(file: File): Promise<{ url: string; name: string; size: number }> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const headers: HeadersInit = {};
+    if (this.authToken) {
+      headers["Authorization"] = `Bearer ${this.authToken}`;
+    }
+
+    const response = await fetch(`${APP_API_BASE_URL}/files/create`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      const error = new Error(data.message || "Upload failed") as Error & { status?: number };
+      error.status = response.status;
+      throw error;
+    }
+
+    return data;
   }
 
   async deleteAccount(): Promise<{ success: boolean; message: string }> {

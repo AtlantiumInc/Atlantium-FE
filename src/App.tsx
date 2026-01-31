@@ -24,6 +24,7 @@ import { AdminArticlesPage } from "@/pages/admin/AdminArticlesPage";
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
 import { GitHubCallbackPage } from "@/pages/GitHubCallbackPage";
 import { GoogleCallbackPage } from "@/pages/GoogleCallbackPage";
+import { OnboardingPage } from "@/pages/OnboardingPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient({
@@ -82,6 +83,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <HomePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/onboarding"
+        element={
+          <ProtectedRoute skipOnboardingCheck>
+            <OnboardingPage />
           </ProtectedRoute>
         }
       />
