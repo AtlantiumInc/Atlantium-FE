@@ -53,13 +53,13 @@ export const nameSchema = z.object({
 
 export const timezoneSchema = z.object({
   timezone: z.enum(timezoneValues, {
-    errorMap: () => ({ message: "Please select a timezone" }),
+    message: "Please select a timezone",
   }),
 });
 
 export const primaryGoalSchema = z.object({
   primary_goal: z.enum(primaryGoalValues, {
-    errorMap: () => ({ message: "Please select your primary goal" }),
+    message: "Please select your primary goal",
   }),
 });
 
@@ -71,7 +71,7 @@ export const interestsSchema = z.object({
 
 export const projectStatusSchema = z.object({
   working_on_project: z.enum(projectStatusValues, {
-    errorMap: () => ({ message: "Please select your project status" }),
+    message: "Please select your project status",
   }),
 });
 
@@ -84,7 +84,7 @@ export const projectDescriptionSchema = z.object({
 
 export const technicalLevelSchema = z.object({
   technical_level: z.enum(technicalLevelValues, {
-    errorMap: () => ({ message: "Please select your technical level" }),
+    message: "Please select your technical level",
   }),
 });
 

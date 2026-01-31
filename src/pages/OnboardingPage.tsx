@@ -32,9 +32,8 @@ export function OnboardingPage() {
   const { user, checkAuth } = useAuth();
 
   // Extract initial data from user profile (for Google auth pre-fill)
-  const profile = (user as Record<string, unknown>)?._profile as
-    | Record<string, unknown>
-    | undefined;
+  const userAny = user as unknown as Record<string, unknown> | null;
+  const profile = userAny?._profile as Record<string, unknown> | undefined;
   const googleAvatarUrl = user?.avatar || (profile?.avatar_url as string);
 
   const handleComplete = useCallback(
@@ -72,7 +71,6 @@ export function OnboardingPage() {
     formData,
     errors,
     isSubmitting,
-    isFirstStep,
     isLastStep,
     canGoBack,
     visibleStepNumber,

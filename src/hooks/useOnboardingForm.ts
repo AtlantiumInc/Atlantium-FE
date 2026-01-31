@@ -202,9 +202,9 @@ export function useOnboardingForm(options: UseOnboardingFormOptions = {}) {
     const result = validateStep(state.currentStep, state.formData);
     if (!result.success && result.errors) {
       const errorMap: Record<string, string> = {};
-      result.errors.errors.forEach((err) => {
-        const path = err.path.join(".");
-        errorMap[path] = err.message;
+      result.errors.issues.forEach((issue) => {
+        const path = issue.path.join(".");
+        errorMap[path] = issue.message;
       });
       dispatch({ type: "SET_ERRORS", errors: errorMap });
       return false;
@@ -230,9 +230,9 @@ export function useOnboardingForm(options: UseOnboardingFormOptions = {}) {
     const fullValidation = validateStep(state.currentStep, state.formData);
     if (!fullValidation.success && fullValidation.errors) {
       const errorMap: Record<string, string> = {};
-      fullValidation.errors.errors.forEach((err) => {
-        const path = err.path.join(".");
-        errorMap[path] = err.message;
+      fullValidation.errors.issues.forEach((issue) => {
+        const path = issue.path.join(".");
+        errorMap[path] = issue.message;
       });
       dispatch({ type: "SET_ERRORS", errors: errorMap });
       return false;

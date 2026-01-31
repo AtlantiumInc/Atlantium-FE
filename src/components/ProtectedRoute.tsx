@@ -28,9 +28,8 @@ export function ProtectedRoute({
 
   // Check if onboarding is needed (unless we're on the onboarding page itself)
   if (!skipOnboardingCheck) {
-    const profile = (user as Record<string, unknown>)?._profile as
-      | Record<string, unknown>
-      | undefined;
+    const userAny = user as unknown as Record<string, unknown> | null;
+    const profile = userAny?._profile as Record<string, unknown> | undefined;
     const registrationDetails = profile?.registration_details as
       | Record<string, unknown>
       | undefined;
