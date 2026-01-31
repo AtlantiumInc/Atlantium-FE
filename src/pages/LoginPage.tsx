@@ -3,13 +3,12 @@ import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, Mail, ArrowLeft, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Form,
   FormControl,
