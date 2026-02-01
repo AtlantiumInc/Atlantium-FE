@@ -41,6 +41,16 @@ export function OnboardingPage() {
   // Check if user already has an active subscription
   const existingMembershipTier = subscription?.subscription_status === "active" ? subscription?.membership_tier : undefined;
 
+  // Redirect to dashboard if onboarding is already completed
+  const registrationDetails = profile?.registration_details as Record<string, unknown> | undefined;
+  const isOnboardingCompleted = registrationDetails?.is_completed === true;
+
+  useEffect(() => {
+    if (isOnboardingCompleted) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isOnboardingCompleted, navigate]);
+
   const handleComplete = useCallback(
     async (data: OnboardingFormData) => {
       // Separate profile fields from registration_details
