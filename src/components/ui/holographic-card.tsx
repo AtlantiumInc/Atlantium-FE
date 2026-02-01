@@ -39,7 +39,7 @@ export function HolographicCard({
   // Pre-compute all transforms at component level
   const holographicBackground = useTransform(
     [gradientX, gradientY],
-    ([x, y]) =>
+    ([x, _y]) =>
       `linear-gradient(
         ${105 + (Number(x) - 50) * 0.5}deg,
         rgba(255, 0, 128, 0.4) 0%,
