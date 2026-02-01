@@ -5,8 +5,10 @@ const STRIPE_PUBLISHABLE_KEY =
   import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ||
   import.meta.env.VITE_STRIPE_PUBLISHING_KEY;
 
+console.log("[Stripe] Publishable key loaded:", STRIPE_PUBLISHABLE_KEY ? `${STRIPE_PUBLISHABLE_KEY.substring(0, 20)}...` : "MISSING");
+
 if (!STRIPE_PUBLISHABLE_KEY) {
-  console.warn(
+  console.error(
     "Missing VITE_STRIPE_PUBLISHABLE_KEY or VITE_STRIPE_PUBLISHING_KEY environment variable"
   );
 }

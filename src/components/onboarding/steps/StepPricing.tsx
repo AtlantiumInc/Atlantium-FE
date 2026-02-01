@@ -272,6 +272,7 @@ export function StepPricing({
 
   // Show payment form
   if (clientSecret) {
+    console.log("[StepPricing] Rendering Elements with clientSecret:", clientSecret.substring(0, 30) + "...");
     return (
       <motion.div
         initial={{ opacity: 0, x: 20 }}
