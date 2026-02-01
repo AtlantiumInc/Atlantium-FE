@@ -391,7 +391,7 @@ export function MessagesPage() {
                             </div>
                           )}
                           <div className="flex items-end gap-2">
-                            {!isOwnMessage && (
+                            {!isOwnMessage && selectedThread?.type === "group" && (
                               <Avatar className="h-8 w-8 flex-shrink-0">
                                 <AvatarImage src={message.sender_avatar} />
                                 <AvatarFallback className="text-xs">
