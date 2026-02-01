@@ -12,9 +12,7 @@ import {
 import {
   Calendar,
   Clock,
-  Trophy,
   Sparkles,
-  TrendingUp,
   Loader2,
   MapPin,
   XCircle,
@@ -76,17 +74,10 @@ interface Event {
   address?: string;
 }
 
-// Demo top builders
-const TOP_BUILDERS = [
-  { rank: 1, name: "Sarah Chen", username: "sarah_dev", additions: 2453, avatar: null },
-  { rank: 2, name: "Marcus J.", username: "mjohnson", additions: 1876, avatar: null },
-  { rank: 3, name: "Elena R.", username: "elena_r", additions: 1234, avatar: null },
-];
-
 export function HQPage({ user }: HQPageProps) {
-  const [_upcomingEvent, setUpcomingEvent] = useState<Event | null>(null);
+  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [myEvents, setMyEvents] = useState<Event[]>([]);
-  const [_isLoadingEvent, setIsLoadingEvent] = useState(true);
+  const [isLoadingUpcomingEvents, setIsLoadingUpcomingEvents] = useState(true);
   const [isLoadingMyEvents, setIsLoadingMyEvents] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isRsvpLoading, setIsRsvpLoading] = useState(false);
@@ -108,25 +99,19 @@ export function HQPage({ user }: HQPageProps) {
     try {
       const events = await api.getPublicEvents();
       if (events && events.length > 0) {
-        // Filter to get upcoming events (not today)
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-
+        // Filter to get all upcoming events
+        const now = new Date();
         const upcoming = events.filter((event) => {
           const eventDate = new Date(event.start_time);
-          return eventDate >= tomorrow;
+          return eventDate >= now;
         });
 
-        if (upcoming.length > 0) {
-          setUpcomingEvent(upcoming[0]);
-        }
+        setUpcomingEvents(upcoming);
       }
     } catch (error) {
       console.error("Failed to fetch events:", error);
     } finally {
-      setIsLoadingEvent(false);
+      setIsLoadingUpcomingEvents(false);
     }
   };
 
@@ -315,50 +300,47 @@ export function HQPage({ user }: HQPageProps) {
           )}
         </div>
 
-        {/* Second Row - Stats Cards */}
-        <div className="grid grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm text-muted-foreground">Total Commits</span>
-                <TrendingUp size={16} className="text-green-500" />
+        {/* Second Row - Upcoming Events */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Calendar size={16} />
+              Upcoming Events
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {isLoadingUpcomingEvents ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
-              <div className="text-3xl font-bold">287</div>
-              <p className="text-xs text-green-500 mt-1">+12% this week</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm text-muted-foreground">PRs Merged</span>
-                <TrendingUp size={16} className="text-primary" />
-              </div>
-              <div className="text-3xl font-bold">23</div>
-              <p className="text-xs text-muted-foreground mt-1">This month</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm text-muted-foreground">Streak</span>
-                <span className="text-2xl">🔥</span>
-              </div>
-              <div className="text-3xl font-bold">14</div>
-              <p className="text-xs text-muted-foreground mt-1">Days active</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Third Row - Quick Actions */}
-        <Card className="bg-gradient-to-br from-primary/10 to-background">
-          <CardContent className="p-4">
-            <h3 className="font-semibold mb-2">Quick Actions</h3>
-            <div className="grid grid-cols-4 gap-2">
-              <Button variant="secondary" size="sm">New Post</Button>
-              <Button variant="secondary" size="sm">Start Task</Button>
-              <Button variant="secondary" size="sm">Join Chat</Button>
-              <Button variant="secondary" size="sm">View Stats</Button>
-            </div>
+            ) : upcomingEvents.length > 0 ? (
+              upcomingEvents.map((event) => (
+                <div
+                  key={event.id}
+                  className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 rounded p-3 -mx-3 transition-colors border-l-2 border-primary"
+                  onClick={() => setSelectedEvent(event)}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{event.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatEventDate(event.start_time)} at {formatEventTime(event.start_time)}
+                    </p>
+                    {event.event_type && (
+                      <p className="text-xs text-primary capitalize mt-1">{event.event_type}</p>
+                    )}
+                  </div>
+                  {event.going_count !== undefined && (
+                    <span className="text-xs text-muted-foreground font-medium">
+                      {event.going_count} going
+                    </span>
+                  )}
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No upcoming events
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -433,42 +415,6 @@ export function HQPage({ user }: HQPageProps) {
           </CardContent>
         </Card>
 
-        {/* Top Builders Today */}
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Trophy size={16} className="text-amber-500" />
-                Top Builders Today
-              </CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {TOP_BUILDERS.map((builder) => (
-              <div key={builder.rank} className="flex items-center gap-3">
-                <span className={`font-bold w-5 ${
-                  builder.rank === 1 ? "text-amber-500" :
-                  builder.rank === 2 ? "text-gray-400" :
-                  "text-amber-700"
-                }`}>
-                  #{builder.rank}
-                </span>
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="text-xs">
-                    {builder.name.split(" ").map(n => n[0]).join("")}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{builder.name}</p>
-                  <p className="text-xs text-muted-foreground">@{builder.username}</p>
-                </div>
-                <span className="text-xs text-green-500 font-medium">
-                  +{builder.additions.toLocaleString()}
-                </span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
       </div>
 
       {/* Event Modal */}
