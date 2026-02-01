@@ -91,7 +91,7 @@ export function Sidebar({
           <>
             <button
               onClick={() => onNavigate?.("hq")}
-              className="font-semibold hover:text-primary transition-colors"
+              className="flex-1 px-3 py-2 mx-1 rounded-lg font-semibold text-sm bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 hover:border-primary/40 transition-all duration-200 hover:shadow-sm"
             >
               Atlantium
             </button>
