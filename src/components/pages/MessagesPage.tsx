@@ -17,6 +17,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { showMessageNotification } from "@/lib/notifications";
 import type { Thread, ThreadMessage, ThreadDetail } from "@/lib/types";
 
 // Mock files data (no backend yet)
@@ -49,6 +50,8 @@ export function MessagesPage() {
   // Handle incoming realtime messages
   const handleRealtimeMessage = useCallback((message: ThreadMessage) => {
     console.log("[Realtime] Received message:", message);
+    const isDuplicateOrOwn = user?.id === message.sender_id;
+
     setMessages((prev) => {
       // Avoid duplicates (in case message was sent by current user)
       if (prev.some((m) => m.message_id === message.message_id)) {
@@ -56,9 +59,18 @@ export function MessagesPage() {
         return prev;
       }
       console.log("[Realtime] Adding new message to chat");
+
+      // Show notification for messages from other users
+      if (!isDuplicateOrOwn) {
+        showMessageNotification(
+          message.sender_username || "Someone",
+          message.content.substring(0, 100)
+        );
+      }
+
       return [...prev, message];
     });
-  }, []);
+  }, [user?.id]);
 
   // Thread channel hook for realtime messaging
   const { typingUsers } = useThreadChannel({

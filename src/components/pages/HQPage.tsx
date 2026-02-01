@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { requestNotificationPermission } from "@/lib/notifications";
 import {
   Dialog,
   DialogContent,
@@ -140,6 +141,13 @@ export function HQPage({ user }: HQPageProps) {
   useEffect(() => {
     fetchAllEvents();
     fetchFrontierArticles();
+  }, []);
+
+  // Request notification permission on dashboard load
+  useEffect(() => {
+    requestNotificationPermission().catch((error) => {
+      console.error("Error requesting notification permission:", error);
+    });
   }, []);
 
   const getInitials = (email?: string) => {
