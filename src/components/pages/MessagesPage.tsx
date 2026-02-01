@@ -48,11 +48,14 @@ export function MessagesPage() {
 
   // Handle incoming realtime messages
   const handleRealtimeMessage = useCallback((message: ThreadMessage) => {
+    console.log("[Realtime] Received message:", message);
     setMessages((prev) => {
       // Avoid duplicates (in case message was sent by current user)
       if (prev.some((m) => m.message_id === message.message_id)) {
+        console.log("[Realtime] Duplicate message, skipping:", message.message_id);
         return prev;
       }
+      console.log("[Realtime] Adding new message to chat");
       return [...prev, message];
     });
   }, []);
@@ -138,20 +141,45 @@ export function MessagesPage() {
   }, [messages, isLoadingMessages]);
 
   const handleSendMessage = async () => {
-    if (!selectedThread || !messageInput.trim()) return;
+    if (!selectedThread || !messageInput.trim() || !user) return;
 
     const content = messageInput;
+    const tempMessageId = `temp-${Date.now()}`;
     setMessageInput("");
+
+    // Optimistically add message to chat immediately
+    const optimisticMessage: ThreadMessage = {
+      message_id: tempMessageId,
+      thread_id: selectedThread.thread_id,
+      sender_id: user.id,
+      sender_username: user.display_name || user.email || "You",
+      sender_avatar: user.avatar,
+      content,
+      is_reply: false,
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimisticMessage]);
 
     try {
       setIsSending(true);
-      // Send message via REST API - backend will broadcast via realtime
-      await api.sendMessage(selectedThread.thread_id, content);
+      // Send message via REST API
+      const result = await api.sendMessage(selectedThread.thread_id, content);
+
+      // Replace temp message with real one
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.message_id === tempMessageId
+            ? { ...msg, message_id: result.message_id, created_at: result.created_at }
+            : msg
+        )
+      );
 
       // Refresh threads to update last message preview (without showing loading spinner)
       await fetchThreads(false);
     } catch (error) {
       console.error("Failed to send message:", error);
+      // Remove optimistic message on error
+      setMessages((prev) => prev.filter((msg) => msg.message_id !== tempMessageId));
       setMessageInput(content);
       setError("Failed to send message. Please try again.");
     } finally {

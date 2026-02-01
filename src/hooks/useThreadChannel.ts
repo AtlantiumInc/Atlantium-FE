@@ -63,10 +63,12 @@ export function useThreadChannel({
     }
 
     const channelName = getThreadChannelName(threadId);
+    console.log("[ThreadChannel] Subscribing to channel:", channelName);
 
     try {
       const channel = client.channel(channelName);
       channelRef.current = channel;
+      console.log("[ThreadChannel] Channel subscribed successfully");
 
       // Also subscribe to parent "thread" channel
       const parentChannel = client.channel("thread");
@@ -85,6 +87,7 @@ export function useThreadChannel({
       });
 
       function handleIncomingMessage(message: RealtimeMessage) {
+        console.log("[ThreadChannel] Raw message received:", message);
         // Handle different message formats from Xano
         let action = message.action;
         const msgAny = message as any;
