@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { Elements } from "@stripe/react-stripe-js";
 import {
   PaymentElement,
@@ -155,18 +155,18 @@ function PricingCard({
   );
 }
 
-function PaymentFormInline({
-  clientSecret,
+function PaymentFormContent({
   onSuccess,
-  onCancel,
+  onBack,
   planName,
   planPrice,
+  planFeatures,
 }: {
-  clientSecret: string;
   onSuccess: () => void;
-  onCancel: () => void;
+  onBack: () => void;
   planName: string;
   planPrice: string;
+  planFeatures: string[];
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -188,7 +188,6 @@ function PaymentFormInline({
 
       const { error: setupError, setupIntent } = await stripe.confirmSetup({
         elements,
-        clientSecret,
         confirmParams: {
           return_url: window.location.href,
         },
@@ -222,69 +221,97 @@ function PaymentFormInline({
   };
 
   return (
-    <motion.form
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: "auto" }}
-      exit={{ opacity: 0, height: 0 }}
-      onSubmit={handleSubmit}
-      className="space-y-4 mt-6 p-4 rounded-lg border bg-card"
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      className="space-y-6"
     >
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="font-medium">{planName} Membership</p>
-          <p className="text-sm text-muted-foreground">{planPrice}</p>
+      {/* Plan summary card */}
+      <div className="rounded-xl border-2 border-primary bg-primary/5 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <Crown className="h-6 w-6 text-yellow-500" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-lg">{planName} Membership</h3>
+            <p className="text-2xl font-bold">{planPrice}</p>
+          </div>
         </div>
-        <Sparkles className="h-5 w-5 text-yellow-500" />
+        <ul className="space-y-2">
+          {planFeatures.slice(0, 4).map((feature) => (
+            <li key={feature} className="flex items-center gap-2 text-sm">
+              <Check className="h-4 w-4 text-green-500 shrink-0" />
+              <span>{feature}</span>
+            </li>
+          ))}
+        </ul>
       </div>
 
-      <PaymentElement
-        options={{
-          layout: "tabs",
-          fields: {
-            billingDetails: {
-              address: { country: "auto" },
-            },
-          },
-        }}
-        onChange={(e) => {
-          setPaymentReady(e.complete);
-          setError(null);
-        }}
-      />
+      {/* Payment form */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="rounded-lg border p-4 bg-card">
+          <p className="text-sm font-medium mb-4">Payment details</p>
+          <div className="min-h-[120px]">
+            <PaymentElement
+              options={{
+                layout: "tabs",
+                fields: {
+                  billingDetails: {
+                    address: { country: "auto" },
+                  },
+                },
+              }}
+              onChange={(e) => {
+                setPaymentReady(e.complete);
+                setError(null);
+              }}
+            />
+          </div>
+        </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && (
+          <p className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
+            {error}
+          </p>
+        )}
 
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Lock className="h-3 w-3" />
-        <span>Secured by Stripe. Cancel anytime.</span>
-      </div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Lock className="h-3 w-3" />
+          <span>Secured by Stripe. Cancel anytime.</span>
+        </div>
 
-      <div className="flex gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={isProcessing}
-          className="flex-1"
-        >
-          Choose Free
-        </Button>
-        <Button
-          type="submit"
-          disabled={!stripe || !paymentReady || isProcessing}
-          className="flex-1"
-        >
-          {isProcessing ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              Processing...
-            </>
-          ) : (
-            `Subscribe ${planPrice}`
-          )}
-        </Button>
-      </div>
-    </motion.form>
+        <div className="flex gap-3 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onBack}
+            disabled={isProcessing}
+            className="flex-1"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          <Button
+            type="submit"
+            disabled={!stripe || !paymentReady || isProcessing}
+            className="flex-1"
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Subscribe {planPrice}
+              </>
+            )}
+          </Button>
+        </div>
+      </form>
+    </motion.div>
   );
 }
 
@@ -316,8 +343,6 @@ export function StepPricing({
 
   const handlePlanSelect = (planId: PlanTier) => {
     setSelectedPlan(planId);
-    setShowPayment(false);
-    setClientSecret(null);
   };
 
   const handleContinue = () => {
@@ -334,11 +359,9 @@ export function StepPricing({
     onPlanSelected(selectedPlan);
   };
 
-  const handlePaymentCancel = () => {
-    setSelectedPlan("free");
+  const handleBackToPlans = () => {
     setShowPayment(false);
-    onUpdate("membership_tier" as keyof OnboardingFormData, "free");
-    onPlanSelected("free");
+    setClientSecret(null);
   };
 
   return (
@@ -351,78 +374,117 @@ export function StepPricing({
     >
       <div className="space-y-2 text-center">
         <h2 className="text-2xl font-bold tracking-tight">
-          Choose your membership
+          {showPayment ? "Complete your membership" : "Choose your membership"}
         </h2>
         <p className="text-muted-foreground">
-          Select the plan that fits your journey. You can change anytime.
+          {showPayment
+            ? "Enter your payment details to get started"
+            : "Select the plan that fits your journey. You can change anytime."}
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {PRICING_PLANS.map((plan) => (
-          <PricingCard
-            key={plan.id}
-            plan={plan}
-            selected={selectedPlan === plan.id}
-            onSelect={() => handlePlanSelect(plan.id)}
-          />
-        ))}
-      </div>
+      <AnimatePresence mode="wait">
+        {!showPayment ? (
+          <motion.div
+            key="plans"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className="grid gap-4 md:grid-cols-3">
+              {PRICING_PLANS.map((plan) => (
+                <PricingCard
+                  key={plan.id}
+                  plan={plan}
+                  selected={selectedPlan === plan.id}
+                  onSelect={() => handlePlanSelect(plan.id)}
+                />
+              ))}
+            </div>
 
-      {!showPayment ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex items-center justify-between pt-4"
-        >
-          {onBack && (
-            <Button variant="ghost" onClick={onBack}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-          )}
-          <Button onClick={handleContinue} size="lg" className="min-w-[200px] ml-auto">
-            {selectedPlan === "free" ? (
-              "Continue with Free"
-            ) : (
-              <>
-                <Crown className="h-4 w-4 mr-2" />
-                Continue with {selectedPlanData?.name}
-              </>
-            )}
-          </Button>
-        </motion.div>
-      ) : isLoading ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : clientSecret ? (
-        <Elements
-          stripe={stripePromise}
-          options={{
-            clientSecret,
-            appearance: {
-              theme: "stripe",
-              variables: {
-                colorPrimary: "hsl(var(--primary))",
-                colorBackground: "hsl(var(--background))",
-                colorText: "hsl(var(--foreground))",
-                colorDanger: "hsl(var(--destructive))",
-                fontFamily: "inherit",
-                borderRadius: "6px",
+            <div className="flex items-center justify-between pt-6">
+              {onBack && (
+                <Button variant="ghost" onClick={onBack}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+              )}
+              <Button
+                onClick={handleContinue}
+                size="lg"
+                className="min-w-[200px] ml-auto"
+              >
+                {selectedPlan === "free" ? (
+                  "Continue with Free"
+                ) : (
+                  <>
+                    <Crown className="h-4 w-4 mr-2" />
+                    Continue with {selectedPlanData?.name}
+                  </>
+                )}
+              </Button>
+            </div>
+          </motion.div>
+        ) : isLoading ? (
+          <motion.div
+            key="loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col items-center justify-center py-12"
+          >
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">Setting up payment...</p>
+          </motion.div>
+        ) : clientSecret ? (
+          <Elements
+            key="payment"
+            stripe={stripePromise}
+            options={{
+              clientSecret,
+              appearance: {
+                theme: "night",
+                variables: {
+                  colorPrimary: "#3b82f6",
+                  colorBackground: "#1a1a2e",
+                  colorText: "#ffffff",
+                  colorTextSecondary: "#a1a1aa",
+                  colorDanger: "#ef4444",
+                  fontFamily: "inherit",
+                  borderRadius: "8px",
+                  spacingUnit: "4px",
+                },
+                rules: {
+                  ".Input": {
+                    backgroundColor: "#0f0f1a",
+                    border: "1px solid #27272a",
+                  },
+                  ".Input:focus": {
+                    border: "1px solid #3b82f6",
+                    boxShadow: "0 0 0 1px #3b82f6",
+                  },
+                  ".Tab": {
+                    backgroundColor: "#1a1a2e",
+                    border: "1px solid #27272a",
+                  },
+                  ".Tab--selected": {
+                    backgroundColor: "#3b82f6",
+                    border: "1px solid #3b82f6",
+                  },
+                },
               },
-            },
-          }}
-        >
-          <PaymentFormInline
-            clientSecret={clientSecret}
-            onSuccess={handlePaymentSuccess}
-            onCancel={handlePaymentCancel}
-            planName={selectedPlanData?.name || "Club"}
-            planPrice={`${selectedPlanData?.price}${selectedPlanData?.period}`}
-          />
-        </Elements>
-      ) : null}
+            }}
+          >
+            <PaymentFormContent
+              onSuccess={handlePaymentSuccess}
+              onBack={handleBackToPlans}
+              planName={selectedPlanData?.name || "Club"}
+              planPrice={`${selectedPlanData?.price}${selectedPlanData?.period}`}
+              planFeatures={selectedPlanData?.features || []}
+            />
+          </Elements>
+        ) : null}
+      </AnimatePresence>
     </motion.div>
   );
 }
