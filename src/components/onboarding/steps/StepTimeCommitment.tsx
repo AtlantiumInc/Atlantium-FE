@@ -27,10 +27,10 @@ export function StepTimeCommitment({
     >
       <div className="space-y-2">
         <h2 className="text-2xl font-bold tracking-tight">
-          How much time can you commit?
+          Commit to building & learning
         </h2>
         <p className="text-muted-foreground">
-          This is optional and helps us match you with appropriate opportunities.
+          How much time can you dedicate each week to growing your skills?
         </p>
       </div>
 

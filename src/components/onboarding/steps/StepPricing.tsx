@@ -45,10 +45,11 @@ const PRICING_PLANS: PricingPlan[] = [
     popular: true,
     icon: Crown,
     features: [
+      "Everything in Free",
       "Exclusive member events",
       "Daily office hours",
       "Priority event registration",
-      "Member directory access",
+      "Startup advisor",
     ],
   },
   {
@@ -60,24 +61,26 @@ const PRICING_PLANS: PricingPlan[] = [
     savings: "Save $189",
     icon: Calendar,
     features: [
+      "Everything in Club",
       "2 months free",
       "Quarterly performance review",
-      "Service discounts",
+      "Discounted services",
       "Project support",
-      "Member directory access",
     ],
   },
   {
     id: "free",
     name: "Free",
     price: "$0",
-    period: "forever",
+    period: " forever",
     description: "Get started with the basics",
     icon: Star,
     features: [
       "Frontier feed access",
       "Focus groups",
       "Public events",
+      "Templates & source code",
+      "Software perks & discounts",
     ],
   },
 ];
