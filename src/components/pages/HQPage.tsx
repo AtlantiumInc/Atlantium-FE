@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -75,7 +76,9 @@ interface Event {
   address?: string;
 }
 
-export function HQPage({ user }: HQPageProps) {
+export function HQPage({ user: userProp }: HQPageProps) {
+  const { user: authUser } = useAuth();
+  const user = authUser || userProp;
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [myEvents, setMyEvents] = useState<Event[]>([]);
   const [isLoadingUpcomingEvents, setIsLoadingUpcomingEvents] = useState(true);
@@ -153,6 +156,30 @@ export function HQPage({ user }: HQPageProps) {
   const getInitials = (email?: string) => {
     if (!email) return "U";
     return email.charAt(0).toUpperCase();
+  };
+
+  const getMembershipBadgeColor = (tier?: string) => {
+    switch (tier) {
+      case "club":
+        return "bg-cyan-500/20 text-cyan-600 border-cyan-500/30";
+      case "club_annual":
+        return "bg-amber-500/20 text-amber-600 border-amber-500/30";
+      case "free":
+      default:
+        return "bg-muted text-muted-foreground border-border";
+    }
+  };
+
+  const getMembershipLabel = (tier?: string) => {
+    switch (tier) {
+      case "club":
+        return "Club Member";
+      case "club_annual":
+        return "Annual Member";
+      case "free":
+      default:
+        return "Free Member";
+    }
   };
 
   const formatEventDate = (dateString: string) => {
@@ -357,7 +384,7 @@ export function HQPage({ user }: HQPageProps) {
       <div className="w-80 flex-shrink-0 space-y-4">
         {/* Welcome Card */}
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Good morning,</p>
@@ -371,6 +398,12 @@ export function HQPage({ user }: HQPageProps) {
                 <AvatarFallback className="text-lg">{getInitials(user?.email)}</AvatarFallback>
               </Avatar>
             </div>
+            {/* Membership Badge */}
+            {user && (user as any)?._profile?.registration_details?.membership_tier && (
+              <div className={`px-3 py-1.5 rounded-full border text-xs font-medium w-fit ${getMembershipBadgeColor((user as any)._profile.registration_details.membership_tier)}`}>
+                {getMembershipLabel((user as any)._profile.registration_details.membership_tier)}
+              </div>
+            )}
           </CardContent>
         </Card>
 
