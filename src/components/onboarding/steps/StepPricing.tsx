@@ -443,34 +443,14 @@ export function StepPricing({
             options={{
               clientSecret,
               appearance: {
-                theme: "night",
+                theme: "stripe",
                 variables: {
-                  colorPrimary: "#3b82f6",
-                  colorBackground: "#1a1a2e",
-                  colorText: "#ffffff",
-                  colorTextSecondary: "#a1a1aa",
-                  colorDanger: "#ef4444",
+                  colorPrimary: "hsl(var(--primary))",
+                  colorBackground: "hsl(var(--background))",
+                  colorText: "hsl(var(--foreground))",
+                  colorDanger: "hsl(var(--destructive))",
                   fontFamily: "inherit",
-                  borderRadius: "8px",
-                  spacingUnit: "4px",
-                },
-                rules: {
-                  ".Input": {
-                    backgroundColor: "#0f0f1a",
-                    border: "1px solid #27272a",
-                  },
-                  ".Input:focus": {
-                    border: "1px solid #3b82f6",
-                    boxShadow: "0 0 0 1px #3b82f6",
-                  },
-                  ".Tab": {
-                    backgroundColor: "#1a1a2e",
-                    border: "1px solid #27272a",
-                  },
-                  ".Tab--selected": {
-                    backgroundColor: "#3b82f6",
-                    border: "1px solid #3b82f6",
-                  },
+                  borderRadius: "6px",
                 },
               },
             }}
