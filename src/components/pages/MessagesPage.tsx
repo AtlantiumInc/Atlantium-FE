@@ -399,28 +399,28 @@ export function MessagesPage() {
                                 </AvatarFallback>
                               </Avatar>
                             )}
-                            <div>
-                              <div className={`flex items-center gap-2 mb-1 ${isOwnMessage ? "justify-end" : ""}`}>
-                                <span
-                                  className={`text-sm font-medium ${
-                                    isOwnMessage ? "text-primary" : "text-orange-500"
+                            <div className="flex-1">
+                              {selectedThread?.type === "group" && !isOwnMessage && (
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-sm font-medium text-orange-500">
+                                    {message.sender_username || "Unknown"}
+                                  </span>
+                                </div>
+                              )}
+                              <div>
+                                <div
+                                  className={`p-3 rounded-lg ${
+                                    isOwnMessage ? "bg-muted" : "bg-card border"
                                   }`}
                                 >
-                                  {message.sender_username}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
+                                  <p className="text-sm whitespace-pre-line">{message.content}</p>
+                                </div>
+                                <span className={`text-xs text-muted-foreground mt-1 block ${isOwnMessage ? "text-right" : ""}`}>
                                   {new Date(message.created_at).toLocaleTimeString([], {
                                     hour: "numeric",
                                     minute: "2-digit",
                                   })}
                                 </span>
-                              </div>
-                              <div
-                                className={`p-3 rounded-lg ${
-                                  isOwnMessage ? "bg-muted" : "bg-card border"
-                                }`}
-                              >
-                                <p className="text-sm whitespace-pre-line">{message.content}</p>
                               </div>
                             </div>
                           </div>
