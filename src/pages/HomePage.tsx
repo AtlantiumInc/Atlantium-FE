@@ -66,7 +66,6 @@ export function HomePage() {
       <Sidebar
         activePage={activePage}
         onNavigate={handleNavigate}
-        onLogout={logout}
         collapsed={sidebarCollapsed}
         onToggleCollapse={handleToggleSidebar}
       />
