@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Trash2, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Trash2, Loader2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -51,6 +51,8 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isLoadingPortal, setIsLoadingPortal] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchProfile = async () => {
     try {
@@ -71,6 +73,54 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
   const handleProfileUpdate = () => {
     fetchProfile();
     setIsEditOpen(false);
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be less than 5MB");
+      return;
+    }
+
+    try {
+      const response = await api.uploadImage(file);
+      if (response?.url) {
+        // Update profile with new avatar
+        await api.updateProfile({ avatar_url: response.url });
+        toast.success("Avatar updated");
+        fetchProfile();
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("Failed to upload image");
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    try {
+      setIsLoadingPortal(true);
+      const response = await api.getPortalSession();
+      window.open(response.portal_url, "_blank");
+    } catch {
+      toast.error("Failed to open billing portal");
+    } finally {
+      setIsLoadingPortal(false);
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -115,25 +165,50 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
       {/* Profile Sheet */}
       <Sheet open={isEditOpen} onOpenChange={setIsEditOpen}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b">
-            <div className="flex-1">
+          <SheetHeader className="pb-4 border-b pr-8">
+            <div className="flex items-center justify-between">
               <SheetTitle>Profile</SheetTitle>
-              <SheetDescription>
-                Manage your profile information and membership.
-              </SheetDescription>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onLogout}
+                className="text-muted-foreground hover:text-destructive h-8 -mr-2"
+              >
+                Logout
+              </Button>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onLogout}
-              className="text-muted-foreground hover:text-destructive h-8"
-            >
-              Logout
-            </Button>
+            <SheetDescription>
+              Manage your profile information and membership.
+            </SheetDescription>
           </SheetHeader>
           <div className="mt-6 space-y-6 px-4">
+            {/* Hidden file input for avatar upload */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+
             {/* Membership Card */}
-            <MembershipCard />
+            <MembershipCard onAvatarClick={handleAvatarClick} username={profile?.username} />
+
+            {/* Manage Billing */}
+            <button
+              onClick={handleManageSubscription}
+              disabled={isLoadingPortal}
+              className="group w-full py-2 px-4 flex items-center justify-center gap-2 text-sm text-muted-foreground rounded-lg transition-all duration-300 hover:text-foreground hover:bg-muted/50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoadingPortal ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <ExternalLink className="h-4 w-4" />
+                  <span>Manage Billing</span>
+                </>
+              )}
+            </button>
 
             {/* Profile Edit Form */}
             <div>

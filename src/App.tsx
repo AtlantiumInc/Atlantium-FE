@@ -25,6 +25,7 @@ import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
 import { GitHubCallbackPage } from "@/pages/GitHubCallbackPage";
 import { GoogleCallbackPage } from "@/pages/GoogleCallbackPage";
 import { OnboardingPage } from "@/pages/OnboardingPage";
+import { PublicProfilePage } from "@/pages/PublicProfilePage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient({
@@ -59,6 +60,7 @@ function AppRoutes() {
     <Routes>
       {/* Public Pages */}
       <Route path="/" element={<LandingPage />} />
+      <Route path="/u/:username" element={<PublicProfilePage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/policies" element={<TermsPage />} />
       <Route path="/services" element={<ServicesPage />} />

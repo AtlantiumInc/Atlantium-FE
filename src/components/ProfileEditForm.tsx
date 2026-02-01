@@ -25,7 +25,7 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { api } from "@/lib/api";
-import type { Profile } from "@/components/ProfileCard";
+import { ProfileCard, type Profile } from "@/components/ProfileCard";
 
 const profileEditSchema = z.object({
   first_name: z
@@ -43,8 +43,8 @@ const profileEditSchema = z.object({
     .min(3, "Username must be at least 3 characters")
     .max(30, "Username must be 30 characters or less")
     .regex(
-      /^[a-zA-Z0-9_]+$/,
-      "Username can only contain letters, numbers, and underscores"
+      /^[a-zA-Z0-9_.]+$/,
+      "Username can only contain letters, numbers, underscores, and periods"
     ),
   display_name: z
     .string()
@@ -65,6 +65,11 @@ const profileEditSchema = z.object({
     .url("Please enter a valid URL")
     .optional()
     .or(z.literal("")),
+  linkedin_url: z
+    .string()
+    .url("Please enter a valid LinkedIn URL")
+    .optional()
+    .or(z.literal("")),
 });
 
 type ProfileEditFormValues = z.infer<typeof profileEditSchema>;
@@ -73,9 +78,11 @@ interface ProfileEditFormProps {
   profile?: Partial<Profile>;
   onSuccess?: (data: Record<string, unknown>) => void;
   variant?: "card" | "sheet";
+  showPreview?: boolean;
+  onAvatarClick?: () => void;
 }
 
-export function ProfileEditForm({ profile, onSuccess, variant = "card" }: ProfileEditFormProps) {
+export function ProfileEditForm({ profile, onSuccess, variant = "card", showPreview = false, onAvatarClick }: ProfileEditFormProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<ProfileEditFormValues>({
@@ -88,6 +95,7 @@ export function ProfileEditForm({ profile, onSuccess, variant = "card" }: Profil
       bio: profile?.bio ?? "",
       location: profile?.location ?? "",
       website_url: profile?.website_url ?? "",
+      linkedin_url: profile?.linkedin_url ?? "",
     },
   });
 
@@ -102,22 +110,46 @@ export function ProfileEditForm({ profile, onSuccess, variant = "card" }: Profil
         bio: profile.bio ?? "",
         location: profile.location ?? "",
         website_url: profile.website_url ?? "",
+        linkedin_url: profile.linkedin_url ?? "",
       });
     }
   }, [profile, form]);
+
+  // Watch form values for live preview
+  const watchedValues = form.watch();
+
+  // Create a preview profile from watched values
+  const previewProfile: Profile = {
+    id: profile?.id ?? "",
+    user_id: profile?.user_id ?? "",
+    username: watchedValues.username || profile?.username || "",
+    display_name: watchedValues.display_name || profile?.display_name || "",
+    first_name: watchedValues.first_name || undefined,
+    last_name: watchedValues.last_name || undefined,
+    bio: watchedValues.bio || undefined,
+    avatar_url: profile?.avatar_url,
+    location: watchedValues.location || undefined,
+    website_url: watchedValues.website_url || undefined,
+    linkedin_url: watchedValues.linkedin_url || undefined,
+    created_at: profile?.created_at,
+    updated_at: profile?.updated_at,
+  };
 
   const handleSubmit = async (values: ProfileEditFormValues) => {
     setIsLoading(true);
 
     try {
-      // Clean up empty strings to undefined for optional fields
+      // Clean up empty strings to null for optional fields
       const cleanedData = {
-        ...values,
-        first_name: values.first_name || undefined,
-        last_name: values.last_name || undefined,
-        bio: values.bio || undefined,
-        location: values.location || undefined,
-        website_url: values.website_url || undefined,
+        username: values.username,
+        display_name: values.display_name,
+        first_name: values.first_name || null,
+        last_name: values.last_name || null,
+        bio: values.bio || null,
+        location: values.location || null,
+        website_url: values.website_url || null,
+        linkedin_url: values.linkedin_url || null,
+        avatar_url: profile?.avatar_url ?? null,
       };
 
       const response = await api.updateProfile(cleanedData);
@@ -138,6 +170,12 @@ export function ProfileEditForm({ profile, onSuccess, variant = "card" }: Profil
         onSubmit={form.handleSubmit(handleSubmit)}
         className="space-y-6"
       >
+        {showPreview && (
+          <div className="mb-6">
+            <ProfileCard profile={previewProfile} onAvatarClick={onAvatarClick} />
+          </div>
+        )}
+
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}
@@ -178,8 +216,8 @@ export function ProfileEditForm({ profile, onSuccess, variant = "card" }: Profil
                 <Input placeholder="johndoe" {...field} />
               </FormControl>
               <FormDescription>
-                Your unique identifier. Only letters, numbers, and
-                underscores.
+                Your unique identifier. Only letters, numbers, underscores,
+                and periods.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -248,6 +286,24 @@ export function ProfileEditForm({ profile, onSuccess, variant = "card" }: Profil
                 <Input
                   type="url"
                   placeholder="https://example.com"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="linkedin_url"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>LinkedIn</FormLabel>
+              <FormControl>
+                <Input
+                  type="url"
+                  placeholder="https://linkedin.com/in/username"
                   {...field}
                 />
               </FormControl>

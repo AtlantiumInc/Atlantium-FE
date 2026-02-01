@@ -664,6 +664,35 @@ class ApiClient {
       method: "GET",
     }, APP_API_BASE_URL);
   }
+
+  // Public profile (no auth required)
+  async getPublicProfile(username: string): Promise<{
+    profile: {
+      id: string;
+      username: string;
+      display_name: string;
+      first_name?: string;
+      last_name?: string;
+      bio?: string;
+      avatar_url?: string;
+      location?: string;
+      website_url?: string;
+      linkedin_url?: string;
+      created_at?: string;
+    };
+    og: {
+      title: string;
+      description: string;
+      image: string;
+      url: string;
+      type: string;
+      site_name: string;
+    };
+  }> {
+    return this.request(`/profile?username=${encodeURIComponent(username)}`, {
+      method: "GET",
+    }, STRIPE_API_BASE_URL);
+  }
 }
 
 export const api = new ApiClient();

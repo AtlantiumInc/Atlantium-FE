@@ -1,4 +1,4 @@
-import { MapPin, Link as LinkIcon, Calendar } from "lucide-react";
+import { MapPin, Link as LinkIcon, Calendar, Camera } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ export interface Profile {
   avatar_url?: string;
   location?: string;
   website_url?: string;
+  linkedin_url?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -21,6 +22,7 @@ export interface Profile {
 interface ProfileCardProps {
   profile: Profile;
   variant?: "default" | "compact";
+  onAvatarClick?: () => void;
 }
 
 function getInitials(name: string): string {
@@ -40,7 +42,7 @@ function formatDate(dateString?: string): string {
   });
 }
 
-export function ProfileCard({ profile, variant = "default" }: ProfileCardProps) {
+export function ProfileCard({ profile, variant = "default", onAvatarClick }: ProfileCardProps) {
   if (variant === "compact") {
     return (
       <Card className="overflow-hidden">
@@ -64,10 +66,23 @@ export function ProfileCard({ profile, variant = "default" }: ProfileCardProps) 
     <Card className="overflow-hidden">
       <div className="h-20 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent" />
       <CardContent className="relative pt-0 pb-6 px-6">
-        <Avatar className="h-20 w-20 -mt-10 ring-4 ring-background">
-          <AvatarImage src={profile.avatar_url} alt={profile.display_name} />
-          <AvatarFallback className="text-xl">{getInitials(profile.display_name)}</AvatarFallback>
-        </Avatar>
+        <div className="relative -mt-10 w-fit group">
+          <Avatar className="h-20 w-20 ring-4 ring-background">
+            <AvatarImage src={profile.avatar_url} alt={profile.display_name} />
+            <AvatarFallback className="text-xl">{getInitials(profile.display_name)}</AvatarFallback>
+          </Avatar>
+
+          {onAvatarClick && (
+            <button
+              type="button"
+              onClick={onAvatarClick}
+              className="absolute inset-0 flex flex-col items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
+            >
+              <Camera className="h-5 w-5 text-white" />
+              <span className="text-[9px] font-medium text-white/90 mt-0.5">Change</span>
+            </button>
+          )}
+        </div>
 
         <div className="mt-3 space-y-3">
           <div>

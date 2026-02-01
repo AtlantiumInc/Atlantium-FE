@@ -1,26 +1,60 @@
 import { useState } from "react";
-import { Crown, ExternalLink, AlertTriangle, Loader2, Check } from "lucide-react";
+import { Crown, AlertTriangle, Loader2, Check, Camera, Link2, Copy } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { HolographicCard } from "@/components/ui/holographic-card";
 import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/contexts/SubscriptionContext";
-import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { UpgradeModal } from "./UpgradeModal";
 
-export function MembershipCard() {
-  const { subscription, isLoading, refreshSubscription } = useSubscription();
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [isLoadingPortal, setIsLoadingPortal] = useState(false);
+function getInitials(name?: string, email?: string): string {
+  if (name) {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  }
+  if (email) {
+    return email.charAt(0).toUpperCase();
+  }
+  return "U";
+}
 
-  const handleManageSubscription = async () => {
+interface MembershipCardProps {
+  onAvatarClick?: () => void;
+  username?: string;
+}
+
+export function MembershipCard({ onAvatarClick, username }: MembershipCardProps = {}) {
+  const { subscription, isLoading, refreshSubscription } = useSubscription();
+  const { user } = useAuth();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Get user avatar and display info
+  const userAny = user as unknown as Record<string, unknown> | null;
+  const profile = userAny?._profile as Record<string, unknown> | undefined;
+  const avatarUrl = user?.avatar || (profile?.avatar_url as string);
+
+  // Build full name from first_name and last_name
+  const firstName = user?.first_name || (profile?.first_name as string) || "";
+  const lastName = (userAny?.last_name as string) || (profile?.last_name as string) || "";
+  const fullName = [firstName, lastName].filter(Boolean).join(" ") || user?.display_name || (profile?.display_name as string);
+  const initials = getInitials(fullName, user?.email);
+  const profileUsername = username || (profile?.username as string) || "";
+  const inviteLink = `atlantium.ai/u/${profileUsername}`;
+
+  const handleCopyLink = async () => {
     try {
-      setIsLoadingPortal(true);
-      const response = await api.getPortalSession();
-      window.open(response.portal_url, "_blank");
-    } catch (error) {
-      toast.error("Failed to open billing portal");
-    } finally {
-      setIsLoadingPortal(false);
+      await navigator.clipboard.writeText(`https://${inviteLink}`);
+      setCopied(true);
+      toast.success("Link copied!");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy link");
     }
   };
 
@@ -32,11 +66,13 @@ export function MembershipCard() {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
+      <HolographicCard intensity={12} glareOpacity={0.25} holographicOpacity={0.12}>
+        <Card className="border-0 bg-card/80 backdrop-blur-sm">
+          <CardContent className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </CardContent>
+        </Card>
+      </HolographicCard>
     );
   }
 
@@ -64,25 +100,47 @@ export function MembershipCard() {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Crown className={`h-5 w-5 ${isClubMember ? "text-yellow-500" : "text-muted-foreground"}`} />
-              <CardTitle>Membership</CardTitle>
+      <HolographicCard intensity={12} glareOpacity={0.25} holographicOpacity={0.12}>
+        <Card className="border-0 bg-card/80 backdrop-blur-sm">
+          <CardHeader>
+          <div className="flex items-center gap-4">
+            <div className="relative group">
+              <Avatar className="h-12 w-12">
+                <AvatarImage src={avatarUrl} alt={fullName} />
+                <AvatarFallback className="text-sm font-medium">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              {onAvatarClick && (
+                <button
+                  type="button"
+                  onClick={onAvatarClick}
+                  className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
+                >
+                  <Camera className="h-4 w-4 text-white" />
+                </button>
+              )}
             </div>
-            {isClubMember && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs font-medium text-yellow-600 dark:text-yellow-400">
-                <Check className="h-3 w-3" />
-                Club Member
-              </span>
-            )}
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Crown className={`h-5 w-5 ${isClubMember ? "text-yellow-500" : "text-muted-foreground"}`} />
+                  <CardTitle>Membership</CardTitle>
+                </div>
+                {isClubMember && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs font-medium text-yellow-600 dark:text-yellow-400">
+                    <Check className="h-3 w-3" />
+                    Club Member
+                  </span>
+                )}
+              </div>
+              <CardDescription>
+                {isClubMember
+                  ? "You have access to all Club features including event RSVPs."
+                  : "Upgrade to Club for exclusive access to event RSVPs."}
+              </CardDescription>
+            </div>
           </div>
-          <CardDescription>
-            {isClubMember
-              ? "You have access to all Club features including event RSVPs."
-              : "Upgrade to Club for exclusive access to event RSVPs."}
-          </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
@@ -165,24 +223,23 @@ export function MembershipCard() {
             </div>
           )}
 
-          {/* Action buttons */}
+          {/* Action buttons / Welcome message */}
           <div className="pt-2">
             {isClubMember ? (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleManageSubscription}
-                disabled={isLoadingPortal}
-              >
-                {isLoadingPortal ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <ExternalLink className="h-4 w-4" />
-                    Manage Subscription
-                  </>
-                )}
-              </Button>
+              <div className="flex items-end justify-between py-1">
+                <p
+                  className="text-[11px] font-medium tracking-wider uppercase text-muted-foreground/70"
+                  style={{ letterSpacing: "0.1em" }}
+                >
+                  {fullName}
+                </p>
+                <p
+                  className="text-[10px] font-medium tracking-wider uppercase text-muted-foreground/60"
+                  style={{ letterSpacing: "0.1em" }}
+                >
+                  Welcome to the Frontier
+                </p>
+              </div>
             ) : (
               <Button className="w-full" onClick={() => setShowUpgradeModal(true)}>
                 <Crown className="h-4 w-4" />
@@ -191,7 +248,30 @@ export function MembershipCard() {
             )}
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </HolographicCard>
+
+      {/* Invitation Link */}
+      {profileUsername && (
+        <div className="mt-3 py-2.5 px-4 rounded-lg bg-muted/30 border border-border/50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <Link2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="text-xs text-muted-foreground truncate">{inviteLink}</span>
+            </div>
+            <button
+              onClick={handleCopyLink}
+              className="ml-2 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors shrink-0"
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-green-500" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       <UpgradeModal
         open={showUpgradeModal}
