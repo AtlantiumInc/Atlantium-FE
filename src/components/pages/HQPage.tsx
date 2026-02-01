@@ -20,7 +20,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { MembershipCard, MembershipGate, UpgradePrompt } from "@/components/subscription";
+import { MembershipGate, UpgradePrompt } from "@/components/subscription";
 
 interface FrontierArticle {
   id: string;
@@ -407,8 +407,6 @@ export function HQPage({ user: userProp }: HQPageProps) {
           </CardContent>
         </Card>
 
-        {/* Membership Card */}
-        <MembershipCard />
 
         {/* My Events */}
         <Card>

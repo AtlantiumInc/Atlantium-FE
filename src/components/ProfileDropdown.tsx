@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { User, Settings, LogOut, Trash2, Loader2 } from "lucide-react";
+import { User, LogOut, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { MembershipCard } from "@/components/subscription";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -133,11 +134,7 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setIsEditOpen(true)}>
             <User className="mr-2 h-4 w-4" />
-            <span>Edit Profile</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem disabled>
-            <Settings className="mr-2 h-4 w-4" />
-            <span>Settings</span>
+            <span>Profile</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -150,21 +147,28 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Edit Profile Sheet */}
+      {/* Profile Sheet */}
       <Sheet open={isEditOpen} onOpenChange={setIsEditOpen}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>Edit Profile</SheetTitle>
+            <SheetTitle>Profile</SheetTitle>
             <SheetDescription>
-              Update your profile information. Click save when you're done.
+              Manage your profile information and membership.
             </SheetDescription>
           </SheetHeader>
-          <div className="mt-2 px-4">
-            <ProfileEditForm
-              profile={profile || undefined}
-              onSuccess={handleProfileUpdate}
-              variant="sheet"
-            />
+          <div className="mt-6 space-y-6 px-4">
+            {/* Membership Card */}
+            <MembershipCard />
+
+            {/* Profile Edit Form */}
+            <div>
+              <h3 className="text-sm font-semibold mb-4">Profile Information</h3>
+              <ProfileEditForm
+                profile={profile || undefined}
+                onSuccess={handleProfileUpdate}
+                variant="sheet"
+              />
+            </div>
           </div>
 
           {/* Delete Account Section */}
