@@ -88,6 +88,7 @@ export function Sidebar({
             </Button>
           </>
         ) : (
+          <>
             <button
               onClick={() => onNavigate?.("hq")}
               className={cn(
