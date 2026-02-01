@@ -1,18 +1,10 @@
 import { useState, useEffect } from "react";
-import { User, LogOut, Trash2, Loader2 } from "lucide-react";
+import { Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { MembershipCard } from "@/components/subscription";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Sheet,
   SheetContent,
@@ -107,54 +99,37 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={avatarUrl} alt={displayName} />
-              <AvatarFallback className="text-xs font-medium">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56" align="end" forceMount>
-          <DropdownMenuLabel className="font-normal">
-            <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">
-                {displayName || "User"}
-              </p>
-              {user?.email && (
-                <p className="text-xs leading-none text-muted-foreground">
-                  {user.email}
-                </p>
-              )}
-            </div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => setIsEditOpen(true)}>
-            <User className="mr-2 h-4 w-4" />
-            <span>Profile</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={onLogout}
-            className="text-muted-foreground focus:text-foreground"
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Log out</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <Button
+        variant="ghost"
+        className="relative h-8 w-8 rounded-full p-0"
+        onClick={() => setIsEditOpen(true)}
+      >
+        <Avatar className="h-8 w-8">
+          <AvatarImage src={avatarUrl} alt={displayName} />
+          <AvatarFallback className="text-xs font-medium">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+      </Button>
 
       {/* Profile Sheet */}
       <Sheet open={isEditOpen} onOpenChange={setIsEditOpen}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Profile</SheetTitle>
-            <SheetDescription>
-              Manage your profile information and membership.
-            </SheetDescription>
+          <SheetHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b">
+            <div className="flex-1">
+              <SheetTitle>Profile</SheetTitle>
+              <SheetDescription>
+                Manage your profile information and membership.
+              </SheetDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onLogout}
+              className="text-muted-foreground hover:text-destructive h-8"
+            >
+              Logout
+            </Button>
           </SheetHeader>
           <div className="mt-6 space-y-6 px-4">
             {/* Membership Card */}
@@ -179,6 +154,7 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
             </p>
             <Button
               variant="destructive"
+              size="sm"
               className="mt-4"
               onClick={() => setIsDeleteOpen(true)}
             >

@@ -3,10 +3,8 @@ import { Button } from "@/components/ui/button";
 import {
   Compass,
   Calendar,
-  Trophy,
   ChevronLeft,
   ChevronRight,
-  LogOut,
   MessageCircle,
   UserPlus,
   FolderKanban,
@@ -130,20 +128,6 @@ export function Sidebar({
         ))}
       </nav>
 
-      {/* Footer */}
-      <div className="p-2 border-t border-border">
-        <Button
-          variant="ghost"
-          className={cn(
-            "w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10",
-            collapsed && "justify-center px-2"
-          )}
-          onClick={onLogout}
-        >
-          <LogOut size={20} />
-          {!collapsed && <span>Logout</span>}
-        </Button>
-      </div>
     </aside>
   );
 }
