@@ -603,6 +603,12 @@ class ApiClient {
     }, STRIPE_API_BASE_URL);
   }
 
+  async getRealtimeConfig(): Promise<{ realtime_hash: string }> {
+    return this.request<{ realtime_hash: string }>("/realtime/config", {
+      method: "GET",
+    }, STRIPE_API_BASE_URL);
+  }
+
   async getSubscription(): Promise<SubscriptionResponse> {
     return this.request<SubscriptionResponse>("/stripe/subscription", {
       method: "GET",

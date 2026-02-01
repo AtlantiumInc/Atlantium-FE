@@ -10,9 +10,8 @@ import {
 import { useAuth } from "./AuthContext";
 import { api } from "@/lib/api";
 import {
-  getXanoClient,
+  getXanoClientAsync,
   getPresenceChannelName,
-  isRealtimeConfigured,
 } from "@/lib/xano-realtime";
 import type {
   ConnectionState,
@@ -48,30 +47,42 @@ export function XanoRealtimeProvider({ children }: { children: ReactNode }) {
 
   // Initialize client when authenticated
   useEffect(() => {
-    if (!isRealtimeConfigured()) {
-      console.warn("Xano Realtime is not configured. Skipping initialization.");
-      return;
-    }
+    let cancelled = false;
 
-    if (isAuthenticated && user && !isInitializedRef.current) {
-      isInitializedRef.current = true;
-      const xanoClient = getXanoClient();
-      const token = api.getAuthToken();
+    async function initializeClient() {
+      if (isAuthenticated && user && !isInitializedRef.current) {
+        isInitializedRef.current = true;
 
-      if (token) {
-        xanoClient.setRealtimeAuthToken(token);
+        const xanoClient = await getXanoClientAsync();
+        if (cancelled || !xanoClient) {
+          if (!xanoClient) {
+            console.warn("Xano Realtime is not configured. Skipping initialization.");
+          }
+          return;
+        }
+
+        const token = api.getAuthToken();
+        if (token) {
+          xanoClient.setRealtimeAuthToken(token);
+        }
+
+        setClient(xanoClient);
+        setConnectionState("connected");
+      } else if (!isAuthenticated) {
+        // Disconnect when logged out
+        isInitializedRef.current = false;
+        setClient(null);
+        setConnectionState("disconnected");
+        setPresenceMap(new Map());
+        presenceChannelRef.current = null;
       }
-
-      setClient(xanoClient);
-      setConnectionState("connected");
-    } else if (!isAuthenticated) {
-      // Disconnect when logged out
-      isInitializedRef.current = false;
-      setClient(null);
-      setConnectionState("disconnected");
-      setPresenceMap(new Map());
-      presenceChannelRef.current = null;
     }
+
+    initializeClient();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isAuthenticated, user]);
 
   // Sync auth token changes
