@@ -313,20 +313,7 @@ export function StepPricing({
         {/* Stripe Elements with PaymentForm */}
         <Elements
           stripe={stripePromise}
-          options={{
-            clientSecret,
-            appearance: {
-              theme: "stripe",
-              variables: {
-                colorPrimary: "hsl(var(--primary))",
-                colorBackground: "hsl(var(--background))",
-                colorText: "hsl(var(--foreground))",
-                colorDanger: "hsl(var(--destructive))",
-                fontFamily: "inherit",
-                borderRadius: "6px",
-              },
-            },
-          }}
+          options={{ clientSecret }}
         >
           <PaymentForm
             clientSecret={clientSecret}
