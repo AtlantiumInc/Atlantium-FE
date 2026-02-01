@@ -256,15 +256,7 @@ export function ProfileEditForm({ profile, onSuccess, variant = "card" }: Profil
           )}
         />
 
-        <div className="flex justify-end gap-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => form.reset()}
-            disabled={isLoading}
-          >
-            Reset
-          </Button>
+        <div className="flex justify-end">
           <Button type="submit" disabled={isLoading}>
             {isLoading ? (
               <>
