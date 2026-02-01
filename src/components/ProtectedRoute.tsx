@@ -33,9 +33,9 @@ export function ProtectedRoute({
     const registrationDetails = profile?.registration_details as
       | Record<string, unknown>
       | undefined;
-    const needsOnboarding = !registrationDetails?.onboarding_completed_at;
+    const isOnboardingCompleted = registrationDetails?.is_completed === true;
 
-    if (needsOnboarding && location.pathname !== "/onboarding") {
+    if (!isOnboardingCompleted && location.pathname !== "/onboarding") {
       return <Navigate to="/onboarding" replace />;
     }
   }

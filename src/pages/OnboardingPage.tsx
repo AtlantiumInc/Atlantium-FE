@@ -48,6 +48,7 @@ export function OnboardingPage() {
 
       const registrationDetails = {
         ...registrationFields,
+        is_completed: true,
         onboarding_completed_at: new Date().toISOString(),
       };
 
