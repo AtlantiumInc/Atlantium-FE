@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { requestNotificationPermission } from "@/lib/notifications";
 import {
@@ -153,11 +151,6 @@ export function HQPage({ user: userProp }: HQPageProps) {
     });
   }, []);
 
-  const getInitials = (email?: string) => {
-    if (!email) return "U";
-    return email.charAt(0).toUpperCase();
-  };
-
   const getMembershipBadgeColor = (tier?: string) => {
     switch (tier) {
       case "club":
@@ -271,11 +264,6 @@ export function HQPage({ user: userProp }: HQPageProps) {
     weekday: "short",
     month: "short",
     day: "numeric",
-  });
-  const currentTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
   });
 
   return (

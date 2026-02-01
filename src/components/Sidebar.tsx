@@ -14,7 +14,6 @@ import {
 interface SidebarProps {
   onNavigate?: (page: string) => void;
   activePage?: string;
-  onLogout?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }
@@ -22,7 +21,6 @@ interface SidebarProps {
 export function Sidebar({
   onNavigate,
   activePage = "hq",
-  onLogout,
   collapsed = false,
   onToggleCollapse,
 }: SidebarProps) {
