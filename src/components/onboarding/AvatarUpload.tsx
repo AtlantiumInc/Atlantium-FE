@@ -47,7 +47,7 @@ export function AvatarUpload({
 
     try {
       // Upload to Xano file storage
-      const response = await api.uploadFile(file);
+      const response = await api.uploadImage(file);
       if (response?.url) {
         onUpload(response.url);
         toast.success("Avatar uploaded");

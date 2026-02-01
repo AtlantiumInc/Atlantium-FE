@@ -50,10 +50,8 @@ export function StepAvatar({
     setIsUploading(true);
     try {
       const result = await api.uploadImage(file);
-      // Handle both direct URL string and object with url property
-      const imageUrl = typeof result.url === "string" ? result.url : result.url?.url;
-      if (imageUrl) {
-        onUpdate("avatar_url", imageUrl);
+      if (result.url) {
+        onUpdate("avatar_url", result.url);
         toast.success("Photo uploaded");
       } else {
         throw new Error("No URL returned from upload");
