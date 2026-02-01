@@ -279,11 +279,11 @@ export function HQPage({ user: userProp }: HQPageProps) {
   });
 
   return (
-    <div className="flex gap-6 w-full">
+    <div className="flex gap-8 w-full">
       {/* Left Column - Main Content */}
-      <div className="flex-1 space-y-6 min-w-0">
+      <div className="flex-1 space-y-8 min-w-0">
         {/* Featured Articles - Top Row */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-6">
           {isLoadingArticles ? (
             <>
               {[1, 2].map((i) => (
@@ -302,31 +302,31 @@ export function HQPage({ user: userProp }: HQPageProps) {
             </>
           ) : (
             featuredArticles.map((article) => (
-              <Card key={article.id} className="overflow-hidden group cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all">
-                <div className="aspect-video bg-gradient-to-br from-primary/20 via-primary/10 to-background relative">
+              <Card key={article.id} className="overflow-hidden group cursor-pointer hover:shadow-lg transition-all duration-300">
+                <div className="aspect-video bg-gradient-to-br from-primary/20 via-primary/10 to-background relative overflow-hidden">
                   {article.content.featured_image?.url ? (
                     <img
                       src={article.content.featured_image.url}
                       alt={article.content.featured_image.alt || article.content.title}
-                      className="absolute inset-0 w-full h-full object-cover"
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <Sparkles className="h-12 w-12 text-primary/40" />
                     </div>
                   )}
-                  <div className="absolute top-3 left-3">
-                    <span className="px-2 py-1 bg-primary text-primary-foreground text-xs rounded-full">
+                  <div className="absolute top-4 left-4">
+                    <span className="px-3 py-1.5 bg-black/50 backdrop-blur-sm text-white text-xs font-medium rounded-full">
                       {article.content.tags?.[0] || "Article"}
                     </span>
                   </div>
                 </div>
-                <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                    <Sparkles size={12} />
-                    {article.content.publisher?.name || "Unknown"}
+                <CardContent className="p-5 space-y-2">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <Sparkles size={12} className="flex-shrink-0" />
+                    <span>{article.content.publisher?.name || "Unknown"}</span>
                   </p>
-                  <h3 className="font-semibold line-clamp-2 group-hover:text-primary transition-colors">
+                  <h3 className="font-semibold leading-snug line-clamp-2 group-hover:text-primary transition-colors">
                     {article.content.title}
                   </h3>
                 </CardContent>
@@ -337,42 +337,48 @@ export function HQPage({ user: userProp }: HQPageProps) {
 
         {/* Second Row - Upcoming Events */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Calendar size={16} />
+          <CardHeader className="pb-3 border-b">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Calendar size={18} className="text-primary" />
               Upcoming Events
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="pt-6">
             {isLoadingUpcomingEvents ? (
-              <div className="flex justify-center py-4">
+              <div className="flex justify-center py-8">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : upcomingEvents.length > 0 ? (
-              upcomingEvents.map((event) => (
-                <div
-                  key={event.id}
-                  className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 rounded p-3 -mx-3 transition-colors border-l-2 border-primary"
-                  onClick={() => setSelectedEvent(event)}
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{event.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatEventDate(event.start_time)} at {formatEventTime(event.start_time)}
-                    </p>
-                    {event.event_type && (
-                      <p className="text-xs text-primary capitalize mt-1">{event.event_type}</p>
+              <div className="space-y-4">
+                {upcomingEvents.map((event) => (
+                  <div
+                    key={event.id}
+                    className="flex items-start gap-4 cursor-pointer hover:bg-muted/40 rounded-lg p-4 -mx-4 transition-colors duration-200 border-l-3 border-primary"
+                    onClick={() => setSelectedEvent(event)}
+                  >
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      <p className="text-sm font-semibold leading-snug">{event.title}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{formatEventDate(event.start_time)}</span>
+                        <span>•</span>
+                        <span>{formatEventTime(event.start_time)}</span>
+                      </div>
+                      {event.event_type && (
+                        <span className="inline-block text-xs bg-primary/10 text-primary px-2 py-0.5 rounded capitalize font-medium">
+                          {event.event_type}
+                        </span>
+                      )}
+                    </div>
+                    {event.going_count !== undefined && (
+                      <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">
+                        {event.going_count} going
+                      </span>
                     )}
                   </div>
-                  {event.going_count !== undefined && (
-                    <span className="text-xs text-muted-foreground font-medium">
-                      {event.going_count} going
-                    </span>
-                  )}
-                </div>
-              ))
+                ))}
+              </div>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">
+              <p className="text-sm text-muted-foreground text-center py-8">
                 No upcoming events
               </p>
             )}
@@ -381,26 +387,26 @@ export function HQPage({ user: userProp }: HQPageProps) {
       </div>
 
       {/* Right Column - Sidebar */}
-      <div className="w-80 flex-shrink-0 space-y-4">
+      <div className="w-80 flex-shrink-0 space-y-6">
         {/* Welcome Card */}
         <Card>
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Good morning,</p>
-                <h2 className="text-xl font-semibold">{userName}</h2>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {currentDate} - {currentTime}
+          <CardContent className="p-6 space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1.5">
+                <p className="text-sm text-muted-foreground font-medium">Good morning</p>
+                <h2 className="text-2xl font-bold leading-tight">{userName}</h2>
+                <p className="text-xs text-muted-foreground">
+                  {currentDate} at {currentTime}
                 </p>
               </div>
-              <Avatar className="h-12 w-12">
+              <Avatar className="h-14 w-14 flex-shrink-0">
                 <AvatarImage src="" />
-                <AvatarFallback className="text-lg">{getInitials(user?.email)}</AvatarFallback>
+                <AvatarFallback className="text-base font-semibold">{getInitials(user?.email)}</AvatarFallback>
               </Avatar>
             </div>
             {/* Membership Badge */}
             {user && (user as any)?._profile?.registration_details?.membership_tier && (
-              <div className={`px-3 py-1.5 rounded-full border text-xs font-medium w-fit ${getMembershipBadgeColor((user as any)._profile.registration_details.membership_tier)}`}>
+              <div className={`px-3 py-2 rounded-lg border text-xs font-semibold w-fit ${getMembershipBadgeColor((user as any)._profile.registration_details.membership_tier)}`}>
                 {getMembershipLabel((user as any)._profile.registration_details.membership_tier)}
               </div>
             )}
@@ -410,44 +416,41 @@ export function HQPage({ user: userProp }: HQPageProps) {
 
         {/* My Events */}
         <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Calendar size={16} />
-                My Events
-              </CardTitle>
-            </div>
+          <CardHeader className="pb-3 border-b">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Calendar size={18} className="text-primary" />
+              My Events
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="pt-6">
             {isLoadingMyEvents ? (
-              <div className="flex justify-center py-4">
+              <div className="flex justify-center py-8">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : myEvents.length > 0 ? (
-              myEvents.slice(0, 4).map((event) => (
-                <div
-                  key={event.id}
-                  className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 rounded p-2 -mx-2 transition-colors"
-                  onClick={() => setSelectedEvent(event)}
-                >
-                  <span className="text-xs text-muted-foreground w-14">
-                    {formatEventTime(event.start_time)}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{event.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatEventDate(event.start_time)}
-                    </p>
+              <div className="space-y-3">
+                {myEvents.slice(0, 4).map((event) => (
+                  <div
+                    key={event.id}
+                    className="flex items-start gap-3 cursor-pointer hover:bg-muted/40 rounded-lg p-3 -mx-3 transition-colors duration-200"
+                    onClick={() => setSelectedEvent(event)}
+                  >
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <p className="text-sm font-medium leading-snug truncate">{event.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatEventDate(event.start_time)} • {formatEventTime(event.start_time)}
+                      </p>
+                    </div>
+                    {event.user_rsvp && (
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded whitespace-nowrap ${getRsvpStatusColor(event.user_rsvp.rsvp_status)}`}>
+                        {getRsvpStatusLabel(event.user_rsvp.rsvp_status)}
+                      </span>
+                    )}
                   </div>
-                  {event.user_rsvp && (
-                    <span className={`text-xs font-medium px-2 py-1 rounded ${getRsvpStatusColor(event.user_rsvp.rsvp_status)}`}>
-                      {getRsvpStatusLabel(event.user_rsvp.rsvp_status)}
-                    </span>
-                  )}
-                </div>
-              ))
+                ))}
+              </div>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-2">
+              <p className="text-sm text-muted-foreground text-center py-8">
                 No upcoming events
               </p>
             )}
