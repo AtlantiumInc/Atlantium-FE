@@ -597,6 +597,12 @@ class ApiClient {
   }
 
   // Stripe subscription methods
+  async getStripeConfig(): Promise<{ publishable_key: string }> {
+    return this.request<{ publishable_key: string }>("/stripe/config", {
+      method: "GET",
+    }, STRIPE_API_BASE_URL);
+  }
+
   async getSubscription(): Promise<SubscriptionResponse> {
     return this.request<SubscriptionResponse>("/stripe/subscription", {
       method: "GET",
