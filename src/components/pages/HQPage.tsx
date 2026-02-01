@@ -151,30 +151,6 @@ export function HQPage({ user: userProp }: HQPageProps) {
     });
   }, []);
 
-  const getMembershipBadgeColor = (tier?: string) => {
-    switch (tier) {
-      case "club":
-        return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
-      case "club_annual":
-        return "bg-amber-500/10 text-amber-600 dark:text-amber-400";
-      case "free":
-      default:
-        return "bg-muted/50 text-muted-foreground";
-    }
-  };
-
-  const getMembershipLabel = (tier?: string) => {
-    switch (tier) {
-      case "club":
-        return "Club Member";
-      case "club_annual":
-        return "Annual Member";
-      case "free":
-      default:
-        return "Free Member";
-    }
-  };
-
   const formatEventDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       month: "short",
