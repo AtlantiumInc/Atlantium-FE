@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import {
   Compass,
   Calendar,
+  Trophy,
   ChevronLeft,
   ChevronRight,
   MessageCircle,
