@@ -271,16 +271,9 @@ export function HQPage({ user: userProp }: HQPageProps) {
       {/* Left Column - Main Content */}
       <div className="flex-1 space-y-6 min-w-0">
         {/* Welcome Banner */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Welcome back, {userName}</h1>
-            <p className="text-sm text-muted-foreground mt-1">{currentDate}</p>
-          </div>
-          {user && (user as any)?._profile?.registration_details?.membership_tier && (
-            <span className={`text-xs px-2.5 py-1 rounded-md font-medium ${getMembershipBadgeColor((user as any)._profile.registration_details.membership_tier)}`}>
-              {getMembershipLabel((user as any)._profile.registration_details.membership_tier)}
-            </span>
-          )}
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Welcome back, {userName}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{currentDate}</p>
         </div>
 
         {/* Featured Articles */}

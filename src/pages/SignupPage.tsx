@@ -62,7 +62,7 @@ export function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const { login } = useAuth();
+  const { login, checkAuth } = useAuth();
   const navigate = useNavigate();
 
   const signupForm = useForm<SignupFormValues>({
@@ -116,6 +116,8 @@ export function SignupPage() {
     try {
       const response = await api.verifyOtp(email, code);
       login(response.auth_token, response.user);
+      // Fetch full user data (including profile with registration_details)
+      await checkAuth();
       navigate("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid verification code");

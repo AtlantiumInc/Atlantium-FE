@@ -30,7 +30,7 @@ import { StepAvatar } from "../components/onboarding/steps/StepAvatar";
 
 export function OnboardingPage() {
   const navigate = useNavigate();
-  const { user, checkAuth } = useAuth();
+  const { user, checkAuth, logout } = useAuth();
 
   // Extract initial data from user profile (for Google auth pre-fill)
   const userAny = user as unknown as Record<string, unknown> | null;
@@ -201,6 +201,7 @@ export function OnboardingPage() {
         />
       }
       preview={<ProfilePreview formData={formData} email={user?.email} />}
+      onLogout={logout}
     >
       <div className="space-y-8">
         {/* Step content with animation */}

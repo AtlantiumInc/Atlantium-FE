@@ -1,12 +1,15 @@
 import type { ReactNode } from "react";
 import { motion } from "motion/react";
+import { LogOut } from "lucide-react";
 import { ThemeToggle } from "../ThemeToggle";
+import { Button } from "../ui/button";
 
 interface OnboardingLayoutProps {
   children: ReactNode;
   preview: ReactNode;
   progress: ReactNode;
   wide?: boolean;
+  onLogout?: () => void;
 }
 
 export function OnboardingLayout({
@@ -14,6 +17,7 @@ export function OnboardingLayout({
   preview,
   progress,
   wide = false,
+  onLogout,
 }: OnboardingLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
@@ -24,8 +28,19 @@ export function OnboardingLayout({
             <span className="text-xl font-bold">Atlantium</span>
           </div>
           <div className="flex-1 max-w-md mx-4">{progress}</div>
-          <div className="w-24 flex justify-end">
+          <div className="flex items-center gap-2">
             <ThemeToggle />
+            {onLogout && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onLogout}
+                className="text-muted-foreground hover:text-destructive"
+              >
+                <LogOut className="h-4 w-4 mr-1" />
+                Logout
+              </Button>
+            )}
           </div>
         </div>
       </header>
