@@ -161,12 +161,12 @@ export function HQPage({ user: userProp }: HQPageProps) {
   const getMembershipBadgeColor = (tier?: string) => {
     switch (tier) {
       case "club":
-        return "bg-cyan-500/20 text-cyan-600 border-cyan-500/30";
+        return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
       case "club_annual":
-        return "bg-amber-500/20 text-amber-600 border-amber-500/30";
+        return "bg-amber-500/10 text-amber-600 dark:text-amber-400";
       case "free":
       default:
-        return "bg-muted text-muted-foreground border-border";
+        return "bg-muted/50 text-muted-foreground";
     }
   };
 
@@ -279,170 +279,145 @@ export function HQPage({ user: userProp }: HQPageProps) {
   });
 
   return (
-    <div className="flex gap-8 w-full">
+    <div className="flex gap-6 w-full max-w-6xl mx-auto">
       {/* Left Column - Main Content */}
-      <div className="flex-1 space-y-8 min-w-0">
-        {/* Featured Articles - Top Row */}
-        <div className="grid grid-cols-2 gap-6">
-          {isLoadingArticles ? (
-            <>
-              {[1, 2].map((i) => (
-                <Card key={i} className="overflow-hidden">
-                  <div className="aspect-video bg-gradient-to-br from-primary/20 via-primary/10 to-background relative">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary/40" />
-                    </div>
-                  </div>
-                  <CardContent className="p-4">
-                    <div className="h-4 bg-muted rounded w-20 mb-2" />
-                    <div className="h-5 bg-muted rounded w-full" />
-                  </CardContent>
-                </Card>
-              ))}
-            </>
-          ) : (
-            featuredArticles.map((article) => (
-              <Card key={article.id} className="overflow-hidden group cursor-pointer hover:shadow-lg transition-all duration-300">
-                <div className="aspect-video bg-gradient-to-br from-primary/20 via-primary/10 to-background relative overflow-hidden">
-                  {article.content.featured_image?.url ? (
-                    <img
-                      src={article.content.featured_image.url}
-                      alt={article.content.featured_image.alt || article.content.title}
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Sparkles className="h-12 w-12 text-primary/40" />
-                    </div>
-                  )}
-                  <div className="absolute top-4 left-4">
-                    <span className="px-3 py-1.5 bg-black/50 backdrop-blur-sm text-white text-xs font-medium rounded-full">
-                      {article.content.tags?.[0] || "Article"}
-                    </span>
-                  </div>
-                </div>
-                <CardContent className="p-5 space-y-2">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                    <Sparkles size={12} className="flex-shrink-0" />
-                    <span>{article.content.publisher?.name || "Unknown"}</span>
-                  </p>
-                  <h3 className="font-semibold leading-snug line-clamp-2 group-hover:text-primary transition-colors">
-                    {article.content.title}
-                  </h3>
-                </CardContent>
-              </Card>
-            ))
+      <div className="flex-1 space-y-6 min-w-0">
+        {/* Welcome Banner */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Welcome back, {userName}</h1>
+            <p className="text-sm text-muted-foreground mt-1">{currentDate}</p>
+          </div>
+          {user && (user as any)?._profile?.registration_details?.membership_tier && (
+            <span className={`text-xs px-2.5 py-1 rounded-md font-medium ${getMembershipBadgeColor((user as any)._profile.registration_details.membership_tier)}`}>
+              {getMembershipLabel((user as any)._profile.registration_details.membership_tier)}
+            </span>
           )}
         </div>
 
-        {/* Second Row - Upcoming Events */}
-        <Card>
-          <CardHeader className="pb-3 border-b">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Calendar size={18} className="text-primary" />
-              Upcoming Events
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
+        {/* Featured Articles */}
+        <section>
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Latest from Frontier</h2>
+          <div className="grid grid-cols-2 gap-4">
+            {isLoadingArticles ? (
+              <>
+                {[1, 2].map((i) => (
+                  <div key={i} className="rounded-xl overflow-hidden bg-card border border-border">
+                    <div className="aspect-[16/10] bg-muted animate-pulse" />
+                    <div className="p-4 space-y-2">
+                      <div className="h-3 bg-muted rounded w-16" />
+                      <div className="h-4 bg-muted rounded w-full" />
+                    </div>
+                  </div>
+                ))}
+              </>
+            ) : (
+              featuredArticles.map((article) => (
+                <div
+                  key={article.id}
+                  className="rounded-xl overflow-hidden bg-card border border-border group cursor-pointer hover:border-primary/30 transition-colors"
+                >
+                  <div className="aspect-[16/10] bg-muted relative overflow-hidden">
+                    {article.content.featured_image?.url ? (
+                      <img
+                        src={article.content.featured_image.url}
+                        alt={article.content.featured_image.alt || article.content.title}
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
+                        <Sparkles className="h-10 w-10 text-primary/30" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                    <span className="absolute bottom-3 left-3 text-xs text-white/90 font-medium">
+                      {article.content.tags?.[0] || "Article"}
+                    </span>
+                  </div>
+                  <div className="p-4">
+                    <p className="text-xs text-muted-foreground mb-1.5">{article.content.publisher?.name || "Unknown"}</p>
+                    <h3 className="text-sm font-medium leading-snug line-clamp-2 group-hover:text-primary transition-colors">
+                      {article.content.title}
+                    </h3>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+        {/* Upcoming Events */}
+        <section>
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Upcoming Events</h2>
+          <div className="rounded-xl bg-card border border-border divide-y divide-border">
             {isLoadingUpcomingEvents ? (
-              <div className="flex justify-center py-8">
+              <div className="flex justify-center py-12">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : upcomingEvents.length > 0 ? (
-              <div className="space-y-4">
-                {upcomingEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className="flex items-start gap-4 cursor-pointer hover:bg-muted/40 rounded-lg p-4 -mx-4 transition-colors duration-200 border-l-3 border-primary"
-                    onClick={() => setSelectedEvent(event)}
-                  >
-                    <div className="flex-1 min-w-0 space-y-1.5">
-                      <p className="text-sm font-semibold leading-snug">{event.title}</p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{formatEventDate(event.start_time)}</span>
-                        <span>•</span>
-                        <span>{formatEventTime(event.start_time)}</span>
-                      </div>
-                      {event.event_type && (
-                        <span className="inline-block text-xs bg-primary/10 text-primary px-2 py-0.5 rounded capitalize font-medium">
-                          {event.event_type}
-                        </span>
-                      )}
-                    </div>
-                    {event.going_count !== undefined && (
-                      <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">
+              upcomingEvents.slice(0, 5).map((event) => (
+                <div
+                  key={event.id}
+                  className="flex items-center gap-4 p-4 cursor-pointer hover:bg-muted/30 transition-colors first:rounded-t-xl last:rounded-b-xl"
+                  onClick={() => setSelectedEvent(event)}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{event.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {formatEventDate(event.start_time)} · {formatEventTime(event.start_time)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {event.event_type && (
+                      <span className="text-xs text-muted-foreground capitalize">
+                        {event.event_type.replace("_", " ")}
+                      </span>
+                    )}
+                    {event.going_count !== undefined && event.going_count > 0 && (
+                      <span className="text-xs text-muted-foreground tabular-nums">
                         {event.going_count} going
                       </span>
                     )}
                   </div>
-                ))}
-              </div>
+                </div>
+              ))
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                No upcoming events
-              </p>
+              <div className="py-12 text-center">
+                <p className="text-sm text-muted-foreground">No upcoming events</p>
+              </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       </div>
 
       {/* Right Column - Sidebar */}
-      <div className="w-80 flex-shrink-0 space-y-6">
-        {/* Welcome Card */}
-        <Card>
-          <CardContent className="p-6 space-y-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1.5">
-                <p className="text-sm text-muted-foreground font-medium">Good morning</p>
-                <h2 className="text-2xl font-bold leading-tight">{userName}</h2>
-                <p className="text-xs text-muted-foreground">
-                  {currentDate} at {currentTime}
-                </p>
-              </div>
-              <Avatar className="h-14 w-14 flex-shrink-0">
-                <AvatarImage src="" />
-                <AvatarFallback className="text-base font-semibold">{getInitials(user?.email)}</AvatarFallback>
-              </Avatar>
-            </div>
-            {/* Membership Badge */}
-            {user && (user as any)?._profile?.registration_details?.membership_tier && (
-              <div className={`px-3 py-2 rounded-lg border text-xs font-semibold w-fit ${getMembershipBadgeColor((user as any)._profile.registration_details.membership_tier)}`}>
-                {getMembershipLabel((user as any)._profile.registration_details.membership_tier)}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-
+      <div className="w-72 flex-shrink-0 space-y-4">
         {/* My Events */}
-        <Card>
-          <CardHeader className="pb-3 border-b">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Calendar size={18} className="text-primary" />
-              My Events
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
+        <div className="rounded-xl bg-card border border-border">
+          <div className="px-4 py-3 border-b border-border">
+            <h3 className="text-sm font-medium">My Events</h3>
+          </div>
+          <div className="p-2">
             {isLoadingMyEvents ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : myEvents.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-1">
                 {myEvents.slice(0, 4).map((event) => (
                   <div
                     key={event.id}
-                    className="flex items-start gap-3 cursor-pointer hover:bg-muted/40 rounded-lg p-3 -mx-3 transition-colors duration-200"
+                    className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
                     onClick={() => setSelectedEvent(event)}
                   >
-                    <div className="flex-1 min-w-0 space-y-1">
-                      <p className="text-sm font-medium leading-snug truncate">{event.title}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{event.title}</p>
                       <p className="text-xs text-muted-foreground">
-                        {formatEventDate(event.start_time)} • {formatEventTime(event.start_time)}
+                        {formatEventDate(event.start_time)}
                       </p>
                     </div>
                     {event.user_rsvp && (
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded whitespace-nowrap ${getRsvpStatusColor(event.user_rsvp.rsvp_status)}`}>
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded ${getRsvpStatusColor(event.user_rsvp.rsvp_status)}`}>
                         {getRsvpStatusLabel(event.user_rsvp.rsvp_status)}
                       </span>
                     )}
@@ -450,13 +425,12 @@ export function HQPage({ user: userProp }: HQPageProps) {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                No upcoming events
-              </p>
+              <div className="py-8 text-center">
+                <p className="text-xs text-muted-foreground">No registered events</p>
+              </div>
             )}
-          </CardContent>
-        </Card>
-
+          </div>
+        </div>
       </div>
 
       {/* Event Modal */}
