@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "motion/react";
 import { MapPin, Check, Search, Navigation } from "lucide-react";
-import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import { Button } from "../../ui/button";
+import { Switch } from "../../ui/switch";
 import type { OnboardingFormData } from "../../../lib/onboarding-schema";
 import { TIMEZONE_OPTIONS, detectUserTimezone } from "../../../lib/onboarding-options";
 import { cn } from "../../../lib/utils";
@@ -55,7 +55,7 @@ export function StepTimezone({ formData, errors, onUpdate }: StepTimezoneProps) 
       >
         <div className="space-y-2">
           <h2 className="text-2xl font-bold tracking-tight">
-            We detected your location
+            Select your location
           </h2>
           <p className="text-muted-foreground">
             We'll use this to show event times in your local time.
@@ -90,6 +90,29 @@ export function StepTimezone({ formData, errors, onUpdate }: StepTimezoneProps) 
           Not right? Choose a different location
         </Button>
 
+        {/* Georgia Resident Toggle */}
+        <button
+          type="button"
+          onClick={() =>
+            onUpdate("is_georgia_resident" as keyof OnboardingFormData, !formData.is_georgia_resident)
+          }
+          className="w-full flex items-center justify-between p-4 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer text-left"
+        >
+          <div className="space-y-1">
+            <span className="text-sm font-medium">I am a Georgia resident</span>
+            <p className="text-xs text-muted-foreground">
+              Eligible for special local events and programs.
+            </p>
+          </div>
+          <Switch
+            checked={formData.is_georgia_resident || false}
+            onCheckedChange={(checked) =>
+              onUpdate("is_georgia_resident" as keyof OnboardingFormData, checked)
+            }
+            onClick={(e) => e.stopPropagation()}
+          />
+        </button>
+
         {errors.timezone && (
           <p className="text-sm text-destructive">{errors.timezone}</p>
         )}
@@ -108,7 +131,7 @@ export function StepTimezone({ formData, errors, onUpdate }: StepTimezoneProps) 
     >
       <div className="space-y-2">
         <h2 className="text-2xl font-bold tracking-tight">
-          Where are you located?
+          Select your location
         </h2>
         <p className="text-muted-foreground">
           Search for your city or select from the list.

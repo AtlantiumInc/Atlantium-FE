@@ -1,16 +1,19 @@
 import type { ReactNode } from "react";
 import { motion } from "motion/react";
+import { ThemeToggle } from "../ThemeToggle";
 
 interface OnboardingLayoutProps {
   children: ReactNode;
   preview: ReactNode;
   progress: ReactNode;
+  wide?: boolean;
 }
 
 export function OnboardingLayout({
   children,
   preview,
   progress,
+  wide = false,
 }: OnboardingLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
@@ -21,7 +24,9 @@ export function OnboardingLayout({
             <span className="text-xl font-bold">Atlantium</span>
           </div>
           <div className="flex-1 max-w-md mx-4">{progress}</div>
-          <div className="w-24" /> {/* Spacer for balance */}
+          <div className="w-24 flex justify-end">
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
@@ -35,7 +40,7 @@ export function OnboardingLayout({
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <div className="w-full max-w-md">{children}</div>
+            <div className={wide ? "w-full max-w-4xl" : "w-full max-w-md"}>{children}</div>
           </motion.div>
 
           {/* Right panel - Preview (hidden on mobile) */}

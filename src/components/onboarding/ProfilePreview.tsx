@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "motion/react";
-import { User } from "lucide-react";
+import { User, Crown, Calendar, Star } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import type { OnboardingFormData } from "../../lib/onboarding-schema";
@@ -16,6 +16,24 @@ interface ProfilePreviewProps {
   email?: string;
 }
 
+const MEMBERSHIP_CONFIG = {
+  free: {
+    label: "Free",
+    icon: Star,
+    className: "bg-muted text-muted-foreground",
+  },
+  club: {
+    label: "Club Member",
+    icon: Crown,
+    className: "bg-yellow-500/10 text-yellow-600 border-yellow-500/30",
+  },
+  club_annual: {
+    label: "Annual Member",
+    icon: Calendar,
+    className: "bg-primary/10 text-primary border-primary/30",
+  },
+};
+
 export function ProfilePreview({ formData, email }: ProfilePreviewProps) {
   const hasName = formData.first_name || formData.last_name;
   const fullName =
@@ -28,6 +46,10 @@ export function ProfilePreview({ formData, email }: ProfilePreviewProps) {
         .join("")
         .toUpperCase()
     : "";
+
+  const membershipTier = formData.membership_tier || "free";
+  const membership = MEMBERSHIP_CONFIG[membershipTier as keyof typeof MEMBERSHIP_CONFIG];
+  const MembershipIcon = membership?.icon || Star;
 
   return (
     <div className="space-y-6">
@@ -70,6 +92,27 @@ export function ProfilePreview({ formData, email }: ProfilePreviewProps) {
           {email && (
             <p className="text-sm text-muted-foreground mt-1">{email}</p>
           )}
+
+          {/* Membership Badge */}
+          <AnimatePresence>
+            {formData.membership_tier && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.2 }}
+                className="mt-3"
+              >
+                <Badge
+                  variant="outline"
+                  className={`${membership?.className} gap-1`}
+                >
+                  <MembershipIcon className="h-3 w-3" />
+                  {membership?.label}
+                </Badge>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Profile Details */}

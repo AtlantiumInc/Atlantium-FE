@@ -14,9 +14,10 @@ interface PaymentFormProps {
   clientSecret: string;
   onSuccess: () => void;
   onCancel: () => void;
+  tier?: "club" | "club_annual";
 }
 
-export function PaymentForm({ clientSecret, onSuccess, onCancel }: PaymentFormProps) {
+export function PaymentForm({ clientSecret, onSuccess, onCancel, tier = "club" }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -71,7 +72,8 @@ export function PaymentForm({ clientSecret, onSuccess, onCancel }: PaymentFormPr
 
       // Create the subscription with the payment method
       const subscribeResponse = await api.subscribe(
-        setupIntent.payment_method as string
+        setupIntent.payment_method as string,
+        tier
       );
 
       // Handle 3D Secure if required
@@ -163,6 +165,8 @@ export function PaymentForm({ clientSecret, onSuccess, onCancel }: PaymentFormPr
               <Loader2 className="h-4 w-4 animate-spin" />
               Processing...
             </>
+          ) : tier === "club_annual" ? (
+            "Subscribe - $399/year"
           ) : (
             "Subscribe - $49/mo"
           )}

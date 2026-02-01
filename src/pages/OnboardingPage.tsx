@@ -35,7 +35,11 @@ export function OnboardingPage() {
   // Extract initial data from user profile (for Google auth pre-fill)
   const userAny = user as unknown as Record<string, unknown> | null;
   const profile = userAny?._profile as Record<string, unknown> | undefined;
+  const subscription = userAny?._subscription as { membership_tier?: string; subscription_status?: string; has_club_access?: boolean } | undefined;
   const googleAvatarUrl = user?.avatar || (profile?.avatar_url as string);
+
+  // Check if user already has an active subscription
+  const existingMembershipTier = subscription?.subscription_status === "active" ? subscription?.membership_tier : undefined;
 
   const handleComplete = useCallback(
     async (data: OnboardingFormData) => {
@@ -154,6 +158,7 @@ export function OnboardingPage() {
             {...stepProps}
             onPlanSelected={handlePlanSelected}
             onBack={prevStep}
+            existingSubscription={existingMembershipTier}
           />
         );
       case 6:
@@ -177,6 +182,7 @@ export function OnboardingPage() {
 
   return (
     <OnboardingLayout
+      wide={currentStep === 5}
       progress={
         <OnboardingProgress
           currentStep={visibleStepNumber}

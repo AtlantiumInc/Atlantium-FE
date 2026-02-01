@@ -609,10 +609,10 @@ class ApiClient {
     }, STRIPE_API_BASE_URL);
   }
 
-  async subscribe(paymentMethodId: string): Promise<SubscribeResponse> {
+  async subscribe(paymentMethodId: string, tier: "club" | "club_annual" = "club"): Promise<SubscribeResponse> {
     return this.request<SubscribeResponse>("/stripe/subscribe", {
       method: "POST",
-      body: JSON.stringify({ payment_method_id: paymentMethodId }),
+      body: JSON.stringify({ payment_method_id: paymentMethodId, tier }),
     }, STRIPE_API_BASE_URL);
   }
 

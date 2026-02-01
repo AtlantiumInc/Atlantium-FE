@@ -55,6 +55,7 @@ export const timezoneSchema = z.object({
   timezone: z.enum(timezoneValues, {
     message: "Please select a timezone",
   }),
+  is_georgia_resident: z.boolean().optional(),
 });
 
 export const primaryGoalSchema = z.object({
@@ -129,6 +130,7 @@ export const onboardingFormSchema = z
 
     // registration_details fields
     timezone: z.enum(timezoneValues),
+    is_georgia_resident: z.boolean().optional(),
     primary_goal: z.enum(primaryGoalValues),
     interests: z.array(z.enum(interestValues)).min(1),
     membership_tier: z.enum(["free", "club", "club_annual"]).optional(),

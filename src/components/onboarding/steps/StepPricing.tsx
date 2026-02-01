@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Elements } from "@stripe/react-stripe-js";
-import { ArrowLeft, Check, Crown, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, Crown, Loader2, Calendar, Star } from "lucide-react";
 import { Button } from "../../ui/button";
 import { PaymentForm } from "../../subscription/PaymentForm";
 import { stripePromise } from "../../../lib/stripe";
@@ -18,6 +18,7 @@ interface StepPricingProps {
   ) => void;
   onPlanSelected: (tier: string) => void;
   onBack?: () => void;
+  existingSubscription?: string;
 }
 
 type PlanTier = "free" | "club" | "club_annual";
@@ -31,49 +32,52 @@ interface PricingPlan {
   features: string[];
   popular?: boolean;
   savings?: string;
+  icon: typeof Crown;
 }
 
 const PRICING_PLANS: PricingPlan[] = [
+  {
+    id: "club",
+    name: "Club Membership",
+    price: "$49",
+    period: "/month",
+    description: "For serious builders",
+    popular: true,
+    icon: Crown,
+    features: [
+      "Exclusive member events",
+      "Daily office hours",
+      "Priority event registration",
+      "Member directory access",
+    ],
+  },
+  {
+    id: "club_annual",
+    name: "Annual Membership",
+    price: "$399",
+    period: "/year",
+    description: "Committed to the frontier",
+    savings: "Save $189",
+    icon: Calendar,
+    features: [
+      "2 months free",
+      "Quarterly performance review",
+      "Service discounts",
+      "Project support",
+      "Member directory access",
+    ],
+  },
   {
     id: "free",
     name: "Free",
     price: "$0",
     period: "forever",
     description: "Get started with the basics",
+    icon: Star,
     features: [
-      "Access to public events",
-      "Community feed access",
-      "Basic member profile",
-    ],
-  },
-  {
-    id: "club",
-    name: "Club",
-    price: "$49",
-    period: "/month",
-    description: "For serious builders",
-    popular: true,
-    features: [
-      "Everything in Free",
-      "Exclusive member events",
-      "Weekly office hours",
-      "Member directory access",
-      "Priority event registration",
-      "Founder resources library",
-    ],
-  },
-  {
-    id: "club_annual",
-    name: "Club Annual",
-    price: "$399",
-    period: "/year",
-    description: "Best value for committed builders",
-    savings: "Save $189",
-    features: [
-      "Everything in Club",
-      "2 months free",
-      "Annual member badge",
-      "Early access to new features",
+      "Frontier feed access",
+      "Focus groups",
+      "Public events",
     ],
   },
 ];
@@ -82,21 +86,28 @@ function PricingCard({
   plan,
   selected,
   onSelect,
+  compact = false,
 }: {
   plan: PricingPlan;
   selected: boolean;
   onSelect: () => void;
+  compact?: boolean;
 }) {
+  const Icon = plan.icon;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "relative rounded-xl border-2 p-5 cursor-pointer transition-all",
+        "relative rounded-xl border-2 p-5 cursor-pointer transition-all h-full",
         selected
           ? "border-primary bg-primary/5"
-          : "border-border hover:border-primary/50",
-        plan.popular && "ring-2 ring-primary/20"
+          : plan.id === "free"
+            ? "border-border/50 bg-muted/30 opacity-80 hover:opacity-100 hover:border-border"
+            : "border-border hover:border-primary/50",
+        plan.popular && !selected && "ring-2 ring-primary/30 border-primary/40",
+        plan.popular && selected && "ring-2 ring-primary"
       )}
       onClick={onSelect}
     >
@@ -116,17 +127,17 @@ function PricingCard({
         </div>
       )}
 
-      <div className="flex items-start justify-between mb-4">
+      <div className={cn("flex items-start justify-between", compact ? "mb-2" : "mb-4")}>
         <div>
           <h3 className="font-semibold text-lg flex items-center gap-2">
-            {plan.id !== "free" && <Crown className="h-4 w-4 text-yellow-500" />}
+            {plan.id !== "free" && <Icon className="h-4 w-4 text-yellow-500" />}
             {plan.name}
           </h3>
           <p className="text-sm text-muted-foreground">{plan.description}</p>
         </div>
         <div
           className={cn(
-            "h-5 w-5 rounded-full border-2 flex items-center justify-center",
+            "h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0",
             selected ? "border-primary bg-primary" : "border-muted-foreground"
           )}
         >
@@ -134,12 +145,12 @@ function PricingCard({
         </div>
       </div>
 
-      <div className="mb-4">
+      <div className={compact ? "mb-2" : "mb-4"}>
         <span className="text-3xl font-bold">{plan.price}</span>
         <span className="text-muted-foreground">{plan.period}</span>
       </div>
 
-      <ul className="space-y-2">
+      <ul className={cn("space-y-2", compact && "flex flex-wrap gap-x-4 gap-y-1")}>
         {plan.features.map((feature) => (
           <li key={feature} className="flex items-center gap-2 text-sm">
             <Check className="h-4 w-4 text-green-500 shrink-0" />
@@ -156,15 +167,22 @@ export function StepPricing({
   onUpdate,
   onPlanSelected,
   onBack,
+  existingSubscription,
 }: StepPricingProps) {
+  // If user already has a subscription, use that as the selected plan
+  const hasExistingPaidSubscription = existingSubscription && existingSubscription !== "free";
+
   const [selectedPlan, setSelectedPlan] = useState<PlanTier>(
-    (formData.membership_tier as PlanTier) || "free"
+    (existingSubscription as PlanTier) || (formData.membership_tier as PlanTier) || "club"
   );
   const [showPayment, setShowPayment] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasPaid, setHasPaid] = useState(!!hasExistingPaidSubscription);
 
   const selectedPlanData = PRICING_PLANS.find((p) => p.id === selectedPlan);
+  const paidPlans = PRICING_PLANS.filter((p) => p.id !== "free");
+  const freePlan = PRICING_PLANS.find((p) => p.id === "free")!;
 
   useEffect(() => {
     if (showPayment && !clientSecret && selectedPlan !== "free") {
@@ -178,10 +196,18 @@ export function StepPricing({
   }, [showPayment, clientSecret, selectedPlan]);
 
   const handlePlanSelect = (planId: PlanTier) => {
+    if (hasPaid) return; // Can't change after payment
     setSelectedPlan(planId);
   };
 
   const handleContinue = () => {
+    // If user already has a paid subscription, just continue
+    if (hasExistingPaidSubscription) {
+      onUpdate("membership_tier" as keyof OnboardingFormData, selectedPlan);
+      onPlanSelected(selectedPlan);
+      return;
+    }
+
     if (selectedPlan === "free") {
       onUpdate("membership_tier" as keyof OnboardingFormData, "free");
       onPlanSelected("free");
@@ -191,6 +217,7 @@ export function StepPricing({
   };
 
   const handlePaymentSuccess = () => {
+    setHasPaid(true);
     onUpdate("membership_tier" as keyof OnboardingFormData, selectedPlan);
     onPlanSelected(selectedPlan);
   };
@@ -219,19 +246,49 @@ export function StepPricing({
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          {PRICING_PLANS.map((plan) => (
+        {/* If user already has subscription or just paid, only show their plan */}
+        {hasPaid ? (
+          <div className="max-w-md mx-auto">
             <PricingCard
-              key={plan.id}
-              plan={plan}
-              selected={selectedPlan === plan.id}
-              onSelect={() => handlePlanSelect(plan.id)}
+              plan={selectedPlanData!}
+              selected={true}
+              onSelect={() => {}}
             />
-          ))}
-        </div>
+            <p className="text-center text-sm text-muted-foreground mt-4">
+              {hasExistingPaidSubscription
+                ? "You already have an active membership"
+                : "Your membership has been confirmed"}
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Club & Annual side by side */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {paidPlans.map((plan) => (
+                <div key={plan.id} className="min-w-0">
+                  <PricingCard
+                    plan={plan}
+                    selected={selectedPlan === plan.id}
+                    onSelect={() => handlePlanSelect(plan.id)}
+                  />
+                </div>
+              ))}
+            </div>
 
-        <div className="flex items-center justify-between pt-6">
-          {onBack && (
+            {/* Free card spans below */}
+            <div className="border-t border-border/50 pt-4">
+              <PricingCard
+                plan={freePlan}
+                selected={selectedPlan === "free"}
+                onSelect={() => handlePlanSelect("free")}
+                compact
+              />
+            </div>
+          </>
+        )}
+
+        <div className="flex items-center justify-center gap-4 pt-6">
+          {onBack && !hasPaid && (
             <Button variant="ghost" onClick={onBack}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
@@ -240,9 +297,11 @@ export function StepPricing({
           <Button
             onClick={handleContinue}
             size="lg"
-            className="min-w-[200px] ml-auto"
+            className="min-w-[200px]"
           >
-            {selectedPlan === "free" ? (
+            {hasPaid ? (
+              "Continue"
+            ) : selectedPlan === "free" ? (
               "Continue with Free"
             ) : (
               <>
@@ -295,7 +354,7 @@ export function StepPricing({
               <Crown className="h-6 w-6 text-yellow-500" />
             </div>
             <div>
-              <h3 className="font-semibold text-lg">{selectedPlanData?.name} Membership</h3>
+              <h3 className="font-semibold text-lg">{selectedPlanData?.name}</h3>
               <p className="text-2xl font-bold">
                 {selectedPlanData?.price}{selectedPlanData?.period}
               </p>
@@ -320,6 +379,7 @@ export function StepPricing({
             clientSecret={clientSecret}
             onSuccess={handlePaymentSuccess}
             onCancel={handleBackToPlans}
+            tier={selectedPlan as "club" | "club_annual"}
           />
         </Elements>
       </motion.div>
