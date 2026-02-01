@@ -88,14 +88,21 @@ export function HomePage() {
         </header>
 
         {/* Page content */}
-        <div className="p-6 w-full">
-          <div className={cn(
-            "mx-auto",
-            ["messages", "connections", "leaderboard", "hq", "events", "projects"].includes(activePage) ? "max-w-7xl" : "max-w-4xl"
-          )}>
+        {activePage === "messages" ? (
+          // Messages page is full-bleed with no padding
+          <div className="w-full h-[calc(100vh-3.5rem)]">
             {renderPage()}
           </div>
-        </div>
+        ) : (
+          <div className="p-6 w-full">
+            <div className={cn(
+              "mx-auto",
+              ["connections", "leaderboard", "hq", "events", "projects"].includes(activePage) ? "max-w-7xl" : "max-w-4xl"
+            )}>
+              {renderPage()}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

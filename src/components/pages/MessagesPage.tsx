@@ -194,14 +194,14 @@ export function MessagesPage() {
 
   if (isLoadingThreads) {
     return (
-      <div className="flex justify-center items-center h-[calc(100vh-8rem)]">
+      <div className="flex justify-center items-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="flex h-[calc(100vh-5rem)] -mx-6 -mt-6 -mb-6">
+    <div className="flex h-full">
       {/* Left Sidebar - Chat List */}
       <div className="w-64 flex-shrink-0 border-r border-border flex flex-col bg-card">
         {/* Search */}
