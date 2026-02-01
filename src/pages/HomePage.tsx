@@ -32,7 +32,7 @@ export function HomePage() {
       hq: "HQ",
       frontier: "Frontier",
       events: "Events",
-      messages: "Messages",
+      messages: "Inbox",
       connections: "Connections",
       projects: "Projects",
       leaderboard: "Leaderboard",

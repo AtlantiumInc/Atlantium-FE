@@ -42,7 +42,7 @@ export function Sidebar({
     {
       id: "messages",
       icon: <MessageCircle size={20} />,
-      label: "Messages",
+      label: "Inbox",
     },
     {
       id: "connections",
