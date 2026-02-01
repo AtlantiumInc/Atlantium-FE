@@ -5,7 +5,11 @@
  * dynamic Open Graph meta tags for social media sharing.
  */
 
+// Xano API - same base URL used by frontend for public profile
 const XANO_API_BASE = 'https://cloud.atlantium.ai/api:-ulnKZsX';
+
+// Your site's origin (update when deploying)
+const SITE_ORIGIN = 'https://atlantium.ai';
 
 export default {
   async fetch(request, env, ctx) {
