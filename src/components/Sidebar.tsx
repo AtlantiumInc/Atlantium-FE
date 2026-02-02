@@ -3,12 +3,10 @@ import { Button } from "@/components/ui/button";
 import {
   Compass,
   Calendar,
-  Trophy,
   ChevronLeft,
   ChevronRight,
   MessageCircle,
   UserPlus,
-  FolderKanban,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -45,16 +43,6 @@ export function Sidebar({
       id: "connections",
       icon: <UserPlus size={20} />,
       label: "Connections",
-    },
-    {
-      id: "projects",
-      icon: <FolderKanban size={20} />,
-      label: "Projects",
-    },
-    {
-      id: "leaderboard",
-      icon: <Trophy size={20} />,
-      label: "Leaderboard",
     },
   ];
 
