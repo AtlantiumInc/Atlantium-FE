@@ -26,9 +26,11 @@ function getInitials(name?: string, email?: string): string {
 interface MembershipCardProps {
   onAvatarClick?: () => void;
   username?: string;
+  bio?: string;
+  createdAt?: string;
 }
 
-export function MembershipCard({ onAvatarClick, username }: MembershipCardProps = {}) {
+export function MembershipCard({ onAvatarClick, username, bio, createdAt }: MembershipCardProps = {}) {
   const { subscription, isLoading, refreshSubscription } = useSubscription();
   const { user } = useAuth();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -122,22 +124,22 @@ export function MembershipCard({ onAvatarClick, username }: MembershipCardProps 
               )}
             </div>
             <div className="flex-1">
-              <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2">
                   <Crown className={`h-5 w-5 ${isClubMember ? "text-yellow-500" : "text-muted-foreground"}`} />
-                  <CardTitle>Membership</CardTitle>
+                  <CardTitle>{fullName || "Member"}</CardTitle>
                 </div>
                 {isClubMember && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs font-medium text-yellow-600 dark:text-yellow-400">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs font-medium text-yellow-600 dark:text-yellow-400 -mt-1">
                     <Check className="h-3 w-3" />
                     Club Member
                   </span>
                 )}
               </div>
               <CardDescription>
-                {isClubMember
-                  ? "You have access to all Club features including event RSVPs."
-                  : "Upgrade to Club for exclusive access to event RSVPs."}
+                {bio || (isClubMember
+                  ? "Club member with access to all features."
+                  : "Upgrade to Club for exclusive access to event RSVPs.")}
               </CardDescription>
             </div>
           </div>
@@ -231,7 +233,7 @@ export function MembershipCard({ onAvatarClick, username }: MembershipCardProps 
                   className="text-[11px] font-medium tracking-wider uppercase text-muted-foreground/70"
                   style={{ letterSpacing: "0.1em" }}
                 >
-                  {fullName}
+                  Member since {createdAt ? new Date(createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "—"}
                 </p>
                 <p
                   className="text-[10px] font-medium tracking-wider uppercase text-muted-foreground/60"

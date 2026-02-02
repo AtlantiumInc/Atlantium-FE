@@ -1,7 +1,11 @@
-import { MapPin, Link as LinkIcon, Calendar, Camera } from "lucide-react";
+import { useRef, useState } from "react";
+import { MapPin, Link as LinkIcon, Calendar, Camera, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 export interface Profile {
   id: string;
@@ -23,6 +27,8 @@ interface ProfileCardProps {
   profile: Profile;
   variant?: "default" | "compact";
   onAvatarClick?: () => void;
+  onAvatarUpload?: (url: string) => void;
+  editable?: boolean;
 }
 
 function getInitials(name: string): string {
@@ -42,7 +48,46 @@ function formatDate(dateString?: string): string {
   });
 }
 
-export function ProfileCard({ profile, variant = "default", onAvatarClick }: ProfileCardProps) {
+export function ProfileCard({ profile, variant = "default", onAvatarClick, onAvatarUpload, editable = false }: ProfileCardProps) {
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !onAvatarUpload) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be less than 5MB");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const response = await api.uploadImage(file);
+      if (response?.url) {
+        onAvatarUpload(response.url);
+        toast.success("Avatar uploaded");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("Failed to upload image");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
   if (variant === "compact") {
     return (
       <Card className="overflow-hidden">
@@ -84,10 +129,48 @@ export function ProfileCard({ profile, variant = "default", onAvatarClick }: Pro
           )}
         </div>
 
+        {/* Hidden file input for avatar upload */}
+        {editable && (
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+        )}
+
         <div className="mt-3 space-y-3">
-          <div>
-            <h3 className="text-xl font-semibold">{profile.display_name}</h3>
-            <p className="text-muted-foreground">@{profile.username}</p>
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <h3 className="text-xl font-semibold">@{profile.username}</h3>
+              {(profile.first_name || profile.last_name) && (
+                <p className="text-muted-foreground">
+                  {[profile.first_name, profile.last_name].filter(Boolean).join(" ")}
+                </p>
+              )}
+            </div>
+            {editable && onAvatarUpload && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleUploadClick}
+                disabled={isUploading}
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Camera className="h-4 w-4 mr-2" />
+                    Change photo
+                  </>
+                )}
+              </Button>
+            )}
           </div>
 
           {profile.bio && (

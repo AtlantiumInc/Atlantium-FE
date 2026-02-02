@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ProfileEditForm } from "@/components/ProfileEditForm";
 import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Profile } from "@/components/ProfileCard";
 import type { User as UserType } from "@/lib/api";
 
@@ -47,6 +48,7 @@ function getInitials(name?: string, email?: string): string {
 }
 
 export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
+  const { checkAuth } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -70,9 +72,9 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
     }
   }, [user]);
 
-  const handleProfileUpdate = () => {
-    fetchProfile();
-    setIsEditOpen(false);
+  const handleProfileUpdate = async () => {
+    await fetchProfile();
+    await checkAuth();
   };
 
   const handleAvatarClick = () => {
@@ -99,7 +101,8 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
         // Update profile with new avatar
         await api.updateProfile({ avatar_url: response.url });
         toast.success("Avatar updated");
-        fetchProfile();
+        await fetchProfile();
+        await checkAuth();
       }
     } catch (error) {
       console.error("Upload error:", error);
@@ -192,7 +195,7 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
             />
 
             {/* Membership Card */}
-            <MembershipCard onAvatarClick={handleAvatarClick} username={profile?.username} />
+            <MembershipCard onAvatarClick={handleAvatarClick} username={profile?.username} bio={profile?.bio} createdAt={profile?.created_at} />
 
             {/* Manage Billing */}
             <button
@@ -217,6 +220,7 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
                 profile={profile || undefined}
                 onSuccess={handleProfileUpdate}
                 variant="sheet"
+                onAvatarClick={handleAvatarClick}
               />
             </div>
           </div>

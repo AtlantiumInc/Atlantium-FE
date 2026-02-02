@@ -8,10 +8,11 @@ import {
   Clock,
   User,
   Share2,
-  Bookmark,
   Tag,
   FileText,
   Beaker,
+  Zap,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +21,7 @@ import SpotlightCard from "@/components/ui/SpotlightCard";
 import ShinyText from "@/components/ui/ShinyText";
 import Aurora from "@/components/Aurora";
 import { api, type FrontierArticle } from "@/lib/api";
-import { ArticleTLDR } from "@/components/ArticleTLDR";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 interface ArticleWithSlug extends FrontierArticle {
@@ -56,11 +57,11 @@ function formatUTCTimestamp(timestamp: number): string {
 
 export function ArticleDetailPage() {
   const { slug } = useParams<{ slug: string }>();
+  const { isAuthenticated, user } = useAuth();
   const [article, setArticle] = useState<ArticleWithSlug | null>(null);
   const [ogData, setOgData] = useState<OGMetadata | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isBookmarked, setIsBookmarked] = useState(false);
 
   useEffect(() => {
     async function fetchArticle() {
@@ -142,11 +143,6 @@ export function ArticleDetailPage() {
     }
   };
 
-  const handleBookmark = () => {
-    setIsBookmarked(!isBookmarked);
-    toast.success(isBookmarked ? "Bookmark removed" : "Article bookmarked");
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -202,17 +198,27 @@ export function ArticleDetailPage() {
             <span className="text-sm text-muted-foreground font-mono">INDEX</span>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={handleBookmark}>
-              <Bookmark className={`h-4 w-4 ${isBookmarked ? "fill-current" : ""}`} />
-            </Button>
+            <Link to="/index">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                News
+              </Button>
+            </Link>
             <Button variant="ghost" size="icon" onClick={handleShare}>
               <Share2 className="h-4 w-4" />
             </Button>
-            <Link to="/login">
-              <Button variant="outline" size="sm">
-                Sign in
-              </Button>
-            </Link>
+            {isAuthenticated ? (
+              <Link to="/dashboard">
+                <Button variant="outline" size="sm">
+                  Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <Link to="/login">
+                <Button variant="outline" size="sm">
+                  Sign in
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -231,81 +237,107 @@ export function ArticleDetailPage() {
               className="p-6 md:p-8"
               spotlightColor="rgba(14, 165, 233, 0.15)"
             >
-              {/* Classification Badge */}
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30">
-                  <Beaker className="h-3 w-3 text-cyan-400" />
-                  <ShinyText
-                    text="RESEARCH DOCUMENT"
-                    className="text-xs font-bold tracking-wider"
-                    color="#22d3ee"
-                    shineColor="#ffffff"
-                    speed={3}
-                  />
-                </div>
-                <span className="text-xs text-muted-foreground font-mono uppercase">
-                  INDEX REPORT
-                </span>
-              </div>
-
-              {/* Document ID */}
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-xs text-muted-foreground">DOC_ID:</span>
-                <code className="text-xs font-mono bg-muted px-2 py-0.5 rounded">
-                  {article.slug}
-                </code>
-              </div>
-
-              {/* Title */}
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 bg-gradient-to-r from-white via-cyan-200 to-cyan-400 bg-clip-text text-transparent">
-                {content.title}
-              </h1>
-
-              {/* Author/Publisher Metadata */}
-              <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-border/50">
-                {content.author?.name && (
-                  <div className="flex items-center gap-2">
-                    {content.author.avatar_url ? (
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage src={content.author.avatar_url} alt={content.author.name} />
-                        <AvatarFallback className="text-xs">
-                          {content.author.name.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                    ) : (
-                      <User className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <span className="text-sm text-muted-foreground">
-                      {content.author.name}
+              <div className="flex flex-col lg:flex-row lg:gap-8">
+                {/* Left Section - Header (66%) */}
+                <div className="lg:w-2/3">
+                  {/* Classification Badge */}
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30">
+                      <Beaker className="h-2.5 w-2.5 text-cyan-400" />
+                      <ShinyText
+                        text="RESEARCH DOCUMENT"
+                        className="text-[10px] font-bold tracking-wider"
+                        color="#22d3ee"
+                        shineColor="#ffffff"
+                        speed={3}
+                      />
+                    </div>
+                    <span className="text-[10px] text-muted-foreground font-mono uppercase">
+                      INDEX REPORT
                     </span>
                   </div>
-                )}
-                {content.publisher?.name && (
-                  <div className="flex items-center gap-2">
-                    {content.publisher.logo_url ? (
-                      <Avatar className="h-5 w-5">
-                        <AvatarImage src={content.publisher.logo_url} alt={content.publisher.name} />
-                        <AvatarFallback className="text-[10px]">
-                          {content.publisher.name.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                    ) : null}
-                    <span className="text-sm text-muted-foreground">
-                      via {content.publisher.name}
-                    </span>
+
+                  {/* Document ID */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-[10px] text-muted-foreground">DOC_ID:</span>
+                    <code className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded">
+                      {article.slug}
+                    </code>
+                  </div>
+
+                  {/* Title */}
+                  <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4 bg-gradient-to-r from-white via-cyan-200 to-cyan-400 bg-clip-text text-transparent">
+                    {content.title}
+                  </h1>
+
+                  {/* Author/Publisher Metadata */}
+                  <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-border/50">
+                    {content.author?.name && (
+                      <div className="flex items-center gap-1.5">
+                        {content.author.avatar_url ? (
+                          <Avatar className="h-5 w-5">
+                            <AvatarImage src={content.author.avatar_url} alt={content.author.name} />
+                            <AvatarFallback className="text-[10px]">
+                              {content.author.name.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                        ) : (
+                          <User className="h-3 w-3 text-muted-foreground" />
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {content.author.name}
+                        </span>
+                      </div>
+                    )}
+                    {content.publisher?.name && (
+                      <div className="flex items-center gap-1.5">
+                        {content.publisher.logo_url ? (
+                          <Avatar className="h-4 w-4">
+                            <AvatarImage src={content.publisher.logo_url} alt={content.publisher.name} />
+                            <AvatarFallback className="text-[8px]">
+                              {content.publisher.name.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                        ) : null}
+                        <span className="text-xs text-muted-foreground">
+                          via {content.publisher.name}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Section - TL;DR (33%) */}
+                {content.tldr && content.tldr.length > 0 && (
+                  <div className="lg:w-1/3 mt-6 lg:mt-0 lg:border-l lg:border-border/50 lg:pl-8">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Zap className="h-3 w-3 text-cyan-400" />
+                      <span className="text-[10px] font-bold tracking-wider text-cyan-400">
+                        TL;DR
+                      </span>
+                    </div>
+                    <ul className="space-y-2">
+                      {content.tldr.map((point, index) => (
+                        <li
+                          key={index}
+                          className="flex items-start gap-2"
+                        >
+                          <span className="flex-shrink-0 w-4 h-4 rounded bg-cyan-500/15 border border-cyan-500/25 flex items-center justify-center mt-0.5">
+                            <span className="text-[9px] font-mono text-cyan-400 font-semibold">
+                              {index + 1}
+                            </span>
+                          </span>
+                          <span className="text-xs text-muted-foreground leading-relaxed">
+                            {point}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
               </div>
             </SpotlightCard>
           </motion.div>
-
-          {/* TL;DR Section */}
-          {content.tldr && content.tldr.length > 0 && (
-            <ArticleTLDR
-              points={content.tldr}
-              className="col-span-12 lg:col-span-8"
-            />
-          )}
 
           {/* Featured Image - 8 columns */}
           {content.featured_image?.url && (
@@ -347,37 +379,16 @@ export function ArticleDetailPage() {
               className="p-6 h-full"
               spotlightColor="rgba(14, 165, 233, 0.1)"
             >
-              {/* Analysis Parameters Header */}
+              {/* Document Info Header */}
               <div className="flex items-center gap-2 mb-6">
                 <div className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
                 <h3 className="text-sm font-bold tracking-wider text-cyan-400">
-                  ANALYSIS PARAMETERS
+                  DOCUMENT INFO
                 </h3>
               </div>
 
-              {/* Tags as Classification Badges */}
-              {content.tags && content.tags.length > 0 && (
-                <div className="mb-6">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Tag className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground font-mono">CLASSIFICATION</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {content.tags.map((tag) => (
-                      <Badge
-                        key={tag}
-                        variant="outline"
-                        className="bg-cyan-500/10 border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/20 transition-colors"
-                      >
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Timestamps */}
-              <div className="space-y-4">
+              {/* Timestamps - Now on top */}
+              <div className="space-y-4 mb-6">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <Calendar className="h-3 w-3 text-muted-foreground" />
@@ -404,27 +415,59 @@ export function ArticleDetailPage() {
                 )}
               </div>
 
-              {/* Actions */}
-              <div className="mt-6 pt-6 border-t border-border/50 flex gap-2">
+              {/* Tags as Classification Badges - Now below timestamps */}
+              {content.tags && content.tags.length > 0 && (
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Tag className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground font-mono">CLASSIFICATION</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {content.tags.map((tag) => (
+                      <Badge
+                        key={tag}
+                        variant="outline"
+                        className="bg-cyan-500/10 border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/20 transition-colors"
+                      >
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Share Action */}
+              <div className="pt-6 border-t border-border/50">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1"
-                  onClick={handleBookmark}
-                >
-                  <Bookmark className={`h-4 w-4 mr-2 ${isBookmarked ? "fill-current" : ""}`} />
-                  {isBookmarked ? "Saved" : "Save"}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
+                  className="w-full"
                   onClick={handleShare}
                 >
                   <Share2 className="h-4 w-4 mr-2" />
                   Share
                 </Button>
               </div>
+
+              {/* CTA for non-authenticated users */}
+              {!isAuthenticated && (
+                <div className="mt-6 pt-6 border-t border-border/50">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <Sparkles className="h-4 w-4 text-cyan-400" />
+                      <span className="text-sm font-semibold">Join Atlantium</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-4">
+                      Get access to exclusive content and connect with builders.
+                    </p>
+                    <Link to="/signup">
+                      <Button size="sm" className="w-full">
+                        Sign up free
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              )}
             </SpotlightCard>
           </motion.div>
 

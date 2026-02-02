@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, Camera } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -46,10 +46,6 @@ const profileEditSchema = z.object({
       /^[a-zA-Z0-9_.]+$/,
       "Username can only contain letters, numbers, underscores, and periods"
     ),
-  display_name: z
-    .string()
-    .min(1, "Display name is required")
-    .max(100, "Display name must be 100 characters or less"),
   bio: z
     .string()
     .max(500, "Bio must be 500 characters or less")
@@ -84,6 +80,7 @@ interface ProfileEditFormProps {
 
 export function ProfileEditForm({ profile, onSuccess, variant = "card", showPreview = false, onAvatarClick }: ProfileEditFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(profile?.avatar_url);
 
   const form = useForm<ProfileEditFormValues>({
     resolver: zodResolver(profileEditSchema),
@@ -91,7 +88,6 @@ export function ProfileEditForm({ profile, onSuccess, variant = "card", showPrev
       first_name: profile?.first_name ?? "",
       last_name: profile?.last_name ?? "",
       username: profile?.username ?? "",
-      display_name: profile?.display_name ?? "",
       bio: profile?.bio ?? "",
       location: profile?.location ?? "",
       website_url: profile?.website_url ?? "",
@@ -106,12 +102,12 @@ export function ProfileEditForm({ profile, onSuccess, variant = "card", showPrev
         first_name: profile.first_name ?? "",
         last_name: profile.last_name ?? "",
         username: profile.username ?? "",
-        display_name: profile.display_name ?? "",
         bio: profile.bio ?? "",
         location: profile.location ?? "",
         website_url: profile.website_url ?? "",
         linkedin_url: profile.linkedin_url ?? "",
       });
+      setAvatarUrl(profile.avatar_url);
     }
   }, [profile, form]);
 
@@ -119,15 +115,16 @@ export function ProfileEditForm({ profile, onSuccess, variant = "card", showPrev
   const watchedValues = form.watch();
 
   // Create a preview profile from watched values
+  const fullName = [watchedValues.first_name, watchedValues.last_name].filter(Boolean).join(" ");
   const previewProfile: Profile = {
     id: profile?.id ?? "",
     user_id: profile?.user_id ?? "",
     username: watchedValues.username || profile?.username || "",
-    display_name: watchedValues.display_name || profile?.display_name || "",
+    display_name: fullName || profile?.display_name || watchedValues.username || "",
     first_name: watchedValues.first_name || undefined,
     last_name: watchedValues.last_name || undefined,
     bio: watchedValues.bio || undefined,
-    avatar_url: profile?.avatar_url,
+    avatar_url: avatarUrl,
     location: watchedValues.location || undefined,
     website_url: watchedValues.website_url || undefined,
     linkedin_url: watchedValues.linkedin_url || undefined,
@@ -140,16 +137,18 @@ export function ProfileEditForm({ profile, onSuccess, variant = "card", showPrev
 
     try {
       // Clean up empty strings to null for optional fields
+      // Display name is derived from first_name + last_name, or falls back to username
+      const derivedDisplayName = [values.first_name, values.last_name].filter(Boolean).join(" ") || values.username;
       const cleanedData = {
         username: values.username,
-        display_name: values.display_name,
+        display_name: derivedDisplayName,
         first_name: values.first_name || null,
         last_name: values.last_name || null,
         bio: values.bio || null,
         location: values.location || null,
         website_url: values.website_url || null,
         linkedin_url: values.linkedin_url || null,
-        avatar_url: profile?.avatar_url ?? null,
+        avatar_url: avatarUrl ?? null,
       };
 
       const response = await api.updateProfile(cleanedData);
@@ -172,7 +171,11 @@ export function ProfileEditForm({ profile, onSuccess, variant = "card", showPrev
       >
         {showPreview && (
           <div className="mb-6">
-            <ProfileCard profile={previewProfile} onAvatarClick={onAvatarClick} />
+            <ProfileCard
+              profile={previewProfile}
+              editable={true}
+              onAvatarUpload={setAvatarUrl}
+            />
           </div>
         )}
 
@@ -206,40 +209,39 @@ export function ProfileEditForm({ profile, onSuccess, variant = "card", showPrev
           />
         </div>
 
-        <FormField
-          control={form.control}
-          name="username"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Username</FormLabel>
-              <FormControl>
-                <Input placeholder="johndoe" {...field} />
-              </FormControl>
-              <FormDescription>
-                Your unique identifier. Only letters, numbers, underscores,
-                and periods.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="username"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Username</FormLabel>
+                <FormControl>
+                  <Input placeholder="johndoe" {...field} />
+                </FormControl>
+                <FormDescription>
+                  Letters, numbers, underscores, periods.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <FormField
-          control={form.control}
-          name="display_name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Display Name</FormLabel>
-              <FormControl>
-                <Input placeholder="John Doe" {...field} />
-              </FormControl>
-              <FormDescription>
-                The name displayed on your profile and in conversations.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
+          {onAvatarClick && (
+            <div className="space-y-2">
+              <FormLabel>Update Avatar</FormLabel>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={onAvatarClick}
+              >
+                <Camera className="h-4 w-4 mr-2" />
+                Change photo
+              </Button>
+            </div>
           )}
-        />
+        </div>
 
         <FormField
           control={form.control}

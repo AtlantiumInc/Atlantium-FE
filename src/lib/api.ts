@@ -660,9 +660,9 @@ class ApiClient {
   }
 
   async getFrontierArticles(): Promise<FrontierArticle[]> {
-    return this.request<FrontierArticle[]>("/thread/frontier", {
+    return this.request<FrontierArticle[]>("/frontier/public", {
       method: "GET",
-    }, APP_API_BASE_URL);
+    }, STRIPE_API_BASE_URL);
   }
 
   // Public article by slug (no auth required)
