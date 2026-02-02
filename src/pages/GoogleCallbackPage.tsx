@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export function GoogleCallbackPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, checkAuth } = useAuth();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
   const hasRun = useRef(false);
@@ -35,11 +35,24 @@ export function GoogleCallbackPage() {
       try {
         const response = await api.googleAuth(code);
         login(response.auth_token, response.user);
+
+        // Fetch full user data to check onboarding status
+        const fullUser = await checkAuth();
+
         setStatus("success");
         setMessage("Signed in with Google!");
 
+        // Check onboarding status from the freshly fetched user data
+        const profile = (fullUser as Record<string, unknown>)?._profile as Record<string, unknown> | undefined;
+        const registrationDetails = profile?.registration_details as Record<string, unknown> | undefined;
+        const isOnboardingCompleted = registrationDetails?.is_completed === true;
+
         setTimeout(() => {
-          navigate("/dashboard", { replace: true });
+          if (isOnboardingCompleted) {
+            navigate("/dashboard", { replace: true });
+          } else {
+            navigate("/onboarding", { replace: true });
+          }
         }, 1000);
       } catch (err) {
         setStatus("error");
@@ -48,7 +61,7 @@ export function GoogleCallbackPage() {
     };
 
     handleGoogleAuth();
-  }, [searchParams, navigate, login]);
+  }, [searchParams, navigate, login, checkAuth]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">

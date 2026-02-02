@@ -117,8 +117,18 @@ export function LoginPage() {
       const response = await api.verifyOtp(email, code);
       login(response.auth_token, response.user);
       // Fetch full user data (including profile with registration_details)
-      await checkAuth();
-      navigate("/dashboard");
+      const fullUser = await checkAuth();
+
+      // Check onboarding status from the freshly fetched user data
+      const profile = (fullUser as Record<string, unknown>)?._profile as Record<string, unknown> | undefined;
+      const registrationDetails = profile?.registration_details as Record<string, unknown> | undefined;
+      const isOnboardingCompleted = registrationDetails?.is_completed === true;
+
+      if (isOnboardingCompleted) {
+        navigate("/dashboard");
+      } else {
+        navigate("/onboarding");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid OTP code");
     } finally {

@@ -14,7 +14,7 @@ interface AuthContextType {
   hasClubAccess: boolean;
   login: (token: string, user: User) => void;
   logout: () => Promise<void>;
-  checkAuth: () => Promise<void>;
+  checkAuth: () => Promise<User | null>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -23,16 +23,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const checkAuth = async () => {
+  const checkAuth = async (): Promise<User | null> => {
     const token = api.getAuthToken();
     if (!token) {
       setIsLoading(false);
-      return;
+      return null;
     }
 
     try {
       const userData = await api.getMe();
       setUser(userData);
+      return userData;
     } catch (error) {
       // Only clear auth on actual auth errors (401), not rate limits (429) or network issues
       const status = (error as Error & { status?: number }).status;
@@ -41,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
       }
       // For other errors (429 rate limit, network issues), keep the user logged in
+      return null;
     } finally {
       setIsLoading(false);
     }
