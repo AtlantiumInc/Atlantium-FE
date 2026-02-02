@@ -211,69 +211,108 @@ export function PublicGroupPage() {
   const TypeIcon = group.type === "focus_group" ? Sparkles : Users;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+    <div className="min-h-screen flex flex-col lg:flex-row bg-background">
+      {/* Left side - Group info */}
+      <div className="w-full lg:w-1/2 flex flex-col">
+        {/* Header */}
+        <div className="p-6 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold">Atlantium</span>
+            <img src="/logo.png" alt="Atlantium" className="h-7 w-7" />
+            <span className="text-lg font-bold tracking-tight">Atlantium</span>
           </Link>
-          {!isAuthenticated && (
-            <Link to="/login">
-              <Button variant="outline" size="sm">
-                Sign in
-              </Button>
-            </Link>
-          )}
         </div>
-      </header>
 
-      {/* Group Content */}
-      <main className="container mx-auto px-4 py-12 max-w-2xl">
-        <div className="flex flex-col items-center text-center">
-          {/* Avatar */}
-          <Avatar className="h-32 w-32 ring-4 ring-background shadow-xl">
-            <AvatarImage src={group.avatar} alt={group.name} />
-            <AvatarFallback className="text-3xl">
-              <TypeIcon className="h-12 w-12 text-muted-foreground" />
-            </AvatarFallback>
-          </Avatar>
+        {/* Group info */}
+        <div className="flex-1 flex items-center justify-center px-6 pb-12 lg:pb-0">
+          <div className="max-w-md">
+            <div className="flex items-start gap-5">
+              <Avatar className="h-20 w-20 ring-2 ring-border shrink-0">
+                <AvatarImage src={group.avatar} alt={group.name} />
+                <AvatarFallback>
+                  <TypeIcon className="h-8 w-8 text-muted-foreground" />
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                    <TypeIcon className="h-3 w-3" />
+                    {typeLabel}
+                  </span>
+                </div>
+                <h1 className="text-2xl font-bold tracking-tight">{group.name}</h1>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {group.participant_count} {group.participant_count === 1 ? "member" : "members"}
+                </p>
+              </div>
+            </div>
 
-          {/* Name */}
-          <div className="mt-6">
-            <h1 className="text-3xl font-bold">{group.name}</h1>
+            {description && (
+              <p className="mt-6 text-muted-foreground leading-relaxed">
+                {description}
+              </p>
+            )}
+
+            {group.created_by_profile && (
+              <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Created by</span>
+                <Avatar className="h-5 w-5">
+                  <AvatarImage src={group.created_by_profile.avatar_url} />
+                  <AvatarFallback className="text-xs">
+                    {group.created_by_profile.display_name?.[0] || "?"}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="font-medium text-foreground">
+                  {group.created_by_profile.display_name}
+                </span>
+              </div>
+            )}
+
+            <div className="mt-8 pt-6 border-t">
+              <a
+                href="https://apps.apple.com/app/atlantium/id6743597791"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                </svg>
+                Download on the App Store
+              </a>
+            </div>
           </div>
+        </div>
+      </div>
 
-          {/* Type Badge + Member Count */}
-          <div className="mt-3 flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
-              <TypeIcon className="h-3.5 w-3.5" />
-              {typeLabel}
-            </span>
-            <span className="text-sm text-muted-foreground">
-              {group.participant_count}{" "}
-              {group.participant_count === 1 ? "member" : "members"}
-            </span>
-          </div>
-
-          {/* Description */}
-          {description && (
-            <p className="mt-4 text-muted-foreground max-w-md leading-relaxed">
-              {description}
-            </p>
-          )}
-
-          {/* CTAs */}
-          <div className="mt-10 w-full max-w-sm">
-            {isAuthenticated ? (
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                {isMember ? (
+      {/* Right side - Auth/Join */}
+      <div className="w-full lg:w-1/2 bg-muted/30 flex items-center justify-center p-6 lg:p-12">
+        <div className="w-full max-w-[400px]">
+          {isAuthenticated ? (
+            <div className="text-center">
+              {isMember ? (
+                <>
+                  <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                    <Users className="h-8 w-8 text-primary" />
+                  </div>
+                  <h2 className="text-xl font-semibold mb-2">You're a member</h2>
+                  <p className="text-muted-foreground mb-6">
+                    You're already part of this group.
+                  </p>
                   <Link to="/dashboard">
-                    <Button size="lg">Go to Dashboard</Button>
+                    <Button size="lg" className="w-full">
+                      Go to Dashboard
+                    </Button>
                   </Link>
-                ) : (
+                </>
+              ) : (
+                <>
+                  <h2 className="text-xl font-semibold mb-2">Join this group</h2>
+                  <p className="text-muted-foreground mb-6">
+                    Connect with {group.participant_count} {group.participant_count === 1 ? "member" : "members"} in {group.name}.
+                  </p>
                   <Button
                     size="lg"
+                    className="w-full"
                     onClick={handleJoinGroup}
                     disabled={isJoining}
                   >
@@ -286,42 +325,23 @@ export function PublicGroupPage() {
                       "Join Group"
                     )}
                   </Button>
-                )}
-                <a
-                  href="https://apps.apple.com/app/atlantium/id6743597791"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button variant="outline" size="lg">
-                    Get the App
-                  </Button>
-                </a>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <p className="text-sm text-muted-foreground">
-                  Sign in or create an account to join this group
-                </p>
-                <InlineAuth
-                  onSuccess={handleAuthSuccess}
-                  ctaText="Join Group"
-                />
-                <div className="pt-4">
-                  <a
-                    href="https://apps.apple.com/app/atlantium/id6743597791"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Button variant="outline" size="lg" className="w-full">
-                      Get the App
-                    </Button>
-                  </a>
-                </div>
-              </div>
-            )}
-          </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <>
+              <h2 className="text-xl font-semibold mb-2">Join {group.name}</h2>
+              <p className="text-muted-foreground mb-6">
+                Sign in or create an account to join this group.
+              </p>
+              <InlineAuth
+                onSuccess={handleAuthSuccess}
+                ctaText="Join Group"
+              />
+            </>
+          )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }
