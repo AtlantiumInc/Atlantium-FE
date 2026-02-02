@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Users, Sparkles, Loader2, ArrowLeft } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { InlineAuth } from "@/components/InlineAuth";
+import { setPendingAction, setPendingRedirect } from "@/lib/pendingAction";
+import type { User } from "@/lib/api";
 
 interface PublicGroup {
   id: string;
@@ -33,10 +37,14 @@ interface OGMetadata {
 
 export function PublicGroupPage() {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
+  const { user, isAuthenticated, isLoading: authLoading, login, checkAuth } = useAuth();
   const [group, setGroup] = useState<PublicGroup | null>(null);
   const [ogData, setOgData] = useState<OGMetadata | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [joinError, setJoinError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchGroup() {
@@ -98,7 +106,66 @@ export function PublicGroupPage() {
     };
   }, [ogData]);
 
-  if (isLoading) {
+  const handleJoinGroup = async () => {
+    if (!slug) return;
+
+    setIsJoining(true);
+    setJoinError(null);
+
+    try {
+      const result = await api.joinPublicGroup(slug);
+
+      // Check if user needs onboarding
+      const fullUser = await checkAuth();
+      const profile = (fullUser as unknown as Record<string, unknown>)?._profile as Record<string, unknown> | undefined;
+      const registrationDetails = profile?.registration_details as Record<string, unknown> | undefined;
+      const isOnboardingCompleted = registrationDetails?.is_completed === true;
+
+      if (isOnboardingCompleted) {
+        navigate(`/chat/${result.thread_id}`);
+      } else {
+        // Store redirect for after onboarding
+        setPendingRedirect(`/chat/${result.thread_id}`);
+        navigate("/onboarding");
+      }
+    } catch (err) {
+      const status = (err as Error & { status?: number }).status;
+      const message = err instanceof Error ? err.message : "Failed to join group";
+
+      if (status === 409) {
+        setJoinError("You are already a member of this group.");
+      } else {
+        setJoinError(message);
+      }
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
+  const handleAuthSuccess = async (authUser: User, authToken: string) => {
+    login(authToken, authUser);
+
+    // Set pending action for after potential onboarding
+    if (slug) {
+      setPendingAction({ type: "group_join", slug });
+    }
+
+    // Fetch full user data to check onboarding status
+    const fullUser = await checkAuth();
+    const profile = (fullUser as unknown as Record<string, unknown>)?._profile as Record<string, unknown> | undefined;
+    const registrationDetails = profile?.registration_details as Record<string, unknown> | undefined;
+    const isOnboardingCompleted = registrationDetails?.is_completed === true;
+
+    if (isOnboardingCompleted) {
+      // Join immediately
+      handleJoinGroup();
+    } else {
+      // Go to onboarding, join will happen after via pending action
+      navigate("/onboarding");
+    }
+  };
+
+  if (isLoading || authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -139,11 +206,13 @@ export function PublicGroupPage() {
           <Link to="/" className="flex items-center gap-2">
             <span className="text-xl font-bold">Atlantium</span>
           </Link>
-          <Link to="/login">
-            <Button variant="outline" size="sm">
-              Sign in
-            </Button>
-          </Link>
+          {!isAuthenticated && (
+            <Link to="/login">
+              <Button variant="outline" size="sm">
+                Sign in
+              </Button>
+            </Link>
+          )}
         </div>
       </header>
 
@@ -182,20 +251,63 @@ export function PublicGroupPage() {
             </p>
           )}
 
+          {/* Join Error */}
+          {joinError && (
+            <div className="mt-4 p-3 text-sm text-destructive bg-destructive/10 rounded-lg max-w-sm">
+              {joinError}
+            </div>
+          )}
+
           {/* CTAs */}
-          <div className="mt-10 flex flex-col sm:flex-row gap-3">
-            <Link to="/signup">
-              <Button size="lg">Join Atlantium</Button>
-            </Link>
-            <a
-              href="https://apps.apple.com/app/atlantium/id6743597791"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button variant="outline" size="lg">
-                Get the App
-              </Button>
-            </a>
+          <div className="mt-10 w-full max-w-sm">
+            {isAuthenticated ? (
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button
+                  size="lg"
+                  onClick={handleJoinGroup}
+                  disabled={isJoining}
+                >
+                  {isJoining ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Joining...
+                    </>
+                  ) : (
+                    "Join Group"
+                  )}
+                </Button>
+                <a
+                  href="https://apps.apple.com/app/atlantium/id6743597791"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button variant="outline" size="lg">
+                    Get the App
+                  </Button>
+                </a>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <p className="text-sm text-muted-foreground">
+                  Sign in or create an account to join this group
+                </p>
+                <InlineAuth
+                  onSuccess={handleAuthSuccess}
+                  ctaText="Join Group"
+                />
+                <div className="pt-4">
+                  <a
+                    href="https://apps.apple.com/app/atlantium/id6743597791"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button variant="outline" size="lg" className="w-full">
+                      Get the App
+                    </Button>
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>

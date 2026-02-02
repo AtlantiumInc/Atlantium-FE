@@ -8,6 +8,12 @@ import { useAuth } from "../contexts/AuthContext";
 import { useOnboardingForm } from "../hooks/useOnboardingForm";
 import type { OnboardingFormData } from "../lib/onboarding-schema";
 import { api } from "../lib/api";
+import {
+  getPendingAction,
+  clearPendingAction,
+  getPendingRedirect,
+  clearPendingRedirect,
+} from "../lib/pendingAction";
 
 import { OnboardingLayout } from "../components/onboarding/OnboardingLayout";
 import { OnboardingProgress } from "../components/onboarding/OnboardingProgress";
@@ -51,6 +57,52 @@ export function OnboardingPage() {
     }
   }, [isOnboardingCompleted, navigate]);
 
+  const executePendingAction = useCallback(async (): Promise<string | null> => {
+    // First check for pending redirect (already joined, just need to redirect)
+    const pendingRedirect = getPendingRedirect();
+    if (pendingRedirect) {
+      clearPendingRedirect();
+      return pendingRedirect;
+    }
+
+    // Then check for pending action
+    const action = getPendingAction();
+    if (!action) return null;
+
+    clearPendingAction();
+
+    try {
+      switch (action.type) {
+        case "group_join":
+          if (action.slug) {
+            const result = await api.joinPublicGroup(action.slug);
+            return `/chat/${result.thread_id}`;
+          }
+          break;
+        case "event_rsvp":
+          if (action.eventId) {
+            await api.rsvpPublicEvent(action.eventId);
+            return `/events/${action.eventId}`;
+          }
+          break;
+        case "invite_claim":
+          if (action.token) {
+            const claimResult = await api.claimInvite(action.token);
+            return claimResult.redirect_to;
+          }
+          break;
+        case "user_connect":
+          // Connection was already made, just redirect
+          return "/dashboard";
+      }
+    } catch (error) {
+      // If action fails (e.g., already joined), just go to dashboard
+      console.error("Failed to execute pending action:", error);
+    }
+
+    return null;
+  }, []);
+
   const handleComplete = useCallback(
     async (data: OnboardingFormData) => {
       // Separate profile fields from registration_details
@@ -81,9 +133,12 @@ export function OnboardingPage() {
       await checkAuth();
 
       toast.success("Welcome to Atlantium!");
-      navigate("/dashboard", { replace: true });
+
+      // Execute any pending action and get redirect path
+      const redirectPath = await executePendingAction();
+      navigate(redirectPath || "/dashboard", { replace: true });
     },
-    [googleAvatarUrl, checkAuth, navigate]
+    [googleAvatarUrl, checkAuth, navigate, executePendingAction]
   );
 
   const {

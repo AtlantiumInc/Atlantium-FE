@@ -28,6 +28,7 @@ import { OnboardingPage } from "@/pages/OnboardingPage";
 import { PublicProfilePage } from "@/pages/PublicProfilePage";
 import { PublicGroupPage } from "@/pages/PublicGroupPage";
 import { ArticleDetailPage } from "@/pages/ArticleDetailPage";
+import { InvitePage } from "@/pages/InvitePage";
 import { IndexPage } from "@/pages/IndexPage";
 import { Loader2 } from "lucide-react";
 
@@ -65,6 +66,7 @@ function AppRoutes() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/u/:username" element={<PublicProfilePage />} />
       <Route path="/groups/:slug" element={<PublicGroupPage />} />
+      <Route path="/invite/:token" element={<InvitePage />} />
       <Route path="/index" element={<IndexPage />} />
       <Route path="/index/:slug" element={<ArticleDetailPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />

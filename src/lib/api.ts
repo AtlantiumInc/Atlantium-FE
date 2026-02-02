@@ -745,6 +745,105 @@ class ApiClient {
       method: "GET",
     }, STRIPE_API_BASE_URL);
   }
+
+  // Invitation methods
+
+  // Resolve invite by token (public)
+  async getInvite(token: string): Promise<{
+    invite: {
+      id: string;
+      type: "group_join" | "event_rsvp" | "user_connect" | "platform";
+      token: string;
+      expires_at?: string;
+      created_at: string;
+    };
+    inviter: {
+      id: string;
+      display_name: string;
+      avatar_url?: string;
+      username: string;
+    } | null;
+    target: {
+      id: string;
+      name?: string;
+      title?: string;
+      display_name?: string;
+      username?: string;
+      avatar?: string;
+      avatar_url?: string;
+      participant_count?: number;
+      going_count?: number;
+      start_time?: string;
+      end_time?: string;
+      location?: string;
+      featured_image?: string;
+      description?: string;
+      bio?: string;
+      properties?: Record<string, unknown>;
+      type?: string;
+    } | null;
+  }> {
+    return this.request(`/invite?token=${encodeURIComponent(token)}`, {
+      method: "GET",
+    }, STRIPE_API_BASE_URL);
+  }
+
+  // Create an invite link (auth required)
+  async createInvite(
+    type: "group_join" | "event_rsvp" | "user_connect" | "platform",
+    referenceId?: string,
+    expiresInDays: number = 7
+  ): Promise<{
+    invite: {
+      id: string;
+      token: string;
+      type: string;
+      expires_at: string;
+    };
+    link: string;
+  }> {
+    return this.request("/invites/create", {
+      method: "POST",
+      body: JSON.stringify({
+        type,
+        reference_id: referenceId,
+        expires_in_days: expiresInDays,
+      }),
+    }, APP_API_BASE_URL);
+  }
+
+  // Claim an invite (auth required)
+  async claimInvite(token: string): Promise<{
+    success: boolean;
+    type: "group_join" | "event_rsvp" | "user_connect" | "platform";
+    redirect_to: string;
+  }> {
+    return this.request("/invites/claim", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }, APP_API_BASE_URL);
+  }
+
+  // Join a public group by slug (auth required)
+  async joinPublicGroup(slug: string): Promise<{
+    success: boolean;
+    thread_id: string;
+  }> {
+    return this.request(`/groups/${encodeURIComponent(slug)}/join`, {
+      method: "POST",
+    }, APP_API_BASE_URL);
+  }
+
+  // RSVP to a public event by ID (auth required)
+  async rsvpPublicEvent(eventId: string): Promise<{
+    success: boolean;
+    event_id: string;
+    rsvp_id: string;
+  }> {
+    return this.request(`/events/${encodeURIComponent(eventId)}/public-rsvp`, {
+      method: "POST",
+    }, APP_API_BASE_URL);
+  }
 }
 
 export const api = new ApiClient();
