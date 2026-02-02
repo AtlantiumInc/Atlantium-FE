@@ -43,7 +43,7 @@ export function GoogleCallbackPage() {
         setMessage("Signed in with Google!");
 
         // Check onboarding status from the freshly fetched user data
-        const profile = (fullUser as Record<string, unknown>)?._profile as Record<string, unknown> | undefined;
+        const profile = (fullUser as unknown as Record<string, unknown>)?._profile as Record<string, unknown> | undefined;
         const registrationDetails = profile?.registration_details as Record<string, unknown> | undefined;
         const isOnboardingCompleted = registrationDetails?.is_completed === true;
 
