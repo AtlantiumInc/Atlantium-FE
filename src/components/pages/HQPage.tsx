@@ -17,7 +17,6 @@ import {
   MapPin,
   XCircle,
   Users,
-  MessageCircle,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { MembershipGate, UpgradePrompt } from "@/components/subscription";
