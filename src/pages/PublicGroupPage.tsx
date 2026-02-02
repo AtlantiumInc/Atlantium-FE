@@ -129,10 +129,9 @@ export function PublicGroupPage() {
         navigate("/onboarding");
       }
     } catch (err) {
-      const status = (err as Error & { status?: number }).status;
       const message = err instanceof Error ? err.message : "Failed to join group";
 
-      if (status === 409) {
+      if (message.toLowerCase().includes("already a member")) {
         setJoinError("You are already a member of this group.");
       } else {
         setJoinError(message);

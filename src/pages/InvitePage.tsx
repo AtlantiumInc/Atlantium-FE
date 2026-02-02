@@ -122,7 +122,7 @@ export function InvitePage() {
       const status = (err as Error & { status?: number }).status;
       const message = err instanceof Error ? err.message : "Failed to claim invite";
 
-      if (status === 409) {
+      if (message.toLowerCase().includes("already")) {
         setError("You are already a member.");
         setErrorType("already_claimed");
       } else if (status === 410) {
