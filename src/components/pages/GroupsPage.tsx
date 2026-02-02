@@ -21,7 +21,9 @@ import {
   Clock,
   Sparkles,
   Check,
+  Share2,
 } from "lucide-react";
+import { InviteShareDialog } from "@/components/InviteShareDialog";
 import { api } from "@/lib/api";
 import type { Thread, Connection } from "@/lib/types";
 
@@ -38,6 +40,7 @@ export function GroupsPage({ onNavigateToThread }: GroupsPageProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [shareGroup, setShareGroup] = useState<{ id: string; name: string } | null>(null);
 
   const fetchGroups = async () => {
     try {
@@ -235,17 +238,33 @@ export function GroupsPage({ onNavigateToThread }: GroupsPageProps) {
                     <Clock className="h-3 w-3" />
                     {formatLastActivity(group.last_message_at)}
                   </span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onNavigateToThread?.(group.thread_id);
-                    }}
-                  >
-                    <MessageCircle className="h-4 w-4 mr-1" />
-                    Open
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShareGroup({
+                          id: group.thread_id,
+                          name: group.name || "Unnamed Group",
+                        });
+                      }}
+                      title="Share invite link"
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onNavigateToThread?.(group.thread_id);
+                      }}
+                    >
+                      <MessageCircle className="h-4 w-4 mr-1" />
+                      Open
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -355,6 +374,16 @@ export function GroupsPage({ onNavigateToThread }: GroupsPageProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <InviteShareDialog
+        open={shareGroup !== null}
+        onOpenChange={(open) => {
+          if (!open) setShareGroup(null);
+        }}
+        type="group_join"
+        referenceId={shareGroup?.id || ""}
+        name={shareGroup?.name || ""}
+      />
     </div>
   );
 }

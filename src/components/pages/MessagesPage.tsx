@@ -17,7 +17,9 @@ import {
   ChevronUp,
   Users,
   Sparkles,
+  Share2,
 } from "lucide-react";
+import { InviteShareDialog } from "@/components/InviteShareDialog";
 import { api } from "@/lib/api";
 import { showMessageNotification } from "@/lib/notifications";
 import type { Thread, ThreadMessage, ThreadDetail } from "@/lib/types";
@@ -48,6 +50,7 @@ export function MessagesPage({ initialThreadId, onThreadSelected }: MessagesPage
   const [error, setError] = useState<string | null>(null);
   const [threadDetails, setThreadDetails] = useState<ThreadDetail | null>(null);
   const [showFiles, setShowFiles] = useState(true);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const isInitialLoadRef = useRef(true);
@@ -436,6 +439,18 @@ export function MessagesPage({ initialThreadId, onThreadSelected }: MessagesPage
                   </p>
                 </div>
               </div>
+              <div className="flex items-center gap-2">
+                {isGroupThread(selectedThread) && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsShareDialogOpen(true)}
+                    title="Share invite link"
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
               {/* Connection status indicator */}
               {connectionState !== "connected" && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -643,6 +658,16 @@ export function MessagesPage({ initialThreadId, onThreadSelected }: MessagesPage
             )}
           </div>
         </div>
+      )}
+
+      {selectedThread && isGroupThread(selectedThread) && (
+        <InviteShareDialog
+          open={isShareDialogOpen}
+          onOpenChange={setIsShareDialogOpen}
+          type="group_join"
+          referenceId={selectedThread.thread_id}
+          name={getThreadDisplayName(selectedThread)}
+        />
       )}
     </div>
   );
