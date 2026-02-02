@@ -685,6 +685,38 @@ class ApiClient {
     }, STRIPE_API_BASE_URL);
   }
 
+  // Public group (no auth required)
+  async getPublicGroup(slug: string): Promise<{
+    group: {
+      id: string;
+      name: string;
+      slug: string;
+      type: "group" | "focus_group";
+      avatar?: string;
+      properties?: Record<string, unknown>;
+      participant_count: number;
+      created_by_profile?: {
+        id: string;
+        username: string;
+        display_name: string;
+        avatar_url?: string;
+      };
+      created_at?: string;
+    };
+    og: {
+      title: string;
+      description: string;
+      image: string;
+      url: string;
+      type: string;
+      site_name: string;
+    };
+  }> {
+    return this.request(`/group?slug=${encodeURIComponent(slug)}`, {
+      method: "GET",
+    }, STRIPE_API_BASE_URL);
+  }
+
   // Public profile (no auth required)
   async getPublicProfile(username: string): Promise<{
     profile: {

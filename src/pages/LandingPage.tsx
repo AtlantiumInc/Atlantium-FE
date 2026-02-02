@@ -418,7 +418,7 @@ export function LandingPage() {
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight leading-[1.05] mb-5">
                   <span className="text-foreground">Your Path to</span>
                   <br />
-                  <span className="bg-gradient-to-r from-slate-400 via-blue-500 to-cyan-400 bg-clip-text text-transparent">
+                  <span className="text-white">
                     the Frontier
                   </span>
                 </h1>
@@ -576,7 +576,7 @@ export function LandingPage() {
                     <Calendar className="h-5 w-5 text-blue-500" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-foreground">Upcoming Events</h3>
+                    <h3 className="text-lg font-bold text-white">Upcoming Events</h3>
                     <p className="text-xs text-muted-foreground">Weekly meetups with builders & investors</p>
                   </div>
                 </div>
@@ -604,7 +604,7 @@ export function LandingPage() {
                     <Newspaper className="h-5 w-5 text-indigo-500" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-foreground">Frontier Feed</h3>
+                    <h3 className="text-lg font-bold text-white">Frontier Feed</h3>
                     <p className="text-xs text-muted-foreground">Live AI news • Updated every hour</p>
                   </div>
                 </div>

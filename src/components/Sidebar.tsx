@@ -1,7 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
-  Compass,
   Calendar,
   ChevronLeft,
   ChevronRight,
@@ -25,11 +24,6 @@ export function Sidebar({
 }: SidebarProps) {
 
   const navItems = [
-    {
-      id: "frontier",
-      icon: <Compass size={20} />,
-      label: "Frontier",
-    },
     {
       id: "events",
       icon: <Calendar size={20} />,
