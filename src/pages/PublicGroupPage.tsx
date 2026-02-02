@@ -43,8 +43,8 @@ export function PublicGroupPage() {
   const [ogData, setOgData] = useState<OGMetadata | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
+  const [isMember, setIsMember] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [joinError, setJoinError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchGroup() {
@@ -66,6 +66,24 @@ export function PublicGroupPage() {
 
     fetchGroup();
   }, [slug]);
+
+  // Check if user is already a member
+  useEffect(() => {
+    async function checkMembership() {
+      if (!isAuthenticated || !group) return;
+
+      try {
+        // Try to get thread details - if successful, user is a member
+        await api.getThreadDetails(group.id);
+        setIsMember(true);
+      } catch {
+        // User is not a member
+        setIsMember(false);
+      }
+    }
+
+    checkMembership();
+  }, [isAuthenticated, group]);
 
   // Set document title and meta tags
   useEffect(() => {
@@ -110,10 +128,10 @@ export function PublicGroupPage() {
     if (!slug) return;
 
     setIsJoining(true);
-    setJoinError(null);
 
     try {
       const result = await api.joinPublicGroup(slug);
+      setIsMember(true);
 
       // Check if user needs onboarding
       const fullUser = await checkAuth();
@@ -128,14 +146,9 @@ export function PublicGroupPage() {
         setPendingRedirect(`/chat/${result.thread_id}`);
         navigate("/onboarding");
       }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to join group";
-
-      if (message.toLowerCase().includes("already a member")) {
-        setJoinError("You are already a member of this group.");
-      } else {
-        setJoinError(message);
-      }
+    } catch {
+      // If join fails (e.g., already a member), just mark as member
+      setIsMember(true);
     } finally {
       setIsJoining(false);
     }
@@ -250,31 +263,30 @@ export function PublicGroupPage() {
             </p>
           )}
 
-          {/* Join Error */}
-          {joinError && (
-            <div className="mt-4 p-3 text-sm text-destructive bg-destructive/10 rounded-lg max-w-sm">
-              {joinError}
-            </div>
-          )}
-
           {/* CTAs */}
           <div className="mt-10 w-full max-w-sm">
             {isAuthenticated ? (
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Button
-                  size="lg"
-                  onClick={handleJoinGroup}
-                  disabled={isJoining}
-                >
-                  {isJoining ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Joining...
-                    </>
-                  ) : (
-                    "Join Group"
-                  )}
-                </Button>
+                {isMember ? (
+                  <Link to={`/chat/${group.id}`}>
+                    <Button size="lg">View Chat</Button>
+                  </Link>
+                ) : (
+                  <Button
+                    size="lg"
+                    onClick={handleJoinGroup}
+                    disabled={isJoining}
+                  >
+                    {isJoining ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Joining...
+                      </>
+                    ) : (
+                      "Join Group"
+                    )}
+                  </Button>
+                )}
                 <a
                   href="https://apps.apple.com/app/atlantium/id6743597791"
                   target="_blank"
