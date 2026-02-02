@@ -268,8 +268,8 @@ export function PublicGroupPage() {
             {isAuthenticated ? (
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 {isMember ? (
-                  <Link to={`/chat/${group.id}`}>
-                    <Button size="lg">View Chat</Button>
+                  <Link to="/dashboard">
+                    <Button size="lg">Go to Dashboard</Button>
                   </Link>
                 ) : (
                   <Button
