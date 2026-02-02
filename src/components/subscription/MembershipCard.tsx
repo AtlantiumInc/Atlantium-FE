@@ -179,8 +179,8 @@ export function MembershipCard({ onAvatarClick, username, bio, createdAt }: Memb
                 <span className="font-medium">Club Membership</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Price</span>
-                <span className="font-medium">$49/month</span>
+                <span className="text-muted-foreground">Events</span>
+                <span className="font-medium">All Access</span>
               </div>
               {periodEndDate && (
                 <div className="flex justify-between text-sm">
