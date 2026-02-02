@@ -54,47 +54,33 @@ export function Sidebar({
       )}
     >
       {/* Header */}
-      <div className={cn(
-        "relative flex items-center h-14 border-b border-border px-3",
-        collapsed ? "justify-center" : "justify-between"
-      )}>
-        {collapsed ? (
-          <>
-            <button onClick={() => onNavigate?.("hq")} className="hover:opacity-80 transition-opacity">
-              <img src="/logo.png" alt="Atlantium" className="h-8 w-8" />
-            </button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggleCollapse}
-              className="h-6 w-6 absolute -right-3 top-1/2 -translate-y-1/2 bg-card border border-border rounded-full shadow-sm"
-            >
-              <ChevronRight size={14} />
-            </Button>
-          </>
-        ) : (
-          <>
-            <button
-              onClick={() => onNavigate?.("hq")}
-              className={cn(
-                "flex-1 px-3 py-2 mx-1 rounded-lg font-semibold text-sm border transition-all duration-200",
-                activePage === "hq"
-                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                  : "bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 hover:border-primary/40 hover:shadow-sm"
-              )}
-            >
-              Atlantium
-            </button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggleCollapse}
-              className="h-8 w-8"
-            >
-              <ChevronLeft size={16} />
-            </Button>
-          </>
-        )}
+      <div className="h-14 border-b border-border px-2 flex items-center justify-between">
+        <Button
+          variant={activePage === "hq" ? "secondary" : "ghost"}
+          className={cn(
+            "flex-1 justify-start gap-3",
+            collapsed && "justify-center px-2"
+          )}
+          onClick={() => onNavigate?.("hq")}
+        >
+          <img
+            src="/logo.png"
+            alt="Atlantium"
+            className={cn(
+              "h-5 w-5 transition-opacity",
+              activePage === "hq" ? "opacity-100" : "opacity-70"
+            )}
+          />
+          {!collapsed && <span className="font-semibold">Atlantium</span>}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onToggleCollapse}
+          className="h-8 w-8 flex-shrink-0"
+        >
+          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </Button>
       </div>
 
       {/* Navigation */}
