@@ -79,6 +79,8 @@ async function handleGroupPage(request, slug, env) {
     <meta property="og:title" content="${escapeHtml(ogData.title)}" />
     <meta property="og:description" content="${escapeHtml(ogData.description)}" />
     <meta property="og:image" content="${escapeHtml(ogData.image)}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:url" content="${escapeHtml(ogData.url)}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${escapeHtml(ogData.title)}" />
