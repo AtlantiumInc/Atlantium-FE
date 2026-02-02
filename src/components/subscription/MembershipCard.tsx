@@ -49,6 +49,10 @@ export function MembershipCard({ onAvatarClick, username, bio, createdAt }: Memb
   const profileUsername = username || (profile?.username as string) || "";
   const inviteLink = `atlantium.ai/u/${profileUsername}`;
 
+  // Get interests from registration details
+  const registrationDetails = profile?.registration_details as Record<string, unknown> | undefined;
+  const interests = (registrationDetails?.interests as string[]) || [];
+
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(`https://${inviteLink}`);
@@ -182,20 +186,20 @@ export function MembershipCard({ onAvatarClick, username, bio, createdAt }: Memb
                 <span className="text-muted-foreground">Events</span>
                 <span className="font-medium">All Access</span>
               </div>
+              {interests.length > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Interests</span>
+                  <span className="font-medium">
+                    {interests[0]}{interests.length > 1 ? ` +${interests.length - 1} more` : ""}
+                  </span>
+                </div>
+              )}
               {periodEndDate && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">
                     {isCanceling ? "Access until" : "Renews on"}
                   </span>
                   <span className="font-medium">{periodEndDate}</span>
-                </div>
-              )}
-              {subscription?.payment_method && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Payment method</span>
-                  <span className="font-medium capitalize">
-                    {subscription.payment_method.brand} ****{subscription.payment_method.last4}
-                  </span>
                 </div>
               )}
             </div>
@@ -205,6 +209,18 @@ export function MembershipCard({ onAvatarClick, username, bio, createdAt }: Memb
                 <span className="text-muted-foreground">Current plan</span>
                 <span className="font-medium">Free</span>
               </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Events</span>
+                <span className="font-medium">Limited Access</span>
+              </div>
+              {interests.length > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Interests</span>
+                  <span className="font-medium">
+                    {interests[0]}{interests.length > 1 ? ` +${interests.length - 1} more` : ""}
+                  </span>
+                </div>
+              )}
               <div className="rounded-lg border p-4 space-y-2">
                 <p className="font-medium">Club Membership - $49/month</p>
                 <ul className="text-sm text-muted-foreground space-y-1">
