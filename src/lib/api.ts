@@ -665,6 +665,26 @@ class ApiClient {
     }, APP_API_BASE_URL);
   }
 
+  // Public article by slug (no auth required)
+  async getPublicArticle(slug: string): Promise<{
+    article: FrontierArticle & { slug: string };
+    og: {
+      title: string;
+      description: string;
+      image: string;
+      url: string;
+      type: string;
+      site_name: string;
+      author: string;
+      published_time: number;
+      tags: string[];
+    };
+  }> {
+    return this.request(`/article?slug=${encodeURIComponent(slug)}`, {
+      method: "GET",
+    }, STRIPE_API_BASE_URL);
+  }
+
   // Public profile (no auth required)
   async getPublicProfile(username: string): Promise<{
     profile: {
