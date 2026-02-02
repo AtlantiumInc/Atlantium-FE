@@ -187,13 +187,6 @@ export function HQPage({ user: userProp, onNavigateToThread }: HQPageProps) {
     });
   }, []);
 
-  const formatEventDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-  };
-
   const formatEventTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString("en-US", {
       hour: "numeric",
