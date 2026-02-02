@@ -225,33 +225,36 @@ export function MembershipCard({ onAvatarClick, username, bio, createdAt }: Memb
             </div>
           )}
 
-          {/* Action buttons / Welcome message */}
+          {/* Welcome message */}
           <div className="pt-2">
-            {isClubMember ? (
-              <div className="flex items-end justify-between py-1">
-                <p
-                  className="text-[11px] font-medium tracking-wider uppercase text-muted-foreground/70"
-                  style={{ letterSpacing: "0.1em" }}
-                >
-                  Member since {createdAt ? new Date(createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "—"}
-                </p>
-                <p
-                  className="text-[10px] font-medium tracking-wider uppercase text-muted-foreground/60"
-                  style={{ letterSpacing: "0.1em" }}
-                >
-                  Welcome to the Frontier
-                </p>
-              </div>
-            ) : (
-              <Button className="w-full" onClick={() => setShowUpgradeModal(true)}>
-                <Crown className="h-4 w-4" />
-                Upgrade to Club - $49/mo
-              </Button>
-            )}
+            <div className="flex items-end justify-between py-1">
+              <p
+                className="text-[11px] font-medium tracking-wider uppercase text-muted-foreground/70"
+                style={{ letterSpacing: "0.1em" }}
+              >
+                Member since {createdAt ? new Date(createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "—"}
+              </p>
+              <p
+                className="text-[10px] font-medium tracking-wider uppercase text-muted-foreground/60"
+                style={{ letterSpacing: "0.1em" }}
+              >
+                {isClubMember ? "Welcome to the Frontier" : "Free Member"}
+              </p>
+            </div>
           </div>
         </CardContent>
         </Card>
       </HolographicCard>
+
+      {/* Upgrade CTA for free members */}
+      {!isClubMember && (
+        <div className="mt-3">
+          <Button className="w-full" onClick={() => setShowUpgradeModal(true)}>
+            <Crown className="h-4 w-4" />
+            Upgrade to Club - $49/mo
+          </Button>
+        </div>
+      )}
 
       {/* Invitation Link */}
       {profileUsername && (
