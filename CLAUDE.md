@@ -2,7 +2,7 @@
 
 ## Deployments
 - **Xano backend**: Always deployed by the user manually. Do not attempt to push or deploy backend changes to Xano.
-- **Frontend**: (Vite + React app at `src/`)
+- **Frontend**: Hosted on Railway, auto-deploys from `main` branch on GitHub. Push to `main` to deploy.
 - **Cloudflare Workers**: Deployed via `npx wrangler deploy --config workers/<config>.toml`
 
 ## Project Structure
