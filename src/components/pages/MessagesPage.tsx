@@ -50,10 +50,15 @@ export function MessagesPage() {
   // Handle incoming realtime messages
   const handleRealtimeMessage = useCallback((message: ThreadMessage) => {
     console.log("[Realtime] Received message:", message);
-    const isDuplicateOrOwn = user?.id === message.sender_id;
+
+    // Skip messages from current user (already added optimistically)
+    if (user?.id === message.sender_id) {
+      console.log("[Realtime] Skipping own message (already optimistically added)");
+      return;
+    }
 
     setMessages((prev) => {
-      // Avoid duplicates (in case message was sent by current user)
+      // Double-check for duplicates by message_id
       if (prev.some((m) => m.message_id === message.message_id)) {
         console.log("[Realtime] Duplicate message, skipping:", message.message_id);
         return prev;
@@ -61,12 +66,10 @@ export function MessagesPage() {
       console.log("[Realtime] Adding new message to chat");
 
       // Show notification for messages from other users
-      if (!isDuplicateOrOwn) {
-        showMessageNotification(
-          message.sender_username || "Someone",
-          message.content.substring(0, 100)
-        );
-      }
+      showMessageNotification(
+        message.sender_username || "Someone",
+        message.content.substring(0, 100)
+      );
 
       return [...prev, message];
     });
