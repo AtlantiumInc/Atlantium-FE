@@ -4,7 +4,6 @@ import { motion } from "motion/react";
 import {
   Loader2,
   ArrowRight,
-  Calendar,
   User,
   Newspaper,
   Sparkles,

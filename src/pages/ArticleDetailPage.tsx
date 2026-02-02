@@ -57,7 +57,7 @@ function formatUTCTimestamp(timestamp: number): string {
 
 export function ArticleDetailPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [article, setArticle] = useState<ArticleWithSlug | null>(null);
   const [ogData, setOgData] = useState<OGMetadata | null>(null);
   const [isLoading, setIsLoading] = useState(true);
