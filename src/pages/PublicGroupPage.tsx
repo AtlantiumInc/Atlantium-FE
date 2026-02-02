@@ -38,7 +38,7 @@ interface OGMetadata {
 export function PublicGroupPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { user, isAuthenticated, isLoading: authLoading, login, checkAuth } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, login, checkAuth } = useAuth();
   const [group, setGroup] = useState<PublicGroup | null>(null);
   const [ogData, setOgData] = useState<OGMetadata | null>(null);
   const [isLoading, setIsLoading] = useState(true);

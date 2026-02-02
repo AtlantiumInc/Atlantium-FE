@@ -56,7 +56,7 @@ interface InviteData {
 export function InvitePage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const { user, isAuthenticated, isLoading: authLoading, login, checkAuth } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, login, checkAuth } = useAuth();
   const [inviteData, setInviteData] = useState<InviteData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isClaiming, setIsClaiming] = useState(false);
