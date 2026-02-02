@@ -7,6 +7,7 @@ import {
   ChevronRight,
   MessageCircle,
   UserPlus,
+  Users,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -38,6 +39,11 @@ export function Sidebar({
       id: "messages",
       icon: <MessageCircle size={20} />,
       label: "Inbox",
+    },
+    {
+      id: "groups",
+      icon: <Users size={20} />,
+      label: "Groups",
     },
     {
       id: "connections",

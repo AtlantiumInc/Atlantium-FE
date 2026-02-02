@@ -98,7 +98,7 @@ export interface ConnectionInvitations {
 }
 
 // Thread and messaging types
-export type ThreadType = "direct" | "group";
+export type ThreadType = "direct" | "group" | "focus_group";
 export type ParticipantRole = "owner" | "admin" | "member";
 
 export interface ThreadParticipant {
@@ -136,6 +136,7 @@ export interface Thread {
   unread_count: number;
   pinned: boolean;
   participants?: ThreadParticipant[];
+  participant_count?: number;
   other_user_id?: string;
   other_user_username?: string;
   other_user_avatar?: string;

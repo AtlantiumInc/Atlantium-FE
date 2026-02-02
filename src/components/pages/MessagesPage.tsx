@@ -15,6 +15,8 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
+  Users,
+  Sparkles,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { showMessageNotification } from "@/lib/notifications";
@@ -27,13 +29,19 @@ const MOCK_FILES = [
   { id: "3", name: "Design Assets.zip", size: "8.2 MB" },
 ];
 
-export function MessagesPage() {
+interface MessagesPageProps {
+  initialThreadId?: string | null;
+  onThreadSelected?: () => void;
+}
+
+export function MessagesPage({ initialThreadId, onThreadSelected }: MessagesPageProps) {
   const { user } = useAuth();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [messageInput, setMessageInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [threadFilter, setThreadFilter] = useState<"all" | "direct" | "groups">("all");
   const [isLoadingThreads, setIsLoadingThreads] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -128,6 +136,17 @@ export function MessagesPage() {
     fetchThreads();
   }, []);
 
+  // Auto-select thread when initialThreadId is provided
+  useEffect(() => {
+    if (initialThreadId && threads.length > 0 && !isLoadingThreads) {
+      const thread = threads.find((t) => t.thread_id === initialThreadId);
+      if (thread) {
+        setSelectedThread(thread);
+        onThreadSelected?.();
+      }
+    }
+  }, [initialThreadId, threads, isLoadingThreads, onThreadSelected]);
+
   useEffect(() => {
     if (selectedThread) {
       isInitialLoadRef.current = true;
@@ -221,13 +240,26 @@ export function MessagesPage() {
   };
 
   const getThreadDisplayName = (thread: Thread) => {
-    if (thread.type === "group" && thread.name) {
+    if ((thread.type === "group" || thread.type === "focus_group") && thread.name) {
       return thread.name;
     }
     return thread.other_user_username || "Unknown";
   };
 
-  const filteredThreads = threads.filter((thread) => {
+  const isGroupThread = (thread: Thread) => {
+    return thread.type === "group" || thread.type === "focus_group";
+  };
+
+  // Filter by thread type
+  const filteredByType = threads.filter((thread) => {
+    if (threadFilter === "all") return true;
+    if (threadFilter === "direct") return thread.type === "direct";
+    if (threadFilter === "groups") return thread.type === "group" || thread.type === "focus_group";
+    return true;
+  });
+
+  // Filter by search query
+  const filteredThreads = filteredByType.filter((thread) => {
     const threadName = thread.name || thread.other_user_username || "";
     return threadName.toLowerCase().includes(searchQuery.toLowerCase());
   });
@@ -247,6 +279,42 @@ export function MessagesPage() {
     <div className="flex h-full">
       {/* Left Sidebar - Chat List */}
       <div className="w-64 flex-shrink-0 border-r border-border flex flex-col bg-card">
+        {/* Filter Tabs */}
+        <div className="p-2 border-b border-border">
+          <div className="flex gap-1 p-1 bg-muted/50 rounded-lg">
+            <button
+              className={`flex-1 text-xs font-medium px-2 py-1.5 rounded-md transition-colors ${
+                threadFilter === "all"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => setThreadFilter("all")}
+            >
+              All
+            </button>
+            <button
+              className={`flex-1 text-xs font-medium px-2 py-1.5 rounded-md transition-colors ${
+                threadFilter === "direct"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => setThreadFilter("direct")}
+            >
+              Direct
+            </button>
+            <button
+              className={`flex-1 text-xs font-medium px-2 py-1.5 rounded-md transition-colors ${
+                threadFilter === "groups"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => setThreadFilter("groups")}
+            >
+              Groups
+            </button>
+          </div>
+        </div>
+
         {/* Search */}
         <div className="p-4 border-b border-border">
           <div className="relative">
@@ -323,12 +391,26 @@ export function MessagesPage() {
             <div className="flex items-center justify-between p-4 border-b border-border">
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src={selectedThread.other_user_avatar || undefined} />
-                    <AvatarFallback className="text-lg">
-                      {getInitials(getThreadDisplayName(selectedThread))}
-                    </AvatarFallback>
-                  </Avatar>
+                  {isGroupThread(selectedThread) ? (
+                    <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
+                      selectedThread.type === "focus_group"
+                        ? "bg-cyan-500/20"
+                        : "bg-primary/20"
+                    }`}>
+                      {selectedThread.type === "focus_group" ? (
+                        <Sparkles className="h-6 w-6 text-cyan-500" />
+                      ) : (
+                        <Users className="h-6 w-6 text-primary" />
+                      )}
+                    </div>
+                  ) : (
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={selectedThread.other_user_avatar || undefined} />
+                      <AvatarFallback className="text-lg">
+                        {getInitials(getThreadDisplayName(selectedThread))}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
                   {/* Online indicator for direct messages */}
                   {selectedThread.type === "direct" &&
                     selectedThread.other_user_id &&
@@ -337,9 +419,16 @@ export function MessagesPage() {
                     )}
                 </div>
                 <div>
-                  <h3 className="font-semibold">{getThreadDisplayName(selectedThread)}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold">{getThreadDisplayName(selectedThread)}</h3>
+                    {selectedThread.type === "focus_group" && (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-500 font-medium">
+                        Focus Group
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-muted-foreground">
-                    {selectedThread.type === "group"
+                    {isGroupThread(selectedThread)
                       ? `${threadDetails?.participants?.length || 0} members`
                       : presenceMap.has(selectedThread.other_user_id || "")
                         ? "Online"
@@ -394,7 +483,7 @@ export function MessagesPage() {
                             </div>
                           )}
                           <div className="flex items-end gap-2">
-                            {!isOwnMessage && selectedThread?.type === "group" && (
+                            {!isOwnMessage && isGroupThread(selectedThread) && (
                               <Avatar className="h-8 w-8 flex-shrink-0">
                                 <AvatarImage src={message.sender_avatar} />
                                 <AvatarFallback className="text-xs">
@@ -403,9 +492,13 @@ export function MessagesPage() {
                               </Avatar>
                             )}
                             <div className="flex-1">
-                              {selectedThread?.type === "group" && !isOwnMessage && (
+                              {isGroupThread(selectedThread) && !isOwnMessage && (
                                 <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-sm font-medium text-orange-500">
+                                  <span className={`text-sm font-medium ${
+                                    selectedThread?.type === "focus_group"
+                                      ? "text-cyan-500"
+                                      : "text-orange-500"
+                                  }`}>
                                     {message.sender_username || "Unknown"}
                                   </span>
                                 </div>
@@ -576,6 +669,50 @@ function ChatListItem({
   compact = false,
 }: ChatListItemProps) {
   const displayName = getDisplayName(thread);
+  const isGroup = thread.type === "group" || thread.type === "focus_group";
+  const isFocusGroup = thread.type === "focus_group";
+
+  const renderAvatar = (size: "sm" | "md") => {
+    const sizeClasses = size === "sm" ? "h-8 w-8" : "h-10 w-10";
+    const iconSize = size === "sm" ? 14 : 18;
+
+    if (isGroup) {
+      return (
+        <div
+          className={`${sizeClasses} rounded-full flex items-center justify-center ${
+            isFocusGroup
+              ? isSelected
+                ? "bg-cyan-500/30"
+                : "bg-cyan-500/20"
+              : isSelected
+                ? "bg-primary-foreground/20"
+                : "bg-primary/20"
+          }`}
+        >
+          {isFocusGroup ? (
+            <Sparkles
+              size={iconSize}
+              className={isSelected ? "text-primary-foreground" : "text-cyan-500"}
+            />
+          ) : (
+            <Users
+              size={iconSize}
+              className={isSelected ? "text-primary-foreground" : "text-primary"}
+            />
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <Avatar className={sizeClasses}>
+        <AvatarImage src={thread.other_user_avatar || undefined} />
+        <AvatarFallback className={size === "sm" ? "text-xs" : ""}>
+          {size === "sm" ? getInitials(displayName) : displayName.charAt(0)}
+        </AvatarFallback>
+      </Avatar>
+    );
+  };
 
   if (compact) {
     return (
@@ -585,12 +722,7 @@ function ChatListItem({
         }`}
         onClick={() => onSelect(thread)}
       >
-        <div className="relative">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={thread.other_user_avatar || undefined} />
-            <AvatarFallback className="text-xs">{getInitials(displayName)}</AvatarFallback>
-          </Avatar>
-        </div>
+        <div className="relative">{renderAvatar("sm")}</div>
         <span className="text-sm flex-1 text-left truncate">{displayName}</span>
         {thread.unread_count > 0 && (
           <span
@@ -614,18 +746,26 @@ function ChatListItem({
       }`}
       onClick={() => onSelect(thread)}
     >
-      <div className="relative">
-        <Avatar className="h-10 w-10">
-          <AvatarImage src={thread.other_user_avatar || undefined} />
-          <AvatarFallback>{displayName.charAt(0)}</AvatarFallback>
-        </Avatar>
-      </div>
+      <div className="relative">{renderAvatar("md")}</div>
       <div className="flex-1 min-w-0 text-left">
-        <div className="flex items-center justify-between">
-          <span className="font-medium text-sm truncate">{displayName}</span>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="font-medium text-sm truncate">{displayName}</span>
+            {isFocusGroup && (
+              <span
+                className={`text-[10px] px-1 py-0.5 rounded font-medium flex-shrink-0 ${
+                  isSelected
+                    ? "bg-primary-foreground/20 text-primary-foreground"
+                    : "bg-cyan-500/20 text-cyan-500"
+                }`}
+              >
+                Focus
+              </span>
+            )}
+          </div>
           {thread.unread_count > 0 && (
             <span
-              className={`text-xs px-1.5 py-0.5 rounded-full ${
+              className={`text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 ${
                 isSelected
                   ? "bg-primary-foreground text-primary"
                   : "bg-primary text-primary-foreground"

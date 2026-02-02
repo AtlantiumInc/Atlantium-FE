@@ -16,9 +16,12 @@ import {
   Loader2,
   MapPin,
   XCircle,
+  Users,
+  MessageCircle,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { MembershipGate, UpgradePrompt } from "@/components/subscription";
+import type { Thread } from "@/lib/types";
 
 interface FrontierArticle {
   id: string;
@@ -49,6 +52,7 @@ interface HQPageProps {
   user?: {
     email?: string;
   };
+  onNavigateToThread?: (threadId: string) => void;
 }
 
 type RsvpStatus = "going" | "not_going" | "maybe" | "waitlist";
@@ -74,7 +78,7 @@ interface Event {
   address?: string;
 }
 
-export function HQPage({ user: userProp }: HQPageProps) {
+export function HQPage({ user: userProp, onNavigateToThread }: HQPageProps) {
   const { user: authUser } = useAuth();
   const user = authUser || userProp;
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
@@ -85,6 +89,8 @@ export function HQPage({ user: userProp }: HQPageProps) {
   const [isRsvpLoading, setIsRsvpLoading] = useState(false);
   const [featuredArticles, setFeaturedArticles] = useState<FrontierArticle[]>([]);
   const [isLoadingArticles, setIsLoadingArticles] = useState(true);
+  const [myGroups, setMyGroups] = useState<Thread[]>([]);
+  const [isLoadingGroups, setIsLoadingGroups] = useState(true);
 
   const fetchFrontierArticles = async () => {
     try {
@@ -94,6 +100,20 @@ export function HQPage({ user: userProp }: HQPageProps) {
       console.error("Failed to fetch frontier articles:", error);
     } finally {
       setIsLoadingArticles(false);
+    }
+  };
+
+  const fetchMyGroups = async () => {
+    try {
+      const result = await api.getThreads();
+      const groupThreads = (result.threads || []).filter(
+        (thread) => thread.type === "group" || thread.type === "focus_group"
+      );
+      setMyGroups(groupThreads);
+    } catch (error) {
+      console.error("Failed to fetch groups:", error);
+    } finally {
+      setIsLoadingGroups(false);
     }
   };
 
@@ -142,6 +162,7 @@ export function HQPage({ user: userProp }: HQPageProps) {
   useEffect(() => {
     fetchAllEvents();
     fetchFrontierArticles();
+    fetchMyGroups();
   }, []);
 
   // Request notification permission on dashboard load
@@ -384,6 +405,62 @@ export function HQPage({ user: userProp }: HQPageProps) {
             ) : (
               <div className="py-8 text-center">
                 <p className="text-xs text-muted-foreground">No registered events</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* My Groups */}
+        <div className="rounded-xl bg-card border border-border">
+          <div className="px-4 py-3 border-b border-border">
+            <h3 className="text-sm font-medium">My Groups</h3>
+          </div>
+          <div className="p-2">
+            {isLoadingGroups ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : myGroups.length > 0 ? (
+              <div className="space-y-1">
+                {myGroups.slice(0, 4).map((group) => (
+                  <div
+                    key={group.thread_id}
+                    className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => onNavigateToThread?.(group.thread_id)}
+                  >
+                    <div
+                      className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        group.type === "focus_group"
+                          ? "bg-cyan-500/20"
+                          : "bg-primary/20"
+                      }`}
+                    >
+                      {group.type === "focus_group" ? (
+                        <Sparkles className="h-4 w-4 text-cyan-500" />
+                      ) : (
+                        <Users className="h-4 w-4 text-primary" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {group.name || "Unnamed Group"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {group.participant_count || 0} members
+                      </p>
+                    </div>
+                    {group.type === "focus_group" && (
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-500">
+                        Focus
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-8 text-center">
+                <Users className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
+                <p className="text-xs text-muted-foreground">No groups yet</p>
               </div>
             )}
           </div>

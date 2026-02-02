@@ -11,6 +11,7 @@ import { FrontierPage } from "@/components/pages/FrontierPage";
 import { EventsPage } from "@/components/pages/EventsPage";
 import { LeaderboardPage } from "@/components/pages/LeaderboardPage";
 import { MessagesPage } from "@/components/pages/MessagesPage";
+import { GroupsPage } from "@/components/pages/GroupsPage";
 import { ConnectionsPage } from "@/components/pages/ConnectionsPage";
 import { ProjectsPage } from "@/components/pages/ProjectsPage";
 
@@ -18,9 +19,19 @@ export function HomePage() {
   const { user, logout } = useAuth();
   const [activePage, setActivePage] = useState("hq");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [initialThreadId, setInitialThreadId] = useState<string | null>(null);
 
   const handleNavigate = (page: string) => {
     setActivePage(page);
+    // Clear initial thread when navigating away from messages
+    if (page !== "messages") {
+      setInitialThreadId(null);
+    }
+  };
+
+  const handleNavigateToThread = (threadId: string) => {
+    setInitialThreadId(threadId);
+    setActivePage("messages");
   };
 
   const handleToggleSidebar = () => {
@@ -33,6 +44,7 @@ export function HomePage() {
       frontier: "Frontier",
       events: "Events",
       messages: "Inbox",
+      groups: "Groups",
       connections: "Connections",
       projects: "Projects",
       leaderboard: "Leaderboard",
@@ -43,13 +55,15 @@ export function HomePage() {
   const renderPage = () => {
     switch (activePage) {
       case "hq":
-        return <HQPage user={user ?? undefined} />;
+        return <HQPage user={user ?? undefined} onNavigateToThread={handleNavigateToThread} />;
       case "frontier":
         return <FrontierPage />;
       case "events":
         return <EventsPage />;
       case "messages":
-        return <MessagesPage />;
+        return <MessagesPage initialThreadId={initialThreadId} onThreadSelected={() => setInitialThreadId(null)} />;
+      case "groups":
+        return <GroupsPage onNavigateToThread={handleNavigateToThread} />;
       case "connections":
         return <ConnectionsPage />;
       case "projects":
@@ -57,7 +71,7 @@ export function HomePage() {
       case "leaderboard":
         return <LeaderboardPage hasGithubConnected={false} />;
       default:
-        return <HQPage user={user ?? undefined} />;
+        return <HQPage user={user ?? undefined} onNavigateToThread={handleNavigateToThread} />;
     }
   };
 
@@ -96,7 +110,7 @@ export function HomePage() {
           <div className="p-6 w-full">
             <div className={cn(
               "mx-auto",
-              ["connections", "leaderboard", "hq", "events", "projects"].includes(activePage) ? "max-w-7xl" : "max-w-4xl"
+              ["connections", "leaderboard", "hq", "events", "projects", "groups"].includes(activePage) ? "max-w-7xl" : "max-w-4xl"
             )}>
               {renderPage()}
             </div>
