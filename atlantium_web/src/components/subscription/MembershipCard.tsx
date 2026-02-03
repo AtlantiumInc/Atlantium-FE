@@ -30,7 +30,7 @@ interface MembershipCardProps {
   createdAt?: string;
 }
 
-export function MembershipCard({ onAvatarClick, username, bio, createdAt }: MembershipCardProps = {}) {
+export function MembershipCard({ onAvatarClick, bio, createdAt }: MembershipCardProps = {}) {
   const { subscription, isLoading, refreshSubscription } = useSubscription();
   const { user } = useAuth();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
