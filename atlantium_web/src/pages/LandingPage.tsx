@@ -12,6 +12,8 @@ import {
   Sparkles,
   Quote,
   Star,
+  Users,
+  Zap,
 } from "lucide-react";
 import { motion, useAnimationFrame } from "motion/react";
 import { useRef, useState, useEffect } from "react";
@@ -713,6 +715,81 @@ export function LandingPage() {
                 </div>
               </SpotlightCard>
             </div>
+          </motion.div>
+
+          {/* Groups & Focus Groups Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.6 }}
+            className="col-span-12 row-span-2"
+          >
+            <SpotlightCard
+              className="h-full p-6 lg:p-8"
+              spotlightColor="rgba(139, 92, 246, 0.12)"
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <div className="h-10 w-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+                  <Users className="h-5 w-5 text-violet-500" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">Groups & Focus Groups</h3>
+                  <p className="text-xs text-muted-foreground">Collaborate, connect, and build together</p>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Focus Groups */}
+                <div className="relative p-5 rounded-xl bg-gradient-to-br from-violet-500/10 to-purple-500/5 border border-violet-500/20">
+                  <div className="absolute top-4 right-4">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30">
+                      <Zap className="h-3 w-3 text-violet-400" />
+                      <span className="text-[10px] font-semibold text-violet-400 uppercase tracking-wider">AI-Matched</span>
+                    </span>
+                  </div>
+                  <h4 className="text-base font-semibold text-foreground mb-2">Focus Groups</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    30-day intensive collaborations. Our AI matches you with 6 members you'll work well with, led by an experienced guide.
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <div className="h-1.5 w-1.5 rounded-full bg-violet-400" />
+                      1 lead + 6 AI-matched members
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <div className="h-1.5 w-1.5 rounded-full bg-violet-400" />
+                      Pre-determined topics each month
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <div className="h-1.5 w-1.5 rounded-full bg-violet-400" />
+                      3-4 new groups launched monthly
+                    </div>
+                  </div>
+                </div>
+
+                {/* Regular Groups */}
+                <div className="relative p-5 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/5 border border-blue-500/20">
+                  <h4 className="text-base font-semibold text-foreground mb-2">Groups</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Create your own groups for projects, interests, or teams. Invite members, share files, and collaborate freely.
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                      Invite anyone from the community
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                      File sharing & media
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                      Persistent group chat
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </SpotlightCard>
           </motion.div>
 
           {/* CTA Card - Full width */}
