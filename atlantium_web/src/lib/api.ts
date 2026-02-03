@@ -57,6 +57,8 @@ export interface User {
   display_name?: string;
   first_name?: string;
   last_name?: string;
+  ref_code?: string;
+  referred_by?: string;
   _subscription?: UserSubscription;
   _integrations?: UserIntegrations;
   _settings?: UserSettings;
@@ -152,10 +154,10 @@ class ApiClient {
   }
 
   // Auth methods
-  async requestOtp(email: string): Promise<OtpResponse> {
+  async requestOtp(email: string, refCode?: string): Promise<OtpResponse> {
     return this.request<OtpResponse>("/auth/otp", {
       method: "POST",
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, ref_code: refCode }),
     }, AUTH_API_BASE_URL);
   }
 
@@ -806,7 +808,7 @@ class ApiClient {
       method: "POST",
       body: JSON.stringify({
         type,
-        reference_id: referenceId,
+        reference_id: referenceId || "",
         expires_in_days: expiresInDays,
       }),
     }, APP_API_BASE_URL);

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/form";
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/lib/api";
+import { getReferralCode, clearReferralCode } from "@/lib/referral";
 
 const signupSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -88,7 +89,9 @@ export function SignupPage() {
     setError(null);
 
     try {
-      await api.requestOtp(values.email);
+      const refCode = getReferralCode();
+      await api.requestOtp(values.email, refCode || undefined);
+      if (refCode) clearReferralCode();
       setEmail(values.email);
       setStep("otp");
       toast.success("Verification code sent to your email");
