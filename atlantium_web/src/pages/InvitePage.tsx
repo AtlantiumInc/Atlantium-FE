@@ -103,7 +103,7 @@ export function InvitePage() {
     setError(null);
 
     try {
-      const result = await api.claimInvite(token);
+      await api.claimInvite(token);
 
       // Check if user needs onboarding
       const fullUser = await checkAuth();

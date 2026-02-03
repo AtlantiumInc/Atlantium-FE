@@ -31,7 +31,6 @@ import {
   Zap,
   Tag,
   FileText,
-  ExternalLink,
   Share2,
   User,
 } from "lucide-react";

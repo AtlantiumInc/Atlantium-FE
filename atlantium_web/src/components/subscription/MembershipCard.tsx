@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Crown, AlertTriangle, Loader2, Check, Camera, Link2, Copy } from "lucide-react";
+import { Crown, AlertTriangle, Loader2, Check, Camera } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { HolographicCard } from "@/components/ui/holographic-card";
@@ -34,7 +34,6 @@ export function MembershipCard({ onAvatarClick, username, bio, createdAt }: Memb
   const { subscription, isLoading, refreshSubscription } = useSubscription();
   const { user } = useAuth();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   // Get user avatar and display info
   const userAny = user as unknown as Record<string, unknown> | null;
@@ -57,17 +56,6 @@ export function MembershipCard({ onAvatarClick, username, bio, createdAt }: Memb
   const registrationDetails = profile?.registration_details as Record<string, unknown> | undefined;
   const interests = (registrationDetails?.interests as string[]) || [];
 
-  const handleCopyLink = async () => {
-    if (!shareLink) return;
-    try {
-      await navigator.clipboard.writeText(`https://${shareLink}`);
-      setCopied(true);
-      toast.success(referralLink ? "Referral link copied!" : "Profile link copied!");
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Failed to copy link");
-    }
-  };
 
   const handleUpgradeSuccess = async () => {
     setShowUpgradeModal(false);
