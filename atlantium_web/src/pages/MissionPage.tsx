@@ -1,7 +1,11 @@
 import { Link } from "react-router-dom";
+import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import SpotlightCard from "@/components/ui/SpotlightCard";
+import ShinyText from "@/components/ui/ShinyText";
+import CountUp from "@/components/ui/CountUp";
+import { HolographicCard } from "@/components/ui/holographic-card";
 import Aurora from "@/components/Aurora";
 import {
   ArrowRight,
@@ -13,51 +17,125 @@ import {
   BookOpen,
   Rocket,
   CheckCircle2,
+  Zap,
+  MapPin,
+  Wifi,
+  GraduationCap,
+  Heart,
 } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, useInView } from "motion/react";
 
 const APP_STORE_URL =
   "https://apps.apple.com/us/app/atlantium-the-frontier/id6757367750";
+
+const pillars = [
+  {
+    icon: Cpu,
+    title: "Technology",
+    description: "AI tools and platforms—free for those who need them most.",
+    color: "from-blue-500 to-cyan-400",
+    bgColor: "bg-blue-500/10",
+    borderColor: "border-blue-500/20",
+    textColor: "text-blue-400",
+  },
+  {
+    icon: BookOpen,
+    title: "Resources",
+    description: "Training programs designed for non-traditional backgrounds.",
+    color: "from-emerald-500 to-teal-400",
+    bgColor: "bg-emerald-500/10",
+    borderColor: "border-emerald-500/20",
+    textColor: "text-emerald-400",
+  },
+  {
+    icon: DollarSign,
+    title: "Capital",
+    description: "Micro-grants and funding for overlooked founders.",
+    color: "from-amber-500 to-orange-400",
+    bgColor: "bg-amber-500/10",
+    borderColor: "border-amber-500/20",
+    textColor: "text-amber-400",
+  },
+  {
+    icon: Users,
+    title: "Network",
+    description: "Connections to mentors and markets outside your zip code.",
+    color: "from-violet-500 to-purple-400",
+    bgColor: "bg-violet-500/10",
+    borderColor: "border-violet-500/20",
+    textColor: "text-violet-400",
+  },
+];
 
 const targets = [
   {
     icon: Globe,
     title: "Emerging Markets",
     description: "Launch tech hubs in regions bypassed by Silicon Valley",
-    metric: "15 regions",
-    color: "blue",
+    metric: 15,
+    suffix: " regions",
+    color: "text-blue-400",
+    bgColor: "bg-blue-500/10",
+    borderColor: "border-blue-500/20",
   },
   {
     icon: Users,
     title: "First-Gen Founders",
     description: "Support builders without traditional tech networks",
-    metric: "5,000 founders",
-    color: "emerald",
+    metric: 5000,
+    suffix: " founders",
+    color: "text-emerald-400",
+    bgColor: "bg-emerald-500/10",
+    borderColor: "border-emerald-500/20",
   },
   {
     icon: DollarSign,
     title: "Capital Desert Relief",
     description: "Bring funding to areas with little VC presence",
-    metric: "$5M deployed",
-    color: "amber",
+    metric: 5,
+    suffix: "M deployed",
+    prefix: "$",
+    color: "text-amber-400",
+    bgColor: "bg-amber-500/10",
+    borderColor: "border-amber-500/20",
   },
   {
-    icon: BookOpen,
+    icon: GraduationCap,
     title: "Skills Transfer",
     description: "Free technical training for underserved communities",
-    metric: "500 graduates",
-    color: "violet",
+    metric: 500,
+    suffix: " graduates",
+    color: "text-violet-400",
+    bgColor: "bg-violet-500/10",
+    borderColor: "border-violet-500/20",
   },
 ];
 
 const objectives = [
-  "Partner with community colleges and trade schools in rural areas",
-  "Launch Spanish and Portuguese language programming tracks",
-  "Create no-cost founder residencies in low-income neighborhoods",
-  "Build satellite offices in Appalachia, the Delta, and tribal lands",
-  "Establish micro-grant programs for founders without credit access",
-  "Deploy mobile tech labs to communities without broadband",
+  { text: "Partner with community colleges and trade schools in rural areas", icon: GraduationCap },
+  { text: "Launch Spanish and Portuguese language programming tracks", icon: Globe },
+  { text: "Create no-cost founder residencies in low-income neighborhoods", icon: Heart },
+  { text: "Build satellite offices in Appalachia, the Delta, and tribal lands", icon: MapPin },
+  { text: "Establish micro-grant programs for founders without credit access", icon: DollarSign },
+  { text: "Deploy mobile tech labs to communities without broadband", icon: Wifi },
 ];
+
+function FadeInSection({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-80px" });
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 40 }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
+      transition={{ duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
 
 export function MissionPage() {
   return (
@@ -123,202 +201,305 @@ export function MissionPage() {
       </nav>
 
       {/* Main Content */}
-      <main className="relative z-10 max-w-5xl mx-auto px-6 py-16">
-        {/* Hero Section with Gary Tan Quote */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+      <main className="relative z-10">
+
+        {/* === QUOTE SECTION === */}
+        <section
+          className="relative h-[85vh] flex flex-col items-center justify-center px-6"
         >
-          {/* Gary Tan Image */}
-          <div className="relative inline-block mb-8">
-            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-violet-500 to-blue-500 blur-xl opacity-30" />
-            <img
-              src="https://cloud.atlantium.ai/vault/NyjbrQw0/1Rt10DQFkpx00D-S4ylg6uuFPnI/o-LH_w../gary+tan.png"
-              alt="Gary Tan"
-              className="relative w-32 h-32 rounded-full object-cover border-4 border-background shadow-2xl"
-            />
-          </div>
+          {/* Decorative orbs */}
+          <div className="absolute top-1/4 -left-32 w-64 h-64 bg-violet-500/10 rounded-full blur-[100px]" />
+          <div className="absolute bottom-1/4 -right-32 w-64 h-64 bg-blue-500/10 rounded-full blur-[100px]" />
 
-          {/* Quote */}
-          <blockquote className="text-2xl sm:text-3xl lg:text-4xl font-medium text-foreground leading-relaxed mb-4 max-w-3xl mx-auto">
-            "The future is already here, just not evenly distributed."
-          </blockquote>
-          <a
-            href="https://www.linkedin.com/posts/garrytan_the-future-is-already-here-just-not-evenly-activity-7259377207498678272-niA6/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-muted-foreground hover:text-foreground transition-colors mb-12 inline-block"
-          >
-            — Gary Tan, CEO of Y Combinator
-          </a>
-
-          {/* Mission Statement */}
+          {/* Quote + Attribution */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.6 }}
+            transition={{ delay: 0.2, duration: 0.7 }}
+            className="text-center max-w-xl"
           >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
-              <Target className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-primary">Our Mission</span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-6">
-              <span className="bg-gradient-to-r from-violet-500 to-blue-500 bg-clip-text text-transparent">
-                Evenly Distribute the Future
+            <p className="text-lg sm:text-xl font-medium leading-relaxed text-foreground mb-4">
+              "The future is already here,{" "}
+              <span className="bg-gradient-to-r from-violet-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                just not evenly distributed.
               </span>
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Rural towns, inner cities, tribal lands, and developing regions deserve the same access
-              to technology, capital, and networks as coastal tech hubs. We're building the infrastructure to make that happen.
+              "
             </p>
+            <a
+              href="https://www.linkedin.com/posts/garrytan_the-future-is-already-here-just-not-evenly-activity-7259377207498678272-niA6/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 hover:opacity-80 transition-opacity"
+            >
+              <img
+                src="https://cloud.atlantium.ai/vault/NyjbrQw0/1Rt10DQFkpx00D-S4ylg6uuFPnI/o-LH_w../gary+tan.png"
+                alt="Gary Tan"
+                className="w-6 h-6 rounded-full object-cover border border-white/10"
+              />
+              <span className="text-xs text-muted-foreground">Gary Tan · CEO, Y Combinator</span>
+            </a>
           </motion.div>
-        </motion.div>
 
-        {/* What We Bring Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-          className="mb-16"
-        >
-          <SpotlightCard className="p-8" spotlightColor="rgba(139, 92, 246, 0.1)">
-            <h2 className="text-xl font-bold text-foreground mb-6 text-center">What We Bring</h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="text-center">
-                <div className="h-12 w-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto mb-3">
-                  <Cpu className="h-6 w-6 text-blue-500" />
-                </div>
-                <h3 className="font-semibold text-foreground mb-1">Technology</h3>
-                <p className="text-sm text-muted-foreground">AI tools and platforms—free for those who need them</p>
-              </div>
-              <div className="text-center">
-                <div className="h-12 w-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-3">
-                  <BookOpen className="h-6 w-6 text-emerald-500" />
-                </div>
-                <h3 className="font-semibold text-foreground mb-1">Resources</h3>
-                <p className="text-sm text-muted-foreground">Training programs designed for non-traditional backgrounds</p>
-              </div>
-              <div className="text-center">
-                <div className="h-12 w-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-3">
-                  <DollarSign className="h-6 w-6 text-amber-500" />
-                </div>
-                <h3 className="font-semibold text-foreground mb-1">Capital</h3>
-                <p className="text-sm text-muted-foreground">Micro-grants and funding for overlooked founders</p>
-              </div>
-              <div className="text-center">
-                <div className="h-12 w-12 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mx-auto mb-3">
-                  <Users className="h-6 w-6 text-violet-500" />
-                </div>
-                <h3 className="font-semibold text-foreground mb-1">Network</h3>
-                <p className="text-sm text-muted-foreground">Connections to mentors and markets outside your zip code</p>
-              </div>
+          {/* Scroll indicator */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1, duration: 0.5 }}
+            className="absolute bottom-10"
+          >
+            <motion.div
+              animate={{ y: [0, 8, 0] }}
+              transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+              className="w-5 h-8 rounded-full border-2 border-muted-foreground/30 flex items-start justify-center p-1"
+            >
+              <motion.div className="w-1 h-2 rounded-full bg-muted-foreground/50" />
+            </motion.div>
+          </motion.div>
+        </section>
+
+        {/* === MISSION HERO === */}
+        <section className="relative min-h-[80vh] flex flex-col items-center justify-center px-6 py-24">
+          {/* Decorative orbs */}
+          <div className="absolute top-1/3 -right-40 w-80 h-80 bg-blue-500/8 rounded-full blur-[120px]" />
+          <div className="absolute bottom-1/3 -left-40 w-80 h-80 bg-violet-500/8 rounded-full blur-[120px]" />
+
+          <FadeInSection className="text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-foreground/5 border border-foreground/10 mb-8">
+              <Target className="h-3.5 w-3.5 text-foreground/60" />
+              <span className="text-xs font-semibold text-foreground/60 uppercase tracking-widest">Our Mission</span>
             </div>
-          </SpotlightCard>
-        </motion.div>
 
-        {/* Current Targets */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.6 }}
-          className="mb-16"
-        >
-          <h2 className="text-2xl font-bold text-foreground mb-8 text-center">Current Targets</h2>
-          <div className="grid sm:grid-cols-2 gap-4">
-            {targets.map((target, index) => {
-              const colorClasses: Record<string, { bg: string; border: string; text: string }> = {
-                blue: { bg: "bg-blue-500/10", border: "border-blue-500/20", text: "text-blue-500" },
-                emerald: { bg: "bg-emerald-500/10", border: "border-emerald-500/20", text: "text-emerald-500" },
-                amber: { bg: "bg-amber-500/10", border: "border-amber-500/20", text: "text-amber-500" },
-                violet: { bg: "bg-violet-500/10", border: "border-violet-500/20", text: "text-violet-500" },
-              };
-              const colors = colorClasses[target.color];
-              return (
-                <motion.div
-                  key={target.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 + index * 0.1, duration: 0.5 }}
+            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-8">
+              <ShinyText
+                text="Evenly Distribute"
+                speed={4}
+                color="hsl(var(--foreground))"
+                shineColor="rgba(255, 255, 255, 0.9)"
+                className="text-4xl sm:text-6xl lg:text-7xl font-bold"
+              />
+              <br />
+              <ShinyText
+                text="the Future"
+                speed={4}
+                delay={0.5}
+                color="hsl(var(--foreground))"
+                shineColor="rgba(255, 255, 255, 0.9)"
+                className="text-4xl sm:text-6xl lg:text-7xl font-bold"
+              />
+            </h1>
+
+            <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-10">
+              Rural towns, inner cities, tribal lands, and developing regions deserve the same access
+              to technology, capital, and networks as coastal tech hubs.
+            </p>
+
+            <motion.div
+              initial={{ scaleX: 0, opacity: 0 }}
+              whileInView={{ scaleX: 1, opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              className="w-48 h-px bg-gradient-to-r from-transparent via-foreground/20 to-transparent mx-auto origin-center"
+            />
+          </FadeInSection>
+        </section>
+
+        {/* === WHAT WE BRING — PILLARS === */}
+        <section className="relative px-6 py-24 max-w-6xl mx-auto">
+          <FadeInSection className="text-center mb-16">
+            <span className="text-xs font-semibold text-blue-400 uppercase tracking-widest">What We Bring</span>
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mt-3 mb-4">
+              Four pillars of{" "}
+              <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                equal access
+              </span>
+            </h2>
+            <p className="text-muted-foreground max-w-lg mx-auto">
+              We're building the infrastructure to bring the frontier to everyone, everywhere.
+            </p>
+          </FadeInSection>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {pillars.map((pillar, i) => (
+              <FadeInSection key={pillar.title} delay={i * 0.1}>
+                <HolographicCard
+                  className="h-full"
+                  intensity={10}
+                  glareOpacity={0.15}
+                  holographicOpacity={0.08}
                 >
-                  <SpotlightCard className="p-5 h-full" spotlightColor="rgba(139, 92, 246, 0.08)">
-                    <div className="flex items-start gap-4">
-                      <div className={`h-10 w-10 rounded-xl ${colors.bg} ${colors.border} border flex items-center justify-center flex-shrink-0`}>
-                        <target.icon className={`h-5 w-5 ${colors.text}`} />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <h3 className="font-semibold text-foreground">{target.title}</h3>
-                          <span className={`text-sm font-bold ${colors.text}`}>{target.metric}</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{target.description}</p>
+                  <SpotlightCard
+                    className="h-full p-6 flex flex-col items-center text-center"
+                    spotlightColor="rgba(139, 92, 246, 0.1)"
+                  >
+                    <div className={`h-14 w-14 rounded-2xl bg-gradient-to-br ${pillar.color} p-[1px] mb-5`}>
+                      <div className="h-full w-full rounded-2xl bg-card flex items-center justify-center">
+                        <pillar.icon className={`h-6 w-6 ${pillar.textColor}`} />
                       </div>
                     </div>
+                    <h3 className="text-lg font-bold text-foreground mb-2">{pillar.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{pillar.description}</p>
                   </SpotlightCard>
-                </motion.div>
-              );
-            })}
+                </HolographicCard>
+              </FadeInSection>
+            ))}
           </div>
-        </motion.div>
+        </section>
 
-        {/* Objectives */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.6 }}
-          className="mb-16"
-        >
-          <SpotlightCard className="p-8" spotlightColor="rgba(59, 130, 246, 0.1)">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                <Rocket className="h-5 w-5 text-primary" />
-              </div>
-              <h2 className="text-xl font-bold text-foreground">2025 Objectives</h2>
-            </div>
-            <div className="grid sm:grid-cols-2 gap-3">
-              {objectives.map((objective, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.6 + index * 0.05, duration: 0.4 }}
-                  className="flex items-start gap-3"
+        {/* === DIVIDER LINE === */}
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="h-px bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
+        </div>
+
+        {/* === CURRENT TARGETS === */}
+        <section className="relative px-6 py-24 max-w-6xl mx-auto">
+          <FadeInSection className="text-center mb-16">
+            <span className="text-xs font-semibold text-emerald-400 uppercase tracking-widest">Current Targets</span>
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mt-3 mb-4">
+              Measurable{" "}
+              <span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
+                impact
+              </span>
+            </h2>
+          </FadeInSection>
+
+          <div className="grid sm:grid-cols-2 gap-5">
+            {targets.map((target, i) => (
+              <FadeInSection key={target.title} delay={i * 0.08}>
+                <SpotlightCard
+                  className="p-6 h-full"
+                  spotlightColor="rgba(16, 185, 129, 0.08)"
                 >
-                  <CheckCircle2 className="h-5 w-5 text-emerald-500 flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-muted-foreground">{objective}</span>
-                </motion.div>
-              ))}
-            </div>
-          </SpotlightCard>
-        </motion.div>
-
-        {/* CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7, duration: 0.6 }}
-          className="text-center"
-        >
-          <h3 className="text-xl font-bold text-foreground mb-4">Join the Mission</h3>
-          <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
-            Whether you're a builder, investor, or advocate—there's a place for you in bringing the frontier to everyone.
-          </p>
-          <div className="flex flex-wrap justify-center gap-3">
-            <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
-              <Button className="gap-2 bg-white text-black hover:bg-gray-100 shadow-lg shadow-black/20 border-0">
-                <img src="/apple-logo.svg" alt="Apple" className="h-4 w-auto" />
-                Get the App
-              </Button>
-            </a>
-            <Link to="/">
-              <Button variant="outline" className="gap-2">
-                Back to Home
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
+                  <div className="flex items-start gap-5">
+                    <div className={`h-12 w-12 rounded-xl ${target.bgColor} ${target.borderColor} border flex items-center justify-center flex-shrink-0`}>
+                      <target.icon className={`h-5 w-5 ${target.color}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline justify-between gap-3 mb-1.5">
+                        <h3 className="font-bold text-foreground">{target.title}</h3>
+                        <span className={`text-xl font-bold ${target.color} tabular-nums whitespace-nowrap`}>
+                          <CountUp
+                            to={target.metric}
+                            duration={2.5}
+                            delay={0.2}
+                            prefix={target.prefix || ""}
+                            suffix={target.suffix}
+                            separator=","
+                          />
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{target.description}</p>
+                    </div>
+                  </div>
+                </SpotlightCard>
+              </FadeInSection>
+            ))}
           </div>
-        </motion.div>
+        </section>
+
+        {/* === DIVIDER LINE === */}
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
+        </div>
+
+        {/* === 2025 OBJECTIVES === */}
+        <section className="relative px-6 py-24 max-w-5xl mx-auto">
+          <FadeInSection className="text-center mb-16">
+            <span className="text-xs font-semibold text-amber-400 uppercase tracking-widest">Roadmap</span>
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mt-3 mb-4">
+              2025{" "}
+              <span className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
+                Objectives
+              </span>
+            </h2>
+          </FadeInSection>
+
+          <FadeInSection>
+            <SpotlightCard className="p-8 sm:p-10" spotlightColor="rgba(245, 158, 11, 0.08)">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="h-10 w-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                  <Rocket className="h-5 w-5 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground">Active Initiatives</h3>
+                  <p className="text-xs text-muted-foreground">What we're working on right now</p>
+                </div>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {objectives.map((obj, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.06, duration: 0.5 }}
+                    className="flex items-start gap-3 p-3 rounded-xl hover:bg-muted/30 transition-colors group"
+                  >
+                    <div className="h-8 w-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-500/20 transition-colors">
+                      <obj.icon className="h-4 w-4 text-emerald-400" />
+                    </div>
+                    <span className="text-sm text-muted-foreground leading-relaxed pt-1">{obj.text}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </SpotlightCard>
+          </FadeInSection>
+        </section>
+
+        {/* === DIVIDER LINE === */}
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="h-px bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
+        </div>
+
+        {/* === CTA SECTION === */}
+        <section className="relative px-6 py-24 max-w-4xl mx-auto">
+          <FadeInSection>
+            <SpotlightCard
+              className="p-10 sm:p-14 overflow-hidden text-center"
+              spotlightColor="rgba(139, 92, 246, 0.12)"
+            >
+              {/* Decorative orbs */}
+              <div className="absolute -top-16 -left-16 w-48 h-48 bg-gradient-to-br from-violet-500/15 to-transparent rounded-full blur-3xl" />
+              <div className="absolute -bottom-16 -right-16 w-48 h-48 bg-gradient-to-tl from-blue-500/15 to-transparent rounded-full blur-3xl" />
+
+              <div className="relative">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-6">
+                  <Zap className="h-3.5 w-3.5 text-emerald-400" />
+                  <span className="text-xs font-semibold text-emerald-400 uppercase tracking-widest">Open to All</span>
+                </div>
+
+                <h3 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
+                  Join the{" "}
+                  <ShinyText
+                    text="Mission"
+                    speed={3}
+                    color="#8b5cf6"
+                    shineColor="#60a5fa"
+                    className="text-3xl sm:text-4xl font-bold"
+                  />
+                </h3>
+
+                <p className="text-muted-foreground mb-8 max-w-lg mx-auto leading-relaxed">
+                  Whether you're a builder, investor, or advocate—there's a place for you in bringing the frontier to everyone.
+                </p>
+
+                <div className="flex flex-wrap justify-center gap-3">
+                  <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
+                    <Button className="gap-2 bg-white text-black hover:bg-gray-100 shadow-lg shadow-black/20 border-0 px-6">
+                      <img src="/apple-logo.svg" alt="Apple" className="h-4 w-auto" />
+                      Get the App
+                    </Button>
+                  </a>
+                  <Link to="/">
+                    <Button variant="outline" className="gap-2 px-6">
+                      Back to Home
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </SpotlightCard>
+          </FadeInSection>
+        </section>
       </main>
 
       {/* Footer */}
