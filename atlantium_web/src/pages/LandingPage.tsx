@@ -418,7 +418,7 @@ export function LandingPage() {
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight leading-[1.05] mb-5">
                   <span className="text-foreground">Your Path to</span>
                   <br />
-                  <span className="text-white">
+                  <span className="text-foreground">
                     the Frontier
                   </span>
                 </h1>
