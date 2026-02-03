@@ -215,7 +215,7 @@ export function ServicesPage() {
               <img src="/logo.png" alt="Atlantium" className="h-7 w-7 sm:h-8 sm:w-8" />
               <div>
                 <span className="text-lg sm:text-xl font-bold tracking-tight">Atlantium</span>
-                <p className="hidden sm:block text-[10px] text-muted-foreground tracking-wide">Premier Technology Community</p>
+                <p className="hidden sm:block text-[10px] text-muted-foreground tracking-wide">Citizen Technology Lab</p>
               </div>
             </Link>
           </motion.div>
@@ -232,6 +232,11 @@ export function ServicesPage() {
             <Link to="/index" className="hidden sm:block">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                 News
+              </Button>
+            </Link>
+            <Link to="/mission" className="hidden sm:block">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                Mission
               </Button>
             </Link>
             <Link to="/login" className="hidden sm:block">

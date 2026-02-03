@@ -14,6 +14,7 @@ import {
   Star,
   Users,
   Zap,
+  Video,
 } from "lucide-react";
 import { motion, useAnimationFrame } from "motion/react";
 import { useRef, useState, useEffect } from "react";
@@ -335,7 +336,7 @@ export function LandingPage() {
             <img src="/logo.png" alt="Atlantium" className="h-7 w-7 sm:h-8 sm:w-8" />
             <div>
               <span className="text-lg sm:text-xl font-bold tracking-tight">Atlantium</span>
-              <p className="hidden sm:block text-[10px] text-muted-foreground tracking-wide">Premier Technology Community</p>
+              <p className="hidden sm:block text-[10px] text-muted-foreground tracking-wide">Citizen Technology Lab</p>
             </div>
           </motion.div>
 
@@ -356,6 +357,11 @@ export function LandingPage() {
             <Link to="/index" className="hidden sm:block">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                 News
+              </Button>
+            </Link>
+            <Link to="/mission" className="hidden sm:block">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                Mission
               </Button>
             </Link>
             <Link to="/services" className="hidden sm:block">
@@ -629,7 +635,7 @@ export function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.28, duration: 0.6 }}
-            className="col-span-12 lg:col-span-6 row-span-2"
+            className="col-span-12 lg:col-span-4 row-span-2"
           >
             <SpotlightCard
               className="h-full p-6"
@@ -655,12 +661,43 @@ export function LandingPage() {
             </SpotlightCard>
           </motion.div>
 
+          {/* Office Hours Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.30, duration: 0.6 }}
+            className="col-span-12 lg:col-span-4 row-span-2"
+          >
+            <SpotlightCard
+              className="h-full p-6 overflow-hidden"
+              spotlightColor="rgba(245, 158, 11, 0.15)"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-10 w-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                  <Video className="h-5 w-5 text-amber-500" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">Office Hours</h3>
+                  <p className="text-xs text-muted-foreground">Weekly live sessions with experts</p>
+                </div>
+              </div>
+              {/* GIF Container */}
+              <div className="relative rounded-lg overflow-hidden bg-muted/30 border border-border/50">
+                <img
+                  src="https://media.giphy.com/media/Is1O1TWV0LEJi/giphy.gif"
+                  alt="Office Hours"
+                  className="w-full h-32 object-cover"
+                />
+              </div>
+            </SpotlightCard>
+          </motion.div>
+
           {/* Club Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.32, duration: 0.6 }}
-            className="col-span-12 lg:col-span-6 row-span-2"
+            className="col-span-12 lg:col-span-4 row-span-2"
           >
             <div className="relative h-full group">
               {/* Animated gradient border */}

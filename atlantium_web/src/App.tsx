@@ -18,6 +18,7 @@ import { LandingPage } from "@/pages/LandingPage";
 import { PrivacyPage } from "@/pages/PrivacyPage";
 import { TermsPage } from "@/pages/TermsPage";
 import { ServicesPage } from "@/pages/ServicesPage";
+import { MissionPage } from "@/pages/MissionPage";
 import { StyleGuidePage } from "@/pages/StyleGuidePage";
 import { ComponentsPage } from "@/pages/ComponentsPage";
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
@@ -74,6 +75,7 @@ function AppRoutes() {
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/policies" element={<TermsPage />} />
       <Route path="/services" element={<ServicesPage />} />
+      <Route path="/mission" element={<MissionPage />} />
       <Route
         path="/login"
         element={
