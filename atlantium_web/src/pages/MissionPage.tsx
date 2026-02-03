@@ -16,7 +16,6 @@ import {
   Users,
   BookOpen,
   Rocket,
-  CheckCircle2,
   Zap,
   MapPin,
   Wifi,
@@ -222,7 +221,7 @@ export function MissionPage() {
                 <span className="text-xs font-semibold text-violet-400 uppercase tracking-widest">Our Mission</span>
               </div>
 
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight leading-[1.1]">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]">
                 <span className="text-foreground">Evenly Distribute</span>
                 <br />
                 <span className="bg-gradient-to-r from-violet-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
