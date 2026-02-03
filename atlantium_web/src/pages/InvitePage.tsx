@@ -112,10 +112,10 @@ export function InvitePage() {
       const isOnboardingCompleted = registrationDetails?.is_completed === true;
 
       if (isOnboardingCompleted) {
-        navigate(result.redirect_to);
+        navigate("/dashboard");
       } else {
         // Store redirect for after onboarding
-        setPendingRedirect(result.redirect_to);
+        setPendingRedirect("/dashboard");
         navigate("/onboarding");
       }
     } catch (err) {
