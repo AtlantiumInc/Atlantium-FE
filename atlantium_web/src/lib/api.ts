@@ -17,7 +17,7 @@ import type {
   UserSettings,
 } from "./types";
 
-const AUTH_API_BASE_URL = "https://cloud.atlantium.ai/api:o01duYuZ";
+const AUTH_API_BASE_URL = "https://cloud.atlantium.ai/api:_c66cUCc";
 const APP_API_BASE_URL = "https://cloud.atlantium.ai/api:_c66cUCc";
 const STRIPE_API_BASE_URL = "https://cloud.atlantium.ai/api:-ulnKZsX";
 const ADMIN_API_BASE_URL = "https://cloud.atlantium.ai/api:ud37c7Xg";
