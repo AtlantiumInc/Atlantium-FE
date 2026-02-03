@@ -161,10 +161,10 @@ class ApiClient {
     }, AUTH_API_BASE_URL);
   }
 
-  async verifyOtp(email: string, code: string): Promise<VerifyResponse> {
+  async verifyOtp(email: string, code: string, refCode?: string): Promise<VerifyResponse> {
     return this.request<VerifyResponse>("/auth/verify", {
       method: "POST",
-      body: JSON.stringify({ email, code }),
+      body: JSON.stringify({ email, code, ref_code: refCode }),
     }, AUTH_API_BASE_URL);
   }
 

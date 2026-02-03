@@ -91,7 +91,7 @@ export function LoginPage() {
     try {
       const refCode = getReferralCode();
       await api.requestOtp(values.email, refCode || undefined);
-      if (refCode) clearReferralCode();
+      // Don't clear ref_code here - we'll pass it during verify
       setEmail(values.email);
       setStep("otp");
       toast.success("OTP sent to your email");
@@ -117,7 +117,10 @@ export function LoginPage() {
     setError(null);
 
     try {
-      const response = await api.verifyOtp(email, code);
+      const refCode = getReferralCode();
+      const response = await api.verifyOtp(email, code, refCode || undefined);
+      // Clear ref_code after successful verification
+      if (refCode) clearReferralCode();
       login(response.auth_token, response.user);
       // Fetch full user data (including profile with registration_details)
       const fullUser = await checkAuth();

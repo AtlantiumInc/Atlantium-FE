@@ -56,7 +56,7 @@ export function InlineAuth({ onSuccess, ctaText = "Continue" }: InlineAuthProps)
     try {
       const refCode = getReferralCode();
       await api.requestOtp(values.email, refCode || undefined);
-      if (refCode) clearReferralCode();
+      // Don't clear ref_code here - we'll pass it during verify
       setEmail(values.email);
       setStep("otp");
       toast.success("OTP sent to your email");
@@ -82,7 +82,10 @@ export function InlineAuth({ onSuccess, ctaText = "Continue" }: InlineAuthProps)
     setError(null);
 
     try {
-      const response = await api.verifyOtp(email, code);
+      const refCode = getReferralCode();
+      const response = await api.verifyOtp(email, code, refCode || undefined);
+      // Clear ref_code after successful verification
+      if (refCode) clearReferralCode();
       onSuccess(response.user, response.auth_token);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid OTP code");
