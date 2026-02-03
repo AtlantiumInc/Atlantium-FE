@@ -22,41 +22,41 @@ const APP_STORE_URL =
 const targets = [
   {
     icon: Globe,
-    title: "Global Reach",
-    description: "Expand access to underserved communities worldwide",
-    metric: "50+ cities",
+    title: "Emerging Markets",
+    description: "Launch tech hubs in regions bypassed by Silicon Valley",
+    metric: "15 regions",
     color: "blue",
   },
   {
     icon: Users,
-    title: "Community Growth",
-    description: "Build thriving local tech ecosystems",
-    metric: "10,000 members",
+    title: "First-Gen Founders",
+    description: "Support builders without traditional tech networks",
+    metric: "5,000 founders",
     color: "emerald",
   },
   {
     icon: DollarSign,
-    title: "Capital Access",
-    description: "Connect founders with funding opportunities",
-    metric: "$10M facilitated",
+    title: "Capital Desert Relief",
+    description: "Bring funding to areas with little VC presence",
+    metric: "$5M deployed",
     color: "amber",
   },
   {
     icon: BookOpen,
-    title: "Education",
-    description: "Provide resources and mentorship programs",
-    metric: "1,000 hours",
+    title: "Skills Transfer",
+    description: "Free technical training for underserved communities",
+    metric: "500 graduates",
     color: "violet",
   },
 ];
 
 const objectives = [
-  "Launch community hubs in 10 emerging tech markets by 2025",
-  "Partner with local universities and incubators",
-  "Create scholarship programs for underrepresented founders",
-  "Build open-source tools for community organizing",
-  "Host monthly virtual events accessible globally",
-  "Establish mentor matching across time zones",
+  "Partner with community colleges and trade schools in rural areas",
+  "Launch Spanish and Portuguese language programming tracks",
+  "Create no-cost founder residencies in low-income neighborhoods",
+  "Build satellite offices in Appalachia, the Delta, and tribal lands",
+  "Establish micro-grant programs for founders without credit access",
+  "Deploy mobile tech labs to communities without broadband",
 ];
 
 export function MissionPage() {
@@ -170,8 +170,8 @@ export function MissionPage() {
               </span>
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              We believe everyone deserves access to the tools, knowledge, capital, and networks
-              that drive innovation. The frontier shouldn't be reserved for the few.
+              Rural towns, inner cities, tribal lands, and developing regions deserve the same access
+              to technology, capital, and networks as coastal tech hubs. We're building the infrastructure to make that happen.
             </p>
           </motion.div>
         </motion.div>
@@ -191,28 +191,28 @@ export function MissionPage() {
                   <Cpu className="h-6 w-6 text-blue-500" />
                 </div>
                 <h3 className="font-semibold text-foreground mb-1">Technology</h3>
-                <p className="text-sm text-muted-foreground">Cutting-edge tools and platforms</p>
+                <p className="text-sm text-muted-foreground">AI tools and platforms—free for those who need them</p>
               </div>
               <div className="text-center">
                 <div className="h-12 w-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-3">
                   <BookOpen className="h-6 w-6 text-emerald-500" />
                 </div>
                 <h3 className="font-semibold text-foreground mb-1">Resources</h3>
-                <p className="text-sm text-muted-foreground">Education and mentorship</p>
+                <p className="text-sm text-muted-foreground">Training programs designed for non-traditional backgrounds</p>
               </div>
               <div className="text-center">
                 <div className="h-12 w-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-3">
                   <DollarSign className="h-6 w-6 text-amber-500" />
                 </div>
                 <h3 className="font-semibold text-foreground mb-1">Capital</h3>
-                <p className="text-sm text-muted-foreground">Funding and investment access</p>
+                <p className="text-sm text-muted-foreground">Micro-grants and funding for overlooked founders</p>
               </div>
               <div className="text-center">
                 <div className="h-12 w-12 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mx-auto mb-3">
                   <Users className="h-6 w-6 text-violet-500" />
                 </div>
                 <h3 className="font-semibold text-foreground mb-1">Network</h3>
-                <p className="text-sm text-muted-foreground">Connections that matter</p>
+                <p className="text-sm text-muted-foreground">Connections to mentors and markets outside your zip code</p>
               </div>
             </div>
           </SpotlightCard>
