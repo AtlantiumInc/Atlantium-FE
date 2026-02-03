@@ -160,9 +160,9 @@ export function MissionPage() {
               <span className="text-sm font-medium text-primary">Our Mission</span>
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-6">
-              Bring Technology to{" "}
+              Assure the Future{" "}
               <span className="bg-gradient-to-r from-violet-500 to-blue-500 bg-clip-text text-transparent">
-                Underserved Communities
+                Arrives All at Once
               </span>
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
