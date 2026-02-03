@@ -143,11 +143,16 @@ export function MissionPage() {
 
           {/* Quote */}
           <blockquote className="text-2xl sm:text-3xl lg:text-4xl font-medium text-foreground leading-relaxed mb-4 max-w-3xl mx-auto">
-            "The future doesn't arrive all at once."
+            "The future is already here, just not evenly distributed."
           </blockquote>
-          <p className="text-muted-foreground mb-12">
+          <a
+            href="https://www.linkedin.com/posts/garrytan_the-future-is-already-here-just-not-evenly-activity-7259377207498678272-niA6/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-muted-foreground hover:text-foreground transition-colors mb-12 inline-block"
+          >
             — Gary Tan, CEO of Y Combinator
-          </p>
+          </a>
 
           {/* Mission Statement */}
           <motion.div
@@ -160,9 +165,8 @@ export function MissionPage() {
               <span className="text-sm font-medium text-primary">Our Mission</span>
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-6">
-              Assure the Future{" "}
               <span className="bg-gradient-to-r from-violet-500 to-blue-500 bg-clip-text text-transparent">
-                Arrives All at Once
+                Evenly Distribute the Future
               </span>
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
