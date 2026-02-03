@@ -89,9 +89,7 @@ export function LoginPage() {
     setError(null);
 
     try {
-      const refCode = getReferralCode();
-      await api.requestOtp(values.email, refCode || undefined);
-      // Don't clear ref_code here - we'll pass it during verify
+      await api.requestOtp(values.email);
       setEmail(values.email);
       setStep("otp");
       toast.success("OTP sent to your email");

@@ -154,10 +154,10 @@ class ApiClient {
   }
 
   // Auth methods
-  async requestOtp(email: string, refCode?: string): Promise<OtpResponse> {
+  async requestOtp(email: string): Promise<OtpResponse> {
     return this.request<OtpResponse>("/auth/otp", {
       method: "POST",
-      body: JSON.stringify({ email, ref_code: refCode }),
+      body: JSON.stringify({ email }),
     }, AUTH_API_BASE_URL);
   }
 
