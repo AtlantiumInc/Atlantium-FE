@@ -203,111 +203,113 @@ export function MissionPage() {
       {/* Main Content */}
       <main className="relative z-10">
 
-        {/* === QUOTE SECTION === */}
-        <section
-          className="relative h-[85vh] flex flex-col items-center justify-center px-6"
-        >
+        {/* === HERO: HEADLINE + LINKEDIN POST === */}
+        <section className="relative px-6 pt-16 sm:pt-20 pb-12 sm:pb-16">
           {/* Decorative orbs */}
           <div className="absolute top-1/4 -left-32 w-64 h-64 bg-violet-500/10 rounded-full blur-[100px]" />
           <div className="absolute bottom-1/4 -right-32 w-64 h-64 bg-blue-500/10 rounded-full blur-[100px]" />
 
-          {/* Quote + Attribution */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.7 }}
-            className="text-center max-w-xl"
-          >
-            <p className="text-lg sm:text-xl font-medium leading-relaxed text-foreground mb-4">
-              "The future is already here,{" "}
-              <span className="bg-gradient-to-r from-violet-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                just not evenly distributed.
-              </span>
-              "
-            </p>
-            <a
-              href="https://www.linkedin.com/posts/garrytan_the-future-is-already-here-just-not-evenly-activity-7259377207498678272-niA6/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 hover:opacity-80 transition-opacity"
-            >
-              <img
-                src="https://cloud.atlantium.ai/vault/NyjbrQw0/1Rt10DQFkpx00D-S4ylg6uuFPnI/o-LH_w../gary+tan.png"
-                alt="Gary Tan"
-                className="w-6 h-6 rounded-full object-cover border border-white/10"
-              />
-              <span className="text-xs text-muted-foreground">Gary Tan · CEO, Y Combinator</span>
-            </a>
-          </motion.div>
-
-          {/* Scroll indicator */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1, duration: 0.5 }}
-            className="absolute bottom-10"
-          >
+          <div className="max-w-6xl w-full mx-auto grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+            {/* Left — Headline */}
             <motion.div
-              animate={{ y: [0, 8, 0] }}
-              transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-              className="w-5 h-8 rounded-full border-2 border-muted-foreground/30 flex items-start justify-center p-1"
-            >
-              <motion.div className="w-1 h-2 rounded-full bg-muted-foreground/50" />
-            </motion.div>
-          </motion.div>
-        </section>
-
-        {/* === MISSION HERO === */}
-        <section className="relative min-h-[80vh] flex flex-col items-center justify-center px-6 py-24">
-          {/* Decorative orbs */}
-          <div className="absolute top-1/3 -right-40 w-80 h-80 bg-blue-500/8 rounded-full blur-[120px]" />
-          <div className="absolute bottom-1/3 -left-40 w-80 h-80 bg-violet-500/8 rounded-full blur-[120px]" />
-
-          <FadeInSection className="text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-foreground/5 border border-foreground/10 mb-8">
-              <Target className="h-3.5 w-3.5 text-foreground/60" />
-              <span className="text-xs font-semibold text-foreground/60 uppercase tracking-widest">Our Mission</span>
-            </div>
-
-            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-8">
-              <ShinyText
-                text="Evenly Distribute"
-                speed={4}
-                color="hsl(var(--foreground))"
-                shineColor="rgba(255, 255, 255, 0.9)"
-                className="text-4xl sm:text-6xl lg:text-7xl font-bold"
-              />
-              <br />
-              <ShinyText
-                text="the Future"
-                speed={4}
-                delay={0.5}
-                color="hsl(var(--foreground))"
-                shineColor="rgba(255, 255, 255, 0.9)"
-                className="text-4xl sm:text-6xl lg:text-7xl font-bold"
-              />
-            </h1>
-
-            <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-10">
-              Rural towns, inner cities, tribal lands, and developing regions deserve the same access
-              to technology, capital, and networks as coastal tech hubs.
-            </p>
-
-            <motion.div
-              initial={{ scaleX: 0, opacity: 0 }}
-              whileInView={{ scaleX: 1, opacity: 1 }}
-              viewport={{ once: true }}
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-              className="w-48 h-px bg-gradient-to-r from-transparent via-foreground/20 to-transparent mx-auto origin-center"
-            />
-          </FadeInSection>
+              className="text-center lg:text-left"
+            >
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 mb-5">
+                <Target className="h-3.5 w-3.5 text-violet-400" />
+                <span className="text-xs font-semibold text-violet-400 uppercase tracking-widest">Our Mission</span>
+              </div>
+
+              <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight leading-[1.1]">
+                <span className="text-foreground">Evenly Distribute</span>
+                <br />
+                <span className="bg-gradient-to-r from-violet-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                  the Future
+                </span>
+              </h1>
+              <p className="mt-5 text-lg text-muted-foreground max-w-md mx-auto lg:mx-0 leading-relaxed">
+                Rural towns, inner cities, tribal lands, and developing regions deserve the same shot at the frontier.
+              </p>
+            </motion.div>
+
+            {/* Right — LinkedIn Post Card */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              className="flex justify-center lg:justify-end"
+            >
+              <a
+                href="https://www.linkedin.com/posts/garrytan_the-future-is-already-here-just-not-evenly-activity-7259377207498678272-niA6/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full max-w-md group"
+              >
+                <div className="rounded-xl border border-border/40 bg-card/60 backdrop-blur-sm shadow-lg shadow-black/5 overflow-hidden transition-all duration-300 group-hover:border-border/60 group-hover:shadow-xl group-hover:shadow-black/10 group-hover:-translate-y-1">
+                  {/* Post header */}
+                  <div className="flex items-center gap-3 p-5 pb-0">
+                    <img
+                      src="https://cloud.atlantium.ai/vault/NyjbrQw0/1Rt10DQFkpx00D-S4ylg6uuFPnI/o-LH_w../gary+tan.png"
+                      alt="Gary Tan"
+                      className="w-14 h-14 rounded-full object-cover border-2 border-white/10 flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-semibold text-foreground">Garry Tan</span>
+                        <svg className="h-4 w-4 text-blue-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.69-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.636.433 1.221.878 1.69.47.446 1.055.752 1.69.883.635.13 1.294.083 1.902-.143.272.587.702 1.086 1.24 1.44.54.354 1.167.551 1.813.568.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.225 1.261.272 1.895.143.634-.131 1.217-.437 1.687-.883.445-.47.751-1.054.882-1.69.132-.633.083-1.29-.14-1.896.587-.274 1.084-.705 1.438-1.246.355-.54.552-1.17.57-1.817zM9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" />
+                        </svg>
+                      </div>
+                      <p className="text-xs text-muted-foreground">CEO, Y Combinator</p>
+                    </div>
+                    {/* LinkedIn icon */}
+                    <svg className="h-5 w-5 text-[#0a66c2] flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                    </svg>
+                  </div>
+
+                  {/* Post body */}
+                  <div className="p-5 pt-3">
+                    <p className="text-base leading-relaxed text-foreground/90">
+                      The future is already here,{" "}
+                      <span className="bg-gradient-to-r from-violet-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent font-semibold">
+                        just not evenly distributed.
+                      </span>
+                    </p>
+                  </div>
+
+                  {/* Post engagement bar */}
+                  <div className="px-5 pb-1">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground/60">
+                      <span className="flex -space-x-1">
+                        <span className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-[8px] text-white">&#x1F44D;</span>
+                        <span className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center text-[8px] text-white">&#x2764;</span>
+                      </span>
+                      <span className="ml-1">2,847</span>
+                    </div>
+                  </div>
+                  <div className="border-t border-border/30 mx-5" />
+                  <div className="flex items-center justify-around px-5 py-3 text-muted-foreground/50">
+                    <span className="text-xs font-medium">Like</span>
+                    <span className="text-xs font-medium">Comment</span>
+                    <span className="text-xs font-medium">Repost</span>
+                    <span className="text-xs font-medium">Send</span>
+                  </div>
+                </div>
+              </a>
+            </motion.div>
+          </div>
+
         </section>
 
         {/* === WHAT WE BRING — PILLARS === */}
-        <section className="relative px-6 py-24 max-w-6xl mx-auto">
-          <FadeInSection className="text-center mb-16">
+        <section className="relative px-6 py-16 sm:py-20">
+          <div className="max-w-6xl mx-auto">
+          <FadeInSection className="text-center mb-10">
             <span className="text-xs font-semibold text-blue-400 uppercase tracking-widest">What We Bring</span>
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mt-3 mb-4">
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mt-3 mb-3">
               Four pillars of{" "}
               <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
                 equal access
@@ -318,7 +320,7 @@ export function MissionPage() {
             </p>
           </FadeInSection>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
             {pillars.map((pillar, i) => (
               <FadeInSection key={pillar.title} delay={i * 0.1}>
                 <HolographicCard
@@ -343,18 +345,15 @@ export function MissionPage() {
               </FadeInSection>
             ))}
           </div>
+          </div>
         </section>
 
-        {/* === DIVIDER LINE === */}
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="h-px bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
-        </div>
-
         {/* === CURRENT TARGETS === */}
-        <section className="relative px-6 py-24 max-w-6xl mx-auto">
-          <FadeInSection className="text-center mb-16">
+        <section className="relative px-6 py-16 sm:py-20">
+          <div className="max-w-6xl mx-auto">
+          <FadeInSection className="text-center mb-10">
             <span className="text-xs font-semibold text-emerald-400 uppercase tracking-widest">Current Targets</span>
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mt-3 mb-4">
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mt-3 mb-3">
               Measurable{" "}
               <span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
                 impact
@@ -362,7 +361,7 @@ export function MissionPage() {
             </h2>
           </FadeInSection>
 
-          <div className="grid sm:grid-cols-2 gap-5">
+          <div className="grid sm:grid-cols-2 gap-4 lg:gap-5">
             {targets.map((target, i) => (
               <FadeInSection key={target.title} delay={i * 0.08}>
                 <SpotlightCard
@@ -394,18 +393,14 @@ export function MissionPage() {
               </FadeInSection>
             ))}
           </div>
+          </div>
         </section>
 
-        {/* === DIVIDER LINE === */}
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
-        </div>
-
         {/* === 2025 OBJECTIVES === */}
-        <section className="relative px-6 py-24 max-w-5xl mx-auto">
-          <FadeInSection className="text-center mb-16">
+        <section className="relative px-6 py-16 sm:py-20 max-w-6xl mx-auto">
+          <FadeInSection className="text-center mb-10">
             <span className="text-xs font-semibold text-amber-400 uppercase tracking-widest">Roadmap</span>
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mt-3 mb-4">
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mt-3 mb-3">
               2025{" "}
               <span className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
                 Objectives
@@ -414,8 +409,8 @@ export function MissionPage() {
           </FadeInSection>
 
           <FadeInSection>
-            <SpotlightCard className="p-8 sm:p-10" spotlightColor="rgba(245, 158, 11, 0.08)">
-              <div className="flex items-center gap-3 mb-8">
+            <SpotlightCard className="p-6 sm:p-8" spotlightColor="rgba(245, 158, 11, 0.08)">
+              <div className="flex items-center gap-3 mb-6">
                 <div className="h-10 w-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
                   <Rocket className="h-5 w-5 text-amber-400" />
                 </div>
@@ -424,7 +419,7 @@ export function MissionPage() {
                   <p className="text-xs text-muted-foreground">What we're working on right now</p>
                 </div>
               </div>
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid sm:grid-cols-2 gap-3">
                 {objectives.map((obj, i) => (
                   <motion.div
                     key={i}
@@ -445,16 +440,11 @@ export function MissionPage() {
           </FadeInSection>
         </section>
 
-        {/* === DIVIDER LINE === */}
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="h-px bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
-        </div>
-
         {/* === CTA SECTION === */}
-        <section className="relative px-6 py-24 max-w-4xl mx-auto">
+        <section className="relative px-6 py-16 sm:py-20 max-w-6xl mx-auto">
           <FadeInSection>
             <SpotlightCard
-              className="p-10 sm:p-14 overflow-hidden text-center"
+              className="p-8 sm:p-10 overflow-hidden text-center"
               spotlightColor="rgba(139, 92, 246, 0.12)"
             >
               {/* Decorative orbs */}
@@ -462,12 +452,12 @@ export function MissionPage() {
               <div className="absolute -bottom-16 -right-16 w-48 h-48 bg-gradient-to-tl from-blue-500/15 to-transparent rounded-full blur-3xl" />
 
               <div className="relative">
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-6">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-5">
                   <Zap className="h-3.5 w-3.5 text-emerald-400" />
                   <span className="text-xs font-semibold text-emerald-400 uppercase tracking-widest">Open to All</span>
                 </div>
 
-                <h3 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
+                <h3 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
                   Join the{" "}
                   <ShinyText
                     text="Mission"
@@ -478,7 +468,7 @@ export function MissionPage() {
                   />
                 </h3>
 
-                <p className="text-muted-foreground mb-8 max-w-lg mx-auto leading-relaxed">
+                <p className="text-muted-foreground mb-6 max-w-lg mx-auto leading-relaxed">
                   Whether you're a builder, investor, or advocate—there's a place for you in bringing the frontier to everyone.
                 </p>
 
