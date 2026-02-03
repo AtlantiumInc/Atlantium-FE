@@ -277,27 +277,6 @@ export function MembershipCard({ onAvatarClick, username, bio, createdAt }: Memb
         </div>
       )}
 
-      {/* Share Link */}
-      {shareLink && (
-        <div className="mt-3 py-2.5 px-4 rounded-lg bg-muted/30 border border-border/50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 min-w-0">
-              <Link2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <span className="text-xs text-muted-foreground truncate">{shareLink}</span>
-            </div>
-            <button
-              onClick={handleCopyLink}
-              className="ml-2 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors shrink-0"
-            >
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-green-500" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )}
-            </button>
-          </div>
-        </div>
-      )}
 
       <UpgradeModal
         open={showUpgradeModal}

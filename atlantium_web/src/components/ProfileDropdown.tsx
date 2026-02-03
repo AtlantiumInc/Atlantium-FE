@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Trash2, Loader2, ExternalLink } from "lucide-react";
+import { Trash2, Loader2, ExternalLink, Pencil, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -54,6 +54,7 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoadingPortal, setIsLoadingPortal] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchProfile = async () => {
@@ -75,6 +76,7 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
   const handleProfileUpdate = async () => {
     await fetchProfile();
     await checkAuth();
+    setIsProfileOpen(false);
   };
 
   const handleAvatarClick = () => {
@@ -197,6 +199,56 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
             {/* Membership Card */}
             <MembershipCard onAvatarClick={handleAvatarClick} username={profile?.username} bio={profile?.bio} createdAt={profile?.created_at} />
 
+            {/* Profile Edit Form */}
+            <div className="rounded-lg border border-border overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Pencil className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-semibold">Edit Profile</span>
+                </div>
+                <ChevronDown
+                  className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isProfileOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              <div
+                className={`grid transition-all duration-200 ease-in-out ${isProfileOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+              >
+                <div className="overflow-hidden">
+                  <div className="px-4 pb-4 pt-2">
+                    <ProfileEditForm
+                      profile={profile || undefined}
+                      onSuccess={handleProfileUpdate}
+                      variant="sheet"
+                      onAvatarClick={handleAvatarClick}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Refer Users */}
+            <div>
+              <h3 className="text-sm font-semibold mb-2">Refer Users</h3>
+              <p className="text-xs text-muted-foreground mb-3">Share your referral link to invite others to Atlantium.</p>
+              <div
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={async () => {
+                  const url = `https://atlantium.ai?ref=${profile?.username || ""}`;
+                  await navigator.clipboard.writeText(url);
+                  toast.success("Referral link copied!");
+                }}
+              >
+                <span className="text-sm text-muted-foreground truncate flex-1">
+                  atlantium.ai?ref={profile?.username || ""}
+                </span>
+                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              </div>
+            </div>
+
             {/* Manage Billing */}
             <button
               onClick={handleManageSubscription}
@@ -212,17 +264,6 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
                 </>
               )}
             </button>
-
-            {/* Profile Edit Form */}
-            <div>
-              <h3 className="text-sm font-semibold mb-4">Profile Information</h3>
-              <ProfileEditForm
-                profile={profile || undefined}
-                onSuccess={handleProfileUpdate}
-                variant="sheet"
-                onAvatarClick={handleAvatarClick}
-              />
-            </div>
           </div>
 
           {/* Delete Account Section */}

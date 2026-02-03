@@ -5,15 +5,15 @@ interface Position {
   y: number;
 }
 
-interface SpotlightCardProps extends React.PropsWithChildren {
-  className?: string;
+interface SpotlightCardProps extends React.HTMLAttributes<HTMLDivElement> {
   spotlightColor?: string;
 }
 
 const SpotlightCard: React.FC<SpotlightCardProps> = ({
   children,
   className = '',
-  spotlightColor = 'rgba(120, 160, 255, 0.15)'
+  spotlightColor = 'rgba(120, 160, 255, 0.15)',
+  ...rest
 }) => {
   const divRef = useRef<HTMLDivElement>(null);
   const [isFocused, setIsFocused] = useState<boolean>(false);
@@ -54,6 +54,7 @@ const SpotlightCard: React.FC<SpotlightCardProps> = ({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       className={`relative rounded-2xl border border-border bg-card overflow-hidden ${className}`}
+      {...rest}
     >
       <div
         className="pointer-events-none absolute inset-0 transition-opacity duration-500 ease-out"

@@ -14,6 +14,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import {
   Calendar,
   Clock,
   Sparkles,
@@ -23,6 +29,11 @@ import {
   Users,
   ArrowRight,
   Zap,
+  Tag,
+  FileText,
+  ExternalLink,
+  Share2,
+  User,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { MembershipGate, UpgradePrompt } from "@/components/subscription";
@@ -111,6 +122,7 @@ export function HQPage({ user: userProp, onNavigateToThread }: HQPageProps) {
   const [isLoadingArticles, setIsLoadingArticles] = useState(true);
   const [myGroups, setMyGroups] = useState<Thread[]>([]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(true);
+  const [selectedArticle, setSelectedArticle] = useState<FrontierArticle | null>(null);
 
   const fetchFrontierArticles = async () => {
     try {
@@ -314,6 +326,7 @@ export function HQPage({ user: userProp, onNavigateToThread }: HQPageProps) {
             <SpotlightCard
               className="overflow-hidden group cursor-pointer"
               spotlightColor="rgba(14, 165, 233, 0.15)"
+              onClick={() => setSelectedArticle(featuredArticles[0])}
             >
               <div className="flex flex-col md:flex-row">
                 {/* Image */}
@@ -499,6 +512,7 @@ export function HQPage({ user: userProp, onNavigateToThread }: HQPageProps) {
                   <SpotlightCard
                     className="overflow-hidden group cursor-pointer"
                     spotlightColor="rgba(14, 165, 233, 0.08)"
+                    onClick={() => setSelectedArticle(article)}
                   >
                     <div className="flex gap-4 p-4">
                       {/* Thumbnail */}
@@ -743,6 +757,159 @@ export function HQPage({ user: userProp, onNavigateToThread }: HQPageProps) {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Article Bottom Sheet */}
+      <Sheet open={!!selectedArticle} onOpenChange={() => setSelectedArticle(null)}>
+        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl p-0 max-w-2xl mx-auto inset-x-0">
+          {selectedArticle && (
+            <>
+              <SheetTitle className="sr-only">{selectedArticle.content.title}</SheetTitle>
+              <SheetDescription className="sr-only">Full article view</SheetDescription>
+
+              <div className="max-w-2xl mx-auto px-6 py-6 space-y-6">
+                {/* Header: Publisher + Time */}
+                <div className="flex items-center gap-3">
+                  {selectedArticle.content.publisher?.logo_url && (
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage
+                        src={selectedArticle.content.publisher.logo_url}
+                        alt={selectedArticle.content.publisher.name}
+                      />
+                      <AvatarFallback className="text-[9px]">
+                        {selectedArticle.content.publisher.name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                  <span className="text-sm text-muted-foreground font-medium">
+                    {selectedArticle.content.publisher?.name}
+                  </span>
+                  <span className="text-muted-foreground/40">·</span>
+                  <span className="text-sm text-muted-foreground">
+                    {formatRelativeTime(selectedArticle.created_at)}
+                  </span>
+                </div>
+
+                {/* Title */}
+                <h2 className="text-2xl md:text-3xl font-bold leading-tight bg-gradient-to-r from-foreground via-cyan-300 to-cyan-500 bg-clip-text text-transparent">
+                  {selectedArticle.content.title}
+                </h2>
+
+                {/* Author / Publisher row */}
+                <div className="flex items-center gap-4">
+                  {selectedArticle.content.author?.name && (
+                    <div className="flex items-center gap-2">
+                      {selectedArticle.content.author.avatar_url ? (
+                        <Avatar className="h-7 w-7">
+                          <AvatarImage
+                            src={selectedArticle.content.author.avatar_url}
+                            alt={selectedArticle.content.author.name}
+                          />
+                          <AvatarFallback className="text-[10px]">
+                            {selectedArticle.content.author.name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                      ) : (
+                        <div className="h-7 w-7 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                          <User className="h-3.5 w-3.5 text-cyan-400" />
+                        </div>
+                      )}
+                      <span className="text-sm text-muted-foreground">
+                        {selectedArticle.content.author.name}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* TL;DR */}
+                {selectedArticle.content.tldr && selectedArticle.content.tldr.length > 0 && (
+                  <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 space-y-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileText className="h-4 w-4 text-cyan-400" />
+                      <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+                        TL;DR
+                      </span>
+                    </div>
+                    <ol className="space-y-1.5">
+                      {selectedArticle.content.tldr.map((point, i) => (
+                        <li key={i} className="flex gap-2.5 text-sm text-muted-foreground">
+                          <span className="text-cyan-400 font-semibold shrink-0">
+                            {i + 1}.
+                          </span>
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+
+                {/* Featured Image */}
+                {selectedArticle.content.featured_image?.url && (
+                  <div className="relative rounded-xl overflow-hidden">
+                    <img
+                      src={selectedArticle.content.featured_image.url}
+                      alt={selectedArticle.content.featured_image.alt || selectedArticle.content.title}
+                      className="w-full object-cover max-h-80"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-background/60 to-transparent pointer-events-none" />
+                    {selectedArticle.content.featured_image.caption && (
+                      <p className="absolute bottom-3 left-4 right-4 text-xs text-muted-foreground/80">
+                        {selectedArticle.content.featured_image.caption}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Tags */}
+                {selectedArticle.content.tags && selectedArticle.content.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedArticle.content.tags.map((tag) => (
+                      <Badge
+                        key={tag}
+                        variant="outline"
+                        className="bg-cyan-500/10 border-cyan-500/30 text-cyan-300 text-xs"
+                      >
+                        <Tag className="h-3 w-3 mr-1" />
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                {/* Body */}
+                {selectedArticle.content.body && (
+                  <div
+                    className="prose prose-invert prose-sm max-w-none prose-headings:text-foreground prose-p:text-muted-foreground prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground prose-img:rounded-xl"
+                    dangerouslySetInnerHTML={{ __html: selectedArticle.content.body }}
+                  />
+                )}
+
+                {/* Share Button */}
+                <div className="pt-4 pb-2 border-t border-border/50">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={async () => {
+                      const url = `${window.location.origin}/frontier/${selectedArticle.id}`;
+                      if (navigator.share) {
+                        await navigator.share({
+                          title: selectedArticle.content.title,
+                          url,
+                        });
+                      } else {
+                        await navigator.clipboard.writeText(url);
+                      }
+                    }}
+                  >
+                    <Share2 className="h-4 w-4" />
+                    Share article
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
