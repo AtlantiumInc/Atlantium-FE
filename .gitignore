@@ -38,3 +38,6 @@ Thumbs.db
 
 # Backend (separate repo)
 backend/
+
+# iOS (separate repo)
+atlantium_ios/
