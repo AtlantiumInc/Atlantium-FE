@@ -17,9 +17,10 @@ import {
   Zap,
   Star,
   TrendingUp,
+  X,
 } from "lucide-react";
-import { motion, useSpring } from "motion/react";
-import { useRef } from "react";
+import { motion, useSpring, AnimatePresence } from "motion/react";
+import { useRef, useState, useEffect } from "react";
 
 const APP_STORE_URL =
   "https://apps.apple.com/us/app/atlantium-the-frontier/id6757367750";
@@ -57,29 +58,29 @@ const services = [
   {
     icon: Sparkles,
     title: "Generative Media",
-    description: "AI-powered content creation at scale.",
+    description: "AI-powered content creation and strategic consulting.",
     color: "emerald",
     items: [
-      "AI video generation",
-      "Image synthesis",
-      "Audio production",
-      "Generative series",
+      "AI video & image generation",
+      "Audio & music production",
+      "Workflow & tool optimization",
+      "Team training & pipelines",
     ],
-    price: "5,000",
+    price: "2,500",
     priceLabel: "Starting at",
   },
   {
     icon: MessageSquare,
-    title: "Generative Media Consulting",
-    description: "Strategic guidance for AI media production.",
-    color: "amber",
+    title: "Technology Advisor",
+    description: "Strategic tech guidance for founders and executives.",
+    color: "violet",
     items: [
-      "Workflow optimization",
-      "Tool selection",
-      "Team training",
-      "Production pipeline design",
+      "Fractional CTO services",
+      "AI integration strategy",
+      "Tech stack evaluation",
+      "Build vs. buy decisions",
     ],
-    price: "2,500",
+    price: "1,500",
     priceLabel: "Starting at",
   },
 ];
@@ -152,6 +153,36 @@ function TiltCard({ children, className }: { children: React.ReactNode; classNam
 }
 
 export function ServicesPage() {
+  const [showCalendly, setShowCalendly] = useState(false);
+
+  useEffect(() => {
+    // Load Calendly script once
+    if (!document.querySelector('script[src="https://assets.calendly.com/assets/external/widget.js"]')) {
+      const script = document.createElement("script");
+      script.src = "https://assets.calendly.com/assets/external/widget.js";
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Re-initialize Calendly widget when modal opens
+    if (showCalendly) {
+      const initCalendly = () => {
+        const container = document.getElementById("calendly-embed");
+        if ((window as any).Calendly && container) {
+          (window as any).Calendly.initInlineWidget({
+            url: "https://calendly.com/team-atlantium/30min?hide_gdpr_banner=1&text_color=000000&primary_color=0c4cbb",
+            parentElement: container,
+          });
+        }
+      };
+      // Try immediately, then retry after script loads
+      setTimeout(initCalendly, 100);
+      setTimeout(initCalendly, 500);
+    }
+  }, [showCalendly]);
+
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Aurora Background */}
@@ -184,7 +215,7 @@ export function ServicesPage() {
               <img src="/logo.png" alt="Atlantium" className="h-7 w-7 sm:h-8 sm:w-8" />
               <div>
                 <span className="text-lg sm:text-xl font-bold tracking-tight">Atlantium</span>
-                <p className="hidden sm:block text-[10px] text-muted-foreground tracking-wide">Research Community Services</p>
+                <p className="hidden sm:block text-[10px] text-muted-foreground tracking-wide">Premier Technology Community</p>
               </div>
             </Link>
           </motion.div>
@@ -254,32 +285,33 @@ export function ServicesPage() {
                 </motion.div>
 
                 {/* Headline */}
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-5">
-                  <span className="text-foreground">From Zero</span>
-                  <br />
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-5 flex flex-col items-center">
+                  <span className="text-foreground">Let's Build</span>
                   <ShinyText
-                    text="To Shipped"
+                    text="Together"
                     speed={3}
-                    color="hsl(var(--primary))"
+                    color="#3b82f6"
                     shineColor="#ffffff"
-                    className="text-4xl sm:text-5xl lg:text-6xl font-bold"
+                    className="text-4xl sm:text-5xl lg:text-6xl font-bold pb-2"
                   />
                 </h1>
 
                 {/* Subhead */}
                 <p className="text-muted-foreground text-lg mb-8 mx-auto">
-                  GTM strategy, production code, and warm intros. Your extended team for the 0-to-1 phase.
+                  Development. GTM strategy. Generative media. Tech advisory.
                 </p>
 
                 {/* CTA */}
                 <div className="flex flex-wrap justify-center gap-3 mb-8">
-                  <a href="mailto:team@atlantium.ai">
-                    <Button size="lg" className="gap-2 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-shadow">
-                      <Rocket className="h-5 w-5" />
-                      Start a Project
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </a>
+                  <Button
+                    size="lg"
+                    className="gap-2 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-shadow"
+                    onClick={() => setShowCalendly(true)}
+                  >
+                    <Rocket className="h-5 w-5" />
+                    Start a Project
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
                 </div>
 
                 {/* Trust indicators */}
@@ -296,7 +328,7 @@ export function ServicesPage() {
                   <span className="text-muted-foreground/50">•</span>
                   <div className="flex items-center gap-1.5">
                     <Zap className="h-4 w-4 text-amber-500" />
-                    <span>24hr response</span>
+                    <span>2hr response</span>
                   </div>
                 </div>
               </div>
@@ -344,6 +376,16 @@ export function ServicesPage() {
                   <div>
                     <div className="text-2xl font-bold text-foreground">White Glove</div>
                     <div className="text-sm text-muted-foreground">High-touch service</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/30 border border-border/50">
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-500/5 border border-violet-500/20 flex items-center justify-center">
+                    <Rocket className="h-6 w-6 text-violet-500" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-foreground">Ongoing</div>
+                    <div className="text-sm text-muted-foreground">Post-launch support</div>
                   </div>
                 </div>
               </div>
@@ -405,42 +447,73 @@ export function ServicesPage() {
             );
           })}
 
-          {/* Process Card */}
+          {/* Process Card - Visual Timeline */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.6 }}
-            className="col-span-12 lg:col-span-8 row-span-1"
+            className="col-span-12 row-span-1"
           >
             <SpotlightCard
-              className="h-full p-6 lg:p-8"
+              className="h-full p-6 lg:p-10"
               spotlightColor="rgba(139, 92, 246, 0.1)"
             >
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                <div>
-                  <h3 className="text-xl font-bold text-foreground mb-2">How We Work</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Simple. Fast. No surprises.
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 lg:gap-3">
+              <div className="text-center mb-8">
+                <h3 className="text-2xl font-bold text-foreground mb-2">How We Work</h3>
+                <p className="text-muted-foreground text-sm">
+                  Simple. Fast. No surprises.
+                </p>
+              </div>
+
+              {/* Desktop Timeline */}
+              <div className="hidden md:block relative">
+                {/* Timeline Line */}
+                <div className="absolute top-6 left-[10%] right-[10%] h-0.5 bg-gradient-to-r from-emerald-500 via-blue-500 via-violet-500 to-amber-500 opacity-30" />
+
+                <div className="grid grid-cols-4 gap-4">
                   {[
-                    { label: "Discovery", color: "emerald", num: 1 },
-                    { label: "Scope", color: "blue", num: 2 },
-                    { label: "Build", color: "violet", num: 3 },
-                    { label: "Ship", color: "amber", num: 4 },
+                    { label: "Discovery", desc: "Understand your vision & goals", color: "emerald", icon: Lightbulb },
+                    { label: "Scope", desc: "Define deliverables & timeline", color: "blue", icon: CheckCircle2 },
+                    { label: "Build", desc: "Rapid development with updates", color: "violet", icon: Code },
+                    { label: "Ship", desc: "Launch & ongoing support", color: "amber", icon: Rocket },
                   ].map((step, i) => (
-                    <div key={step.label} className="flex items-center gap-2">
-                      <div className={`flex items-center gap-2 px-4 py-2 rounded-full bg-${step.color}-500/10 border border-${step.color}-500/20`}>
-                        <span className={`h-5 w-5 rounded-full bg-${step.color}-500 text-white text-xs font-bold flex items-center justify-center`}>
-                          {step.num}
-                        </span>
-                        <span className="text-sm font-medium">{step.label}</span>
+                    <div key={step.label} className="flex flex-col items-center text-center">
+                      {/* Node */}
+                      <div className={`relative z-10 h-12 w-12 rounded-full bg-${step.color}-500/20 border-2 border-${step.color}-500 flex items-center justify-center mb-4`}>
+                        <step.icon className={`h-5 w-5 text-${step.color}-500`} />
                       </div>
-                      {i < 3 && <ArrowRight className="h-4 w-4 text-muted-foreground hidden lg:block" />}
+                      {/* Step number */}
+                      <span className={`text-xs font-bold text-${step.color}-500 mb-1`}>Step {i + 1}</span>
+                      {/* Label */}
+                      <h4 className="font-semibold text-foreground mb-1">{step.label}</h4>
+                      {/* Description */}
+                      <p className="text-xs text-muted-foreground">{step.desc}</p>
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Mobile Timeline - Vertical */}
+              <div className="md:hidden space-y-4">
+                {[
+                  { label: "Discovery", desc: "Understand your vision & goals", color: "emerald", icon: Lightbulb },
+                  { label: "Scope", desc: "Define deliverables & timeline", color: "blue", icon: CheckCircle2 },
+                  { label: "Build", desc: "Rapid development with updates", color: "violet", icon: Code },
+                  { label: "Ship", desc: "Launch & ongoing support", color: "amber", icon: Rocket },
+                ].map((step, i) => (
+                  <div key={step.label} className="flex items-center gap-4">
+                    <div className={`relative flex-shrink-0 h-10 w-10 rounded-full bg-${step.color}-500/20 border-2 border-${step.color}-500 flex items-center justify-center`}>
+                      <step.icon className={`h-4 w-4 text-${step.color}-500`} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-bold text-${step.color}-500`}>{i + 1}</span>
+                        <h4 className="font-semibold text-foreground">{step.label}</h4>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{step.desc}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </SpotlightCard>
           </motion.div>
@@ -473,46 +546,43 @@ export function ServicesPage() {
             </SpotlightCard>
           </motion.div>
 
-          {/* CTA Card */}
+          {/* CTA Card - Side by side with testimonial */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.6 }}
-            className="col-span-12 row-span-1"
+            className="col-span-12 lg:col-span-8 row-span-1"
           >
             <SpotlightCard
-              className="p-8 lg:p-12 overflow-hidden"
+              className="h-full p-8 lg:p-10 overflow-hidden"
               spotlightColor="rgba(139, 92, 246, 0.15)"
             >
               {/* Decorative elements */}
               <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-gradient-to-tr from-blue-500/20 to-transparent rounded-full blur-2xl" />
               <div className="absolute -top-10 -right-10 w-40 h-40 bg-gradient-to-bl from-violet-500/20 to-transparent rounded-full blur-2xl" />
 
-              <div className="relative flex flex-col lg:flex-row items-center justify-between gap-6">
-                <div className="text-center lg:text-left">
-                  <div className="flex items-center justify-center lg:justify-start gap-2 mb-3">
+              <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between h-full gap-6">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-3">
                     <TrendingUp className="h-5 w-5 text-emerald-500" />
-                    <span className="text-sm font-medium text-emerald-500">24hr response time</span>
+                    <span className="text-sm font-medium text-emerald-500">2hr response time</span>
                   </div>
                   <h3 className="text-2xl lg:text-3xl font-bold text-foreground mb-2">
                     Ready to ship?
                   </h3>
-                  <p className="text-muted-foreground max-w-lg">
-                    Tell us about your project. We'll scope it out and get you a quote within a day.
+                  <p className="text-muted-foreground">
+                    Tell us about your project. We'll scope it out and get you a quote within a day. Book a free 30-minute discovery call.
                   </p>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <a href="mailto:team@atlantium.ai">
-                    <Button size="lg" className="gap-2 shadow-lg shadow-primary/25 px-8">
-                      <Rocket className="h-5 w-5" />
-                      Start a Project
-                    </Button>
-                  </a>
-                  <Link to="/">
-                    <Button variant="outline" size="lg" className="gap-2">
-                      Back to Home
-                    </Button>
-                  </Link>
+                <div className="flex flex-wrap gap-3 flex-shrink-0">
+                  <Button
+                    size="lg"
+                    className="gap-2 shadow-lg shadow-primary/25 px-8"
+                    onClick={() => setShowCalendly(true)}
+                  >
+                    <Rocket className="h-5 w-5" />
+                    Start a Project
+                  </Button>
                 </div>
               </div>
             </SpotlightCard>
@@ -520,6 +590,50 @@ export function ServicesPage() {
 
         </div>
       </main>
+
+      {/* Calendly Modal */}
+      <AnimatePresence>
+        {showCalendly && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowCalendly(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-2xl bg-background rounded-2xl shadow-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-border">
+                <div>
+                  <h3 className="font-semibold text-foreground">Book a Discovery Call</h3>
+                  <p className="text-sm text-muted-foreground">30 minutes to discuss your project</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowCalendly(false)}
+                  className="rounded-full"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              {/* Calendly Embed */}
+              <div
+                id="calendly-embed"
+                className="calendly-inline-widget"
+                style={{ minWidth: "320px", height: "600px" }}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Footer */}
       <footer className="relative z-10 py-8 px-6 border-t border-border/30 mt-8">

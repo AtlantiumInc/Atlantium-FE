@@ -333,7 +333,7 @@ export function LandingPage() {
             <img src="/logo.png" alt="Atlantium" className="h-7 w-7 sm:h-8 sm:w-8" />
             <div>
               <span className="text-lg sm:text-xl font-bold tracking-tight">Atlantium</span>
-              <p className="hidden sm:block text-[10px] text-muted-foreground tracking-wide">Research Community Services</p>
+              <p className="hidden sm:block text-[10px] text-muted-foreground tracking-wide">Premier Technology Community</p>
             </div>
           </motion.div>
 
