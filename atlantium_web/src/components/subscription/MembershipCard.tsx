@@ -50,17 +50,19 @@ export function MembershipCard({ onAvatarClick, username, bio, createdAt }: Memb
   const profileBio = bio || (profile?.bio as string) || "";
   const refCode = user?.ref_code || "";
   const referralLink = refCode ? `atlantium.ai?ref=${refCode}` : "";
+  const profileLink = profileUsername ? `atlantium.ai/u/${profileUsername}` : "";
+  const shareLink = referralLink || profileLink;
 
   // Get interests from registration details
   const registrationDetails = profile?.registration_details as Record<string, unknown> | undefined;
   const interests = (registrationDetails?.interests as string[]) || [];
 
-  const handleCopyReferralLink = async () => {
-    if (!referralLink) return;
+  const handleCopyLink = async () => {
+    if (!shareLink) return;
     try {
-      await navigator.clipboard.writeText(`https://${referralLink}`);
+      await navigator.clipboard.writeText(`https://${shareLink}`);
       setCopied(true);
-      toast.success("Referral link copied!");
+      toast.success(referralLink ? "Referral link copied!" : "Profile link copied!");
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error("Failed to copy link");
@@ -275,16 +277,16 @@ export function MembershipCard({ onAvatarClick, username, bio, createdAt }: Memb
         </div>
       )}
 
-      {/* Referral Link */}
-      {referralLink && (
+      {/* Share Link */}
+      {shareLink && (
         <div className="mt-3 py-2.5 px-4 rounded-lg bg-muted/30 border border-border/50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
               <Link2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <span className="text-xs text-muted-foreground truncate">{referralLink}</span>
+              <span className="text-xs text-muted-foreground truncate">{shareLink}</span>
             </div>
             <button
-              onClick={handleCopyReferralLink}
+              onClick={handleCopyLink}
               className="ml-2 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors shrink-0"
             >
               {copied ? (
