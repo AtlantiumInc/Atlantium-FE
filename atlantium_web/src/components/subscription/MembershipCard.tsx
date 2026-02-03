@@ -47,10 +47,6 @@ export function MembershipCard({ onAvatarClick, username, bio, createdAt }: Memb
   const initials = getInitials(fullName, user?.email);
   const profileUsername = username || (profile?.username as string) || "";
   const profileBio = bio || (profile?.bio as string) || "";
-  const refCode = user?.ref_code || "";
-  const referralLink = refCode ? `atlantium.ai?ref=${refCode}` : "";
-  const profileLink = profileUsername ? `atlantium.ai/u/${profileUsername}` : "";
-  const shareLink = referralLink || profileLink;
 
   // Get interests from registration details
   const registrationDetails = profile?.registration_details as Record<string, unknown> | undefined;
