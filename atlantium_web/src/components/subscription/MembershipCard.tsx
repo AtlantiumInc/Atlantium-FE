@@ -45,7 +45,6 @@ export function MembershipCard({ onAvatarClick, username, bio, createdAt }: Memb
   const lastName = (userAny?.last_name as string) || (profile?.last_name as string) || "";
   const fullName = [firstName, lastName].filter(Boolean).join(" ") || user?.display_name || (profile?.display_name as string);
   const initials = getInitials(fullName, user?.email);
-  const profileUsername = username || (profile?.username as string) || "";
   const profileBio = bio || (profile?.bio as string) || "";
 
   // Get interests from registration details
