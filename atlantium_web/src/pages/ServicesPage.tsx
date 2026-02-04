@@ -224,19 +224,19 @@ export function ServicesPage() {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center gap-1 sm:gap-4"
           >
-            <Link to="/" className="hidden sm:block">
+            <Link to="/mission" className="hidden sm:block">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                Home
+                Mission
+              </Button>
+            </Link>
+            <Link to="/services" className="hidden sm:block">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                Services
               </Button>
             </Link>
             <Link to="/index" className="hidden sm:block">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                News
-              </Button>
-            </Link>
-            <Link to="/mission" className="hidden sm:block">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                Mission
+                Newsroom
               </Button>
             </Link>
             <Link to="/login" className="hidden sm:block">

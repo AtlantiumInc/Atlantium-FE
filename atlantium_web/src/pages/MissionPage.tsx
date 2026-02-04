@@ -178,14 +178,24 @@ export function MissionPage() {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center gap-1 sm:gap-4"
           >
-            <Link to="/" className="hidden sm:block">
+            <Link to="/mission" className="hidden sm:block">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                Home
+                Mission
               </Button>
             </Link>
             <Link to="/services" className="hidden sm:block">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                 Services
+              </Button>
+            </Link>
+            <Link to="/index" className="hidden sm:block">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                Newsroom
+              </Button>
+            </Link>
+            <Link to="/login" className="hidden sm:block">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                Sign In
               </Button>
             </Link>
             <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
@@ -225,7 +235,7 @@ export function MissionPage() {
                 <span className="text-foreground">Evenly Distribute</span>
                 <br />
                 <span className="bg-gradient-to-r from-violet-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                  the Future
+                  the Frontier
                 </span>
               </h1>
               <p className="mt-5 text-lg text-muted-foreground max-w-md mx-auto lg:mx-0 leading-relaxed">
@@ -309,9 +319,9 @@ export function MissionPage() {
           <FadeInSection className="text-center mb-10">
             <span className="text-xs font-semibold text-blue-400 uppercase tracking-widest">What We Bring</span>
             <h2 className="text-3xl sm:text-4xl font-bold text-foreground mt-3 mb-3">
-              Four pillars of{" "}
+              What We{" "}
               <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                equal access
+                Bring to the Table
               </span>
             </h2>
             <p className="text-muted-foreground max-w-lg mx-auto">

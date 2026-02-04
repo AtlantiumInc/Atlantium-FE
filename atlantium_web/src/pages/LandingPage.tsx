@@ -15,8 +15,10 @@ import {
   Users,
   Zap,
   Video,
+  Lock,
+  Globe,
 } from "lucide-react";
-import { motion, useAnimationFrame } from "motion/react";
+import { motion, useAnimationFrame, AnimatePresence } from "motion/react";
 import { useRef, useState, useEffect } from "react";
 
 const APP_STORE_URL =
@@ -304,6 +306,158 @@ function AutoScrollFeed() {
   );
 }
 
+const groupTabs = [
+  { key: "public", label: "Public", icon: Globe, color: "#3b82f6", colorEnd: "#06b6d4", rgbaLight: "rgba(59, 130, 246, 0.1)", rgbaBorder: "rgba(59, 130, 246, 0.2)", spotlight: "rgba(59, 130, 246, 0.12)" },
+  { key: "private", label: "Private", icon: Lock, color: "#f59e0b", colorEnd: "#f97316", rgbaLight: "rgba(245, 158, 11, 0.1)", rgbaBorder: "rgba(245, 158, 11, 0.2)", spotlight: "rgba(245, 158, 11, 0.12)" },
+  { key: "focus", label: "Focus", icon: Sparkles, color: "#8b5cf6", colorEnd: "#6d28d9", rgbaLight: "rgba(139, 92, 246, 0.1)", rgbaBorder: "rgba(139, 92, 246, 0.2)", spotlight: "rgba(139, 92, 246, 0.12)" },
+] as const;
+
+const groupContent = {
+  public: {
+    title: "Public Groups",
+    description: "Open communities anyone can discover and join. Share ideas, discuss topics, and grow together in the open.",
+    dotColor: "bg-blue-400",
+    cardBg: "from-blue-500/10 to-cyan-500/5",
+    cardBorder: "border-blue-500/20",
+    bullets: ["Open to all community members", "Discoverable in group directory", "Persistent group chat"],
+  },
+  private: {
+    title: "Private Groups",
+    description: "Invite-only spaces for your inner circle. Perfect for projects, teams, or trusted collaborators.",
+    dotColor: "bg-amber-400",
+    cardBg: "from-amber-500/10 to-orange-500/5",
+    cardBorder: "border-amber-500/20",
+    bullets: ["Invite-only access", "File sharing & media", "Full admin controls"],
+  },
+  focus: {
+    title: "Focus Groups",
+    badge: true,
+    description: "30-day intensive collaborations. Our AI matches you with 6 members you'll work well with, led by an experienced guide.",
+    dotColor: "bg-violet-400",
+    cardBg: "from-violet-500/10 to-purple-500/5",
+    cardBorder: "border-violet-500/20",
+    bullets: ["1 lead + 6 AI-matched members", "Pre-determined topics each month", "3-4 new groups launched monthly"],
+  },
+} as const;
+
+function GroupsFeatureCard() {
+  const [activeTab, setActiveTab] = useState<"public" | "private" | "focus">("public");
+  const activeIdx = groupTabs.findIndex((t) => t.key === activeTab);
+  const tab = groupTabs[activeIdx];
+  const content = groupContent[activeTab];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.4, duration: 0.6 }}
+      className="col-span-12 row-span-2"
+    >
+      <SpotlightCard
+        className="h-full p-6 lg:p-8"
+        spotlightColor={tab.spotlight}
+      >
+        <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+          <div className="flex items-center gap-3">
+            <motion.div
+              animate={{ background: tab.rgbaLight, borderColor: tab.rgbaBorder }}
+              transition={{ duration: 0.3 }}
+              className="h-10 w-10 rounded-xl border flex items-center justify-center"
+            >
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab}
+                  initial={{ scale: 0, rotate: -90 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  exit={{ scale: 0, rotate: 90 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <tab.icon className="h-5 w-5" style={{ color: tab.color }} />
+                </motion.div>
+              </AnimatePresence>
+            </motion.div>
+            <div>
+              <AnimatePresence mode="wait">
+                <motion.h3
+                  key={activeTab}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-lg font-bold text-foreground"
+                >
+                  {content.title}
+                </motion.h3>
+              </AnimatePresence>
+              <p className="text-xs text-muted-foreground">Collaborate, connect, and build together</p>
+            </div>
+          </div>
+
+          {/* 3-way Toggle Switch */}
+          <div
+            className="relative flex items-center h-12 rounded-full p-1.5 border bg-muted/40 backdrop-blur-sm"
+            style={{ borderColor: tab.rgbaBorder }}
+          >
+            {/* Sliding pill */}
+            <motion.div
+              className="absolute top-1.5 bottom-1.5 rounded-full"
+              animate={{
+                left: activeIdx === 0 ? 6 : activeIdx === 1 ? "calc(33.333% + 2px)" : "calc(66.666% - 2px)",
+                background: `linear-gradient(135deg, ${tab.color}, ${tab.colorEnd})`,
+                boxShadow: `0 0 16px ${tab.rgbaLight}, 0 0 6px ${tab.rgbaLight}`,
+              }}
+              style={{ width: "calc(33.333% - 4px)" }}
+              transition={{ type: "spring", stiffness: 350, damping: 28 }}
+            />
+            {groupTabs.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`relative z-10 flex items-center justify-center gap-1.5 px-4 sm:px-5 py-1.5 rounded-full text-sm font-semibold transition-colors duration-300 cursor-pointer ${
+                  activeTab === t.key ? "text-white" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <t.icon className="h-3.5 w-3.5" />
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.25 }}
+            className={`relative p-5 rounded-xl bg-gradient-to-br ${content.cardBg} ${content.cardBorder} border`}
+          >
+            {"badge" in content && content.badge && (
+              <div className="absolute top-4 right-4">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30">
+                  <Zap className="h-3 w-3 text-violet-400" />
+                  <span className="text-[10px] font-semibold text-violet-400 uppercase tracking-wider">AI-Matched</span>
+                </span>
+              </div>
+            )}
+            <h4 className="text-base font-semibold text-foreground mb-2">{content.title}</h4>
+            <p className="text-sm text-muted-foreground mb-4">{content.description}</p>
+            <div className="space-y-2 text-sm">
+              {content.bullets.map((bullet) => (
+                <div key={bullet} className="flex items-center gap-2 text-muted-foreground">
+                  <div className={`h-1.5 w-1.5 rounded-full ${content.dotColor}`} />
+                  {bullet}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </SpotlightCard>
+    </motion.div>
+  );
+}
+
 export function LandingPage() {
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -354,11 +508,6 @@ export function LandingPage() {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center gap-1 sm:gap-4"
           >
-            <Link to="/index" className="hidden sm:block">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                News
-              </Button>
-            </Link>
             <Link to="/mission" className="hidden sm:block">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                 Mission
@@ -367,6 +516,11 @@ export function LandingPage() {
             <Link to="/services" className="hidden sm:block">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                 Services
+              </Button>
+            </Link>
+            <Link to="/index" className="hidden sm:block">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                Newsroom
               </Button>
             </Link>
             <Link to="/login" className="hidden sm:block">
@@ -755,79 +909,7 @@ export function LandingPage() {
           </motion.div>
 
           {/* Groups & Focus Groups Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.6 }}
-            className="col-span-12 row-span-2"
-          >
-            <SpotlightCard
-              className="h-full p-6 lg:p-8"
-              spotlightColor="rgba(139, 92, 246, 0.12)"
-            >
-              <div className="flex items-center gap-3 mb-6">
-                <div className="h-10 w-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-                  <Users className="h-5 w-5 text-violet-500" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-foreground">Groups & Focus Groups</h3>
-                  <p className="text-xs text-muted-foreground">Collaborate, connect, and build together</p>
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                {/* Focus Groups */}
-                <div className="relative p-5 rounded-xl bg-gradient-to-br from-violet-500/10 to-purple-500/5 border border-violet-500/20">
-                  <div className="absolute top-4 right-4">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30">
-                      <Zap className="h-3 w-3 text-violet-400" />
-                      <span className="text-[10px] font-semibold text-violet-400 uppercase tracking-wider">AI-Matched</span>
-                    </span>
-                  </div>
-                  <h4 className="text-base font-semibold text-foreground mb-2">Focus Groups</h4>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    30-day intensive collaborations. Our AI matches you with 6 members you'll work well with, led by an experienced guide.
-                  </p>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <div className="h-1.5 w-1.5 rounded-full bg-violet-400" />
-                      1 lead + 6 AI-matched members
-                    </div>
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <div className="h-1.5 w-1.5 rounded-full bg-violet-400" />
-                      Pre-determined topics each month
-                    </div>
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <div className="h-1.5 w-1.5 rounded-full bg-violet-400" />
-                      3-4 new groups launched monthly
-                    </div>
-                  </div>
-                </div>
-
-                {/* Regular Groups */}
-                <div className="relative p-5 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/5 border border-blue-500/20">
-                  <h4 className="text-base font-semibold text-foreground mb-2">Groups</h4>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Create your own groups for projects, interests, or teams. Invite members, share files, and collaborate freely.
-                  </p>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-                      Invite anyone from the community
-                    </div>
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-                      File sharing & media
-                    </div>
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-                      Persistent group chat
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </SpotlightCard>
-          </motion.div>
+          <GroupsFeatureCard />
 
           {/* CTA Card - Full width */}
           <motion.div

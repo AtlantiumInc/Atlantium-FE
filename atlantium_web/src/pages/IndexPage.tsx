@@ -18,6 +18,9 @@ import Aurora from "@/components/Aurora";
 import { api, type FrontierArticle } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
+const APP_STORE_URL =
+  "https://apps.apple.com/us/app/atlantium-the-frontier/id6757367750";
+
 function formatDate(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString("en-US", {
     month: "short",
@@ -276,47 +279,52 @@ export function IndexPage() {
 
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-background/70 backdrop-blur-xl border-b border-border/30">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="w-full px-6 h-16 flex items-center justify-between">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-4"
+            className="flex items-center gap-2 sm:gap-3"
           >
-            <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              <img src="/logo.png" alt="Atlantium" className="h-7 w-7" />
-              <span className="text-xl font-bold">Atlantium</span>
+            <Link to="/" className="flex items-center gap-2 sm:gap-3">
+              <img src="/logo.png" alt="Atlantium" className="h-7 w-7 sm:h-8 sm:w-8" />
+              <div>
+                <span className="text-lg sm:text-xl font-bold tracking-tight">Atlantium</span>
+                <p className="hidden sm:block text-[10px] text-muted-foreground tracking-wide">Citizen Technology Lab</p>
+              </div>
             </Link>
-            <span className="text-muted-foreground">/</span>
-            <div className="flex items-center gap-2">
-              <Newspaper className="h-4 w-4 text-cyan-400" />
-              <span className="text-sm font-medium text-cyan-400">Index</span>
-            </div>
           </motion.div>
-
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1 sm:gap-4"
           >
-            <ThemeToggle />
-            <Link to="/">
+            <Link to="/mission" className="hidden sm:block">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                Home
+                Mission
               </Button>
             </Link>
-            {isAuthenticated ? (
-              <Link to="/dashboard">
-                <Button variant="outline" size="sm">
-                  Dashboard
-                </Button>
-              </Link>
-            ) : (
-              <Link to="/login">
-                <Button variant="outline" size="sm">
-                  Sign in
-                </Button>
-              </Link>
-            )}
+            <Link to="/services" className="hidden sm:block">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                Services
+              </Button>
+            </Link>
+            <Link to="/index" className="hidden sm:block">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                Newsroom
+              </Button>
+            </Link>
+            <Link to="/login" className="hidden sm:block">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                Sign In
+              </Button>
+            </Link>
+            <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
+              <Button size="sm" className="gap-1.5 sm:gap-2 bg-white text-black hover:bg-gray-100 border-0 text-xs sm:text-sm">
+                <img src="/apple-logo.svg" alt="Apple" className="h-4 sm:h-4 w-auto" />
+                Get App
+              </Button>
+            </a>
+            <ThemeToggle />
           </motion.div>
         </div>
       </nav>

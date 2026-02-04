@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -41,6 +42,7 @@ export function GroupsPage({ onNavigateToThread }: GroupsPageProps) {
   const [groupName, setGroupName] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [shareGroup, setShareGroup] = useState<{ id: string; name: string } | null>(null);
+  const [filter, setFilter] = useState<"group" | "focus_group">("group");
 
   const fetchGroups = async () => {
     try {
@@ -145,17 +147,12 @@ export function GroupsPage({ onNavigateToThread }: GroupsPageProps) {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <Users className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold">Groups</h2>
-            <p className="text-sm text-muted-foreground">
-              Collaborate with your teams and communities
-            </p>
-          </div>
-        </div>
+        <Tabs value={filter} onValueChange={(v) => setFilter(v as "group" | "focus_group")}>
+          <TabsList>
+            <TabsTrigger value="group">Groups</TabsTrigger>
+            <TabsTrigger value="focus_group">Focus Groups</TabsTrigger>
+          </TabsList>
+        </Tabs>
         <Button onClick={handleOpenCreateDialog}>
           <Plus className="h-4 w-4 mr-2" />
           Create Group
@@ -171,21 +168,31 @@ export function GroupsPage({ onNavigateToThread }: GroupsPageProps) {
       )}
 
       {/* Groups Grid */}
-      {groups.length === 0 ? (
+      {groups.filter((g) => g.type === filter).length === 0 ? (
         <div className="text-center py-12">
-          <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2">No groups yet</h3>
+          {filter === "focus_group" ? (
+            <Sparkles className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          ) : (
+            <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          )}
+          <h3 className="text-lg font-medium mb-2">
+            No {filter === "focus_group" ? "focus groups" : "groups"} yet
+          </h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Groups you create or join will appear here
+            {filter === "focus_group"
+              ? "Focus groups you join will appear here"
+              : "Groups you create or join will appear here"}
           </p>
-          <Button onClick={handleOpenCreateDialog}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Your First Group
-          </Button>
+          {filter === "group" && (
+            <Button onClick={handleOpenCreateDialog}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Your First Group
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {groups.map((group) => (
+          {groups.filter((g) => g.type === filter).map((group) => (
             <Card
               key={group.thread_id}
               className="hover:bg-muted/50 transition-colors cursor-pointer"
