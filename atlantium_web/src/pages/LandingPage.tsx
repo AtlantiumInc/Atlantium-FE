@@ -12,7 +12,6 @@ import {
   Sparkles,
   Quote,
   Star,
-  Users,
   Zap,
   Video,
   Lock,
