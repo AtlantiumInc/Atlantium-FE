@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
+import { PublicNavbar } from "@/components/PublicNavbar";
 import {
   Loader2,
   ArrowRight,
@@ -17,9 +18,6 @@ import ShinyText from "@/components/ui/ShinyText";
 import Aurora from "@/components/Aurora";
 import { api, type FrontierArticle } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-
-const APP_STORE_URL =
-  "https://apps.apple.com/us/app/atlantium-the-frontier/id6757367750";
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString("en-US", {
@@ -278,56 +276,7 @@ export function IndexPage() {
       />
 
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-background/70 backdrop-blur-xl border-b border-border/30">
-        <div className="w-full px-6 h-16 flex items-center justify-between">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-2 sm:gap-3"
-          >
-            <Link to="/" className="flex items-center gap-2 sm:gap-3">
-              <img src="/logo.png" alt="Atlantium" className="h-7 w-7 sm:h-8 sm:w-8" />
-              <div>
-                <span className="text-lg sm:text-xl font-bold tracking-tight">Atlantium</span>
-                <p className="hidden sm:block text-[10px] text-muted-foreground tracking-wide">Citizen Technology Lab</p>
-              </div>
-            </Link>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-1 sm:gap-4"
-          >
-            <Link to="/mission" className="hidden sm:block">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                Mission
-              </Button>
-            </Link>
-            <Link to="/services" className="hidden sm:block">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                Services
-              </Button>
-            </Link>
-            <Link to="/index" className="hidden sm:block">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                Newsroom
-              </Button>
-            </Link>
-            <Link to="/login" className="hidden sm:block">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                Sign In
-              </Button>
-            </Link>
-            <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
-              <Button size="sm" className="gap-1.5 sm:gap-2 bg-white text-black hover:bg-gray-100 border-0 text-xs sm:text-sm">
-                <img src="/apple-logo.svg" alt="Apple" className="h-4 sm:h-4 w-auto" />
-                Get App
-              </Button>
-            </a>
-            <ThemeToggle />
-          </motion.div>
-        </div>
-      </nav>
+      <PublicNavbar />
 
       {/* Main Content */}
       <main className="relative z-10 max-w-7xl mx-auto px-6 py-10">
