@@ -12,7 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import SpotlightCard from "@/components/ui/SpotlightCard";
 import ShinyText from "@/components/ui/ShinyText";
 import Aurora from "@/components/Aurora";

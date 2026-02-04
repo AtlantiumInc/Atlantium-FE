@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import SpotlightCard from "@/components/ui/SpotlightCard";
 import ShinyText from "@/components/ui/ShinyText";
@@ -22,9 +21,6 @@ import {
 } from "lucide-react";
 import { motion, useSpring, AnimatePresence } from "motion/react";
 import { useRef, useState, useEffect } from "react";
-
-const APP_STORE_URL =
-  "https://apps.apple.com/us/app/atlantium-the-frontier/id6757367750";
 
 const services = [
   {
