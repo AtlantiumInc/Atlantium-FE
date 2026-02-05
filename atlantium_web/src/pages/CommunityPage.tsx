@@ -3,8 +3,6 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import SpotlightCard from "@/components/ui/SpotlightCard";
-import ShinyText from "@/components/ui/ShinyText";
-import CountUp from "@/components/ui/CountUp";
 import Aurora from "@/components/Aurora";
 import {
   ArrowRight,
@@ -15,7 +13,6 @@ import {
   Rocket,
   Globe,
   Code,
-  Quote,
   Radio,
   Video,
   Mic,
@@ -138,7 +135,7 @@ function FocusGroupCarousel() {
           {/* Hover indicator */}
           <div className="mt-4 pt-4 border-t border-border/30 flex items-center justify-between">
             <span className={`text-sm text-muted-foreground group-hover:text-foreground transition-colors`}>
-              Join this cohort
+              Get matched
             </span>
             <ArrowRight className={`h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all ${group.color.accent}`} />
           </div>
@@ -484,23 +481,6 @@ const focusGroups = [
       { initials: "TN", color: "from-amber-500 to-yellow-500", name: "Tyler Nguyen", role: "Marketing Ops", location: "Roswell, GA" },
       { initials: "LR", color: "from-blue-500 to-indigo-500", name: "Luna Rodriguez", role: "Product Marketer", location: "Brookhaven, GA" },
     ],
-  },
-];
-
-const testimonials = [
-  {
-    quote:
-      "The focus group connected me with people I never would have met otherwise. We shipped an actual product in 2 weeks.",
-    name: "Marcus T.",
-    role: "Software Engineer",
-    initials: "MT",
-  },
-  {
-    quote:
-      "As a career switcher, the AI matching was incredible. My cohort felt like it was designed just for me.",
-    name: "Priya S.",
-    role: "Former Teacher → Developer",
-    initials: "PS",
   },
 ];
 
