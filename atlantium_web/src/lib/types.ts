@@ -98,7 +98,7 @@ export interface ConnectionInvitations {
 }
 
 // Thread and messaging types
-export type ThreadType = "direct" | "group" | "focus_group";
+export type ThreadType = "direct" | "group" | "focus_group" | "lobby";
 export type ParticipantRole = "owner" | "admin" | "member";
 
 export interface ThreadParticipant {
@@ -232,4 +232,31 @@ export interface SubscribeResponse {
 export interface PortalSessionResponse {
   success: boolean;
   portal_url: string;
+}
+
+// Lobby types
+export interface LobbyPosition {
+  col: number;
+  row: number;
+}
+
+export interface LobbyMember {
+  user_id: string;
+  position: LobbyPosition | null;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
+export interface LobbyResponse {
+  success: boolean;
+  thread_id: string;
+  name: string;
+  members: LobbyMember[];
+}
+
+export interface LobbyJoinResponse {
+  success: boolean;
+  thread_id: string;
+  position: LobbyPosition;
 }

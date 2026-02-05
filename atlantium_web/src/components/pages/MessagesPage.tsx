@@ -253,8 +253,9 @@ export function MessagesPage({ initialThreadId, onThreadSelected }: MessagesPage
     return thread.type === "group" || thread.type === "focus_group";
   };
 
-  // Filter by thread type
+  // Filter by thread type (exclude lobby from inbox)
   const filteredByType = threads.filter((thread) => {
+    if (thread.type === "lobby") return false;
     if (threadFilter === "all") return true;
     if (threadFilter === "direct") return thread.type === "direct";
     if (threadFilter === "groups") return thread.type === "group" || thread.type === "focus_group";

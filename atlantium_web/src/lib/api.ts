@@ -15,6 +15,8 @@ import type {
   UserSubscription,
   UserIntegrations,
   UserSettings,
+  LobbyResponse,
+  LobbyJoinResponse,
 } from "./types";
 
 const AUTH_API_BASE_URL = "https://cloud.atlantium.ai/api:_c66cUCc";
@@ -595,6 +597,32 @@ class ApiClient {
   async leaveThread(threadId: string): Promise<{ success: boolean; message: string }> {
     return this.request<{ success: boolean; message: string }>(`/threads/${threadId}/leave`, {
       method: "POST",
+    }, APP_API_BASE_URL);
+  }
+
+  // Lobby methods
+  async getLobby(): Promise<LobbyResponse> {
+    return this.request<LobbyResponse>("/lobby", {
+      method: "GET",
+    }, APP_API_BASE_URL);
+  }
+
+  async joinLobby(): Promise<LobbyJoinResponse> {
+    return this.request<LobbyJoinResponse>("/lobby/join", {
+      method: "POST",
+    }, APP_API_BASE_URL);
+  }
+
+  async leaveLobby(): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>("/lobby/leave", {
+      method: "POST",
+    }, APP_API_BASE_URL);
+  }
+
+  async moveLobby(col: number, row: number): Promise<{ success: boolean; position: { col: number; row: number } }> {
+    return this.request<{ success: boolean; position: { col: number; row: number } }>("/lobby/move", {
+      method: "POST",
+      body: JSON.stringify({ col, row }),
     }, APP_API_BASE_URL);
   }
 

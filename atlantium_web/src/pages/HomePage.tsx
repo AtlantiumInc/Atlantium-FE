@@ -14,6 +14,7 @@ import { MessagesPage } from "@/components/pages/MessagesPage";
 import { GroupsPage } from "@/components/pages/GroupsPage";
 import { ConnectionsPage } from "@/components/pages/ConnectionsPage";
 import { ProjectsPage } from "@/components/pages/ProjectsPage";
+import { LobbyPage } from "@/components/pages/LobbyPage";
 
 export function HomePage() {
   const { user, logout } = useAuth();
@@ -41,6 +42,7 @@ export function HomePage() {
   const getPageTitle = () => {
     const titles: Record<string, string> = {
       hq: "HQ",
+      lobby: "Lobby",
       frontier: "Frontier",
       events: "Events",
       messages: "Inbox",
@@ -56,6 +58,8 @@ export function HomePage() {
     switch (activePage) {
       case "hq":
         return <HQPage user={user ?? undefined} onNavigateToThread={handleNavigateToThread} />;
+      case "lobby":
+        return <LobbyPage />;
       case "frontier":
         return <FrontierPage />;
       case "events":
@@ -101,8 +105,8 @@ export function HomePage() {
         </header>
 
         {/* Page content */}
-        {activePage === "messages" ? (
-          // Messages page is full-bleed with no padding
+        {activePage === "messages" || activePage === "lobby" ? (
+          // Full-bleed pages with no padding
           <div className="w-full h-[calc(100vh-3.5rem)]">
             {renderPage()}
           </div>
