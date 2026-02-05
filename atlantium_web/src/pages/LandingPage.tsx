@@ -14,10 +14,12 @@ import {
   Star,
   Zap,
   Video,
-  Lock,
-  Globe,
+  ChevronLeft,
+  ChevronRight,
+  Code,
+  Rocket,
 } from "lucide-react";
-import { motion, useAnimationFrame, AnimatePresence } from "motion/react";
+import { motion, useAnimationFrame } from "motion/react";
 import { useRef, useState, useEffect } from "react";
 
 const APP_STORE_URL =
@@ -62,6 +64,75 @@ const feedItems = [
   { time: "3h", title: "Meta open-sources new 400B parameter model", tag: "Open Source" },
   { time: "4h", title: "Nvidia stock surges on datacenter demand", tag: "Markets" },
   { time: "5h", title: "DeepMind achieves breakthrough in protein design", tag: "Research" },
+];
+
+const focusGroups = [
+  {
+    topic: "Generative Media",
+    description:
+      "Master AI-powered content creation. Learn to produce stunning visuals, video, and audio using cutting-edge generative tools and workflows.",
+    spotsTotal: 7,
+    spotsFilled: 4,
+    icon: Sparkles,
+    color: {
+      spotlight: "rgba(139, 92, 246, 0.15)",
+      bg: "from-violet-500/10 via-purple-500/5 to-transparent",
+      accent: "text-violet-400",
+      iconBg: "from-violet-500/20 to-purple-500/10",
+      iconBorder: "border-violet-500/20",
+      badge: "bg-violet-500/20 border-violet-500/30 text-violet-400",
+    },
+    members: [
+      { initials: "AK", color: "from-violet-500 to-purple-600" },
+      { initials: "JM", color: "from-blue-500 to-cyan-500" },
+      { initials: "SL", color: "from-emerald-500 to-teal-500" },
+      { initials: "CR", color: "from-amber-500 to-orange-500" },
+    ],
+  },
+  {
+    topic: "Agentic Programming",
+    description:
+      "Build autonomous AI agents that reason, plan, and execute. Learn to architect multi-agent systems and ship production-ready agentic applications.",
+    spotsTotal: 7,
+    spotsFilled: 5,
+    icon: Code,
+    color: {
+      spotlight: "rgba(59, 130, 246, 0.15)",
+      bg: "from-blue-500/10 via-cyan-500/5 to-transparent",
+      accent: "text-blue-400",
+      iconBg: "from-blue-500/20 to-cyan-500/10",
+      iconBorder: "border-blue-500/20",
+      badge: "bg-blue-500/20 border-blue-500/30 text-blue-400",
+    },
+    members: [
+      { initials: "MT", color: "from-pink-500 to-rose-500" },
+      { initials: "RB", color: "from-indigo-500 to-violet-500" },
+      { initials: "DW", color: "from-cyan-500 to-blue-500" },
+      { initials: "JP", color: "from-fuchsia-500 to-pink-500" },
+      { initials: "KL", color: "from-emerald-500 to-green-500" },
+    ],
+  },
+  {
+    topic: "Go-To-Market Engineering",
+    description:
+      "Bridge the gap between product and growth. Learn to build landing pages, automate funnels, and ship GTM infrastructure that converts.",
+    spotsTotal: 7,
+    spotsFilled: 3,
+    icon: Rocket,
+    color: {
+      spotlight: "rgba(16, 185, 129, 0.15)",
+      bg: "from-emerald-500/10 via-teal-500/5 to-transparent",
+      accent: "text-emerald-400",
+      iconBg: "from-emerald-500/20 to-teal-500/10",
+      iconBorder: "border-emerald-500/20",
+      badge: "bg-emerald-500/20 border-emerald-500/30 text-emerald-400",
+    },
+    members: [
+      { initials: "PS", color: "from-violet-500 to-indigo-500" },
+      { initials: "TN", color: "from-amber-500 to-yellow-500" },
+      { initials: "LR", color: "from-blue-500 to-indigo-500" },
+    ],
+  },
 ];
 
 
@@ -305,45 +376,18 @@ function AutoScrollFeed() {
   );
 }
 
-const groupTabs = [
-  { key: "public", label: "Public", icon: Globe, color: "#3b82f6", colorEnd: "#06b6d4", rgbaLight: "rgba(59, 130, 246, 0.1)", rgbaBorder: "rgba(59, 130, 246, 0.2)", spotlight: "rgba(59, 130, 246, 0.12)" },
-  { key: "private", label: "Private", icon: Lock, color: "#f59e0b", colorEnd: "#f97316", rgbaLight: "rgba(245, 158, 11, 0.1)", rgbaBorder: "rgba(245, 158, 11, 0.2)", spotlight: "rgba(245, 158, 11, 0.12)" },
-  { key: "focus", label: "Focus", icon: Sparkles, color: "#8b5cf6", colorEnd: "#6d28d9", rgbaLight: "rgba(139, 92, 246, 0.1)", rgbaBorder: "rgba(139, 92, 246, 0.2)", spotlight: "rgba(139, 92, 246, 0.12)" },
-] as const;
+function FocusGroupsCard() {
+  const [currentIndex, setCurrentIndex] = useState(0);
 
-const groupContent = {
-  public: {
-    title: "Public Groups",
-    description: "Open communities anyone can discover and join. Share ideas, discuss topics, and grow together in the open.",
-    dotColor: "bg-blue-400",
-    cardBg: "from-blue-500/10 to-cyan-500/5",
-    cardBorder: "border-blue-500/20",
-    bullets: ["Open to all community members", "Discoverable in group directory", "Persistent group chat"],
-  },
-  private: {
-    title: "Private Groups",
-    description: "Invite-only spaces for your inner circle. Perfect for projects, teams, or trusted collaborators.",
-    dotColor: "bg-amber-400",
-    cardBg: "from-amber-500/10 to-orange-500/5",
-    cardBorder: "border-amber-500/20",
-    bullets: ["Invite-only access", "File sharing & media", "Full admin controls"],
-  },
-  focus: {
-    title: "Focus Groups",
-    badge: true,
-    description: "30-day intensive collaborations. Our AI matches you with 6 members you'll work well with, led by an experienced guide.",
-    dotColor: "bg-violet-400",
-    cardBg: "from-violet-500/10 to-purple-500/5",
-    cardBorder: "border-violet-500/20",
-    bullets: ["1 lead + 6 AI-matched members", "Pre-determined topics each month", "3-4 new groups launched monthly"],
-  },
-} as const;
+  const goNext = () => {
+    setCurrentIndex((prev) => (prev + 1) % focusGroups.length);
+  };
 
-function GroupsFeatureCard() {
-  const [activeTab, setActiveTab] = useState<"public" | "private" | "focus">("public");
-  const activeIdx = groupTabs.findIndex((t) => t.key === activeTab);
-  const tab = groupTabs[activeIdx];
-  const content = groupContent[activeTab];
+  const goPrev = () => {
+    setCurrentIndex((prev) => (prev - 1 + focusGroups.length) % focusGroups.length);
+  };
+
+  const group = focusGroups[currentIndex];
 
   return (
     <motion.div
@@ -354,104 +398,164 @@ function GroupsFeatureCard() {
     >
       <SpotlightCard
         className="h-full p-6 lg:p-8"
-        spotlightColor={tab.spotlight}
+        spotlightColor="rgba(139, 92, 246, 0.12)"
       >
+        {/* Header */}
         <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
           <div className="flex items-center gap-3">
-            <motion.div
-              animate={{ background: tab.rgbaLight, borderColor: tab.rgbaBorder }}
-              transition={{ duration: 0.3 }}
-              className="h-10 w-10 rounded-xl border flex items-center justify-center"
-            >
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeTab}
-                  initial={{ scale: 0, rotate: -90 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  exit={{ scale: 0, rotate: 90 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <tab.icon className="h-5 w-5" style={{ color: tab.color }} />
-                </motion.div>
-              </AnimatePresence>
-            </motion.div>
+            <div className="h-10 w-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+              <Sparkles className="h-5 w-5 text-violet-500" />
+            </div>
             <div>
-              <AnimatePresence mode="wait">
-                <motion.h3
-                  key={activeTab}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.2 }}
-                  className="text-lg font-bold text-foreground"
-                >
-                  {content.title}
-                </motion.h3>
-              </AnimatePresence>
-              <p className="text-xs text-muted-foreground">Collaborate, connect, and build together</p>
+              <h3 className="text-lg font-bold text-foreground">Focus Groups</h3>
+              <p className="text-xs text-muted-foreground">AI-powered collaboration cohorts</p>
             </div>
           </div>
-
-          {/* 3-way Toggle Switch */}
-          <div
-            className="relative flex items-center h-12 rounded-full p-1.5 border bg-muted/40 backdrop-blur-sm"
-            style={{ borderColor: tab.rgbaBorder }}
-          >
-            {/* Sliding pill */}
-            <motion.div
-              className="absolute top-1.5 bottom-1.5 rounded-full"
-              animate={{
-                left: activeIdx === 0 ? 6 : activeIdx === 1 ? "calc(33.333% + 2px)" : "calc(66.666% - 2px)",
-                background: `linear-gradient(135deg, ${tab.color}, ${tab.colorEnd})`,
-                boxShadow: `0 0 16px ${tab.rgbaLight}, 0 0 6px ${tab.rgbaLight}`,
-              }}
-              style={{ width: "calc(33.333% - 4px)" }}
-              transition={{ type: "spring", stiffness: 350, damping: 28 }}
-            />
-            {groupTabs.map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setActiveTab(t.key)}
-                className={`relative z-10 flex items-center justify-center gap-1.5 px-4 sm:px-5 py-1.5 rounded-full text-sm font-semibold transition-colors duration-300 cursor-pointer ${
-                  activeTab === t.key ? "text-white" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <t.icon className="h-3.5 w-3.5" />
-                {t.label}
-              </button>
-            ))}
-          </div>
+          <Link to="/focus-groups">
+            <Button variant="outline" size="sm" className="gap-2">
+              Learn more
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          </Link>
         </div>
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.25 }}
-            className={`relative p-5 rounded-xl bg-gradient-to-br ${content.cardBg} ${content.cardBorder} border`}
-          >
-            {"badge" in content && content.badge && (
-              <div className="absolute top-4 right-4">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30">
-                  <Zap className="h-3 w-3 text-violet-400" />
-                  <span className="text-[10px] font-semibold text-violet-400 uppercase tracking-wider">AI-Matched</span>
-                </span>
+        {/* Two-column layout */}
+        <div className="flex flex-col lg:flex-row gap-6 items-stretch">
+          {/* Left - Description */}
+          <div className="flex-1 flex flex-col justify-center">
+            <h4 className="text-xl font-bold text-foreground mb-3">2-Week Intensive Collaborations</h4>
+            <p className="text-sm text-muted-foreground mb-5 leading-relaxed">
+              Our AI matches you with 6 members you'll work well with, led by an experienced guide. Build meaningful connections and ship together.
+            </p>
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Zap className="h-4 w-4 text-violet-400" />
+                AI-matched members
               </div>
-            )}
-            <h4 className="text-base font-semibold text-foreground mb-2">{content.title}</h4>
-            <p className="text-sm text-muted-foreground mb-4">{content.description}</p>
-            <div className="space-y-2 text-sm">
-              {content.bullets.map((bullet) => (
-                <div key={bullet} className="flex items-center gap-2 text-muted-foreground">
-                  <div className={`h-1.5 w-1.5 rounded-full ${content.dotColor}`} />
-                  {bullet}
-                </div>
-              ))}
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Star className="h-4 w-4 text-violet-400" />
+                Expert group lead
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Sparkles className="h-4 w-4 text-violet-400" />
+                Monthly topics
+              </div>
             </div>
-          </motion.div>
-        </AnimatePresence>
+          </div>
+
+          {/* Right - Carousel */}
+          <div className="flex-1 max-w-sm lg:max-w-md">
+            {/* Live indicator */}
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+              </span>
+              <span className="text-xs text-muted-foreground">Live on Atlantium</span>
+            </div>
+            {/* Card */}
+            <Link to="/focus-groups" className="block group">
+              <div className={`relative p-5 rounded-xl overflow-hidden bg-gradient-to-br ${group.color.bg} border ${group.color.iconBorder}`}>
+                {/* Header */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className={`h-9 w-9 rounded-lg bg-gradient-to-br ${group.color.iconBg} border ${group.color.iconBorder} flex items-center justify-center`}>
+                    <group.icon className={`h-4 w-4 ${group.color.accent}`} />
+                  </div>
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border ${group.color.badge}`}>
+                    <Zap className="h-3 w-3" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider">
+                      AI-Matched
+                    </span>
+                  </span>
+                </div>
+
+                {/* Content */}
+                <h4 className="text-base font-bold text-foreground mb-1">
+                  {group.topic}
+                </h4>
+                <p className="text-xs text-muted-foreground mb-3 leading-relaxed line-clamp-2">
+                  {group.description}
+                </p>
+
+                {/* Members + Progress inline */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="flex -space-x-1.5">
+                      {group.members.slice(0, 4).map((member, i) => (
+                        <div
+                          key={i}
+                          className={`h-6 w-6 rounded-full bg-gradient-to-br ${member.color} flex items-center justify-center text-white text-[8px] font-bold ring-2 ring-background`}
+                        >
+                          {member.initials}
+                        </div>
+                      ))}
+                      {group.members.length > 4 && (
+                        <div className="h-6 w-6 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground text-[8px] font-bold ring-2 ring-background">
+                          +{group.members.length - 4}
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">
+                      {group.spotsFilled}/{group.spotsTotal}
+                    </span>
+                  </div>
+                  <span className={`text-[10px] ${group.color.accent}`}>
+                    {group.spotsTotal - group.spotsFilled} spots left
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="mt-2 h-1 rounded-full bg-muted/30 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full bg-gradient-to-r ${group.color.iconBg.replace('/20', '').replace('/10', '')} transition-all`}
+                    style={{ width: `${(group.spotsFilled / group.spotsTotal) * 100}%` }}
+                  />
+                </div>
+              </div>
+            </Link>
+
+            {/* Navigation */}
+            <div className="flex items-center justify-center gap-4 mt-3">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  goPrev();
+                }}
+                className="flex items-center justify-center h-7 w-7 rounded-full bg-card/80 border border-border/50 hover:border-violet-500/30 hover:bg-card transition-all"
+              >
+                <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+              </button>
+
+              {/* Dots */}
+              <div className="flex items-center gap-1.5">
+                {focusGroups.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setCurrentIndex(i);
+                    }}
+                    className={`h-1.5 rounded-full transition-all ${
+                      i === currentIndex
+                        ? `w-4 ${i === 0 ? "bg-violet-500" : i === 1 ? "bg-blue-500" : "bg-emerald-500"}`
+                        : "w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/50"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  goNext();
+                }}
+                className="flex items-center justify-center h-7 w-7 rounded-full bg-card/80 border border-border/50 hover:border-violet-500/30 hover:bg-card transition-all"
+              >
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
+          </div>
+        </div>
       </SpotlightCard>
     </motion.div>
   );
@@ -850,8 +954,8 @@ export function LandingPage() {
             </div>
           </motion.div>
 
-          {/* Groups & Focus Groups Card */}
-          <GroupsFeatureCard />
+          {/* Focus Groups Card */}
+          <FocusGroupsCard />
 
           {/* CTA Card - Full width */}
           <motion.div

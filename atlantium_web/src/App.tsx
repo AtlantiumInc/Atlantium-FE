@@ -77,7 +77,7 @@ function AppRoutes() {
       <Route path="/policies" element={<TermsPage />} />
       <Route path="/services" element={<ServicesPage />} />
       <Route path="/mission" element={<MissionPage />} />
-      <Route path="/community" element={<CommunityPage />} />
+      <Route path="/focus-groups" element={<CommunityPage />} />
       <Route
         path="/login"
         element={
