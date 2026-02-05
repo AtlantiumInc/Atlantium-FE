@@ -8,6 +8,7 @@ const APP_STORE_URL =
 
 const navLinks = [
   { to: "/mission", label: "Mission" },
+  { to: "/community", label: "Community" },
   { to: "/services", label: "Services" },
   { to: "/index", label: "Newsroom" },
 ];

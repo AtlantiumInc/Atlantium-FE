@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   MessageCircle,
+  Radio,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -24,6 +25,11 @@ export function Sidebar({
 }: SidebarProps) {
 
   const navItems = [
+    {
+      id: "lobby",
+      icon: <Radio size={20} />,
+      label: "Lobby",
+    },
     {
       id: "events",
       icon: <Calendar size={20} />,

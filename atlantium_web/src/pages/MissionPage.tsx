@@ -190,7 +190,7 @@ export function MissionPage() {
                 </span>
               </h1>
               <p className="mt-5 text-lg text-muted-foreground max-w-md mx-auto lg:mx-0 leading-relaxed">
-                Rural towns, inner cities, tribal lands, and developing regions deserve the same shot at the frontier.
+                Our goal is to ensure that the benefits and abundance created by technology touches all of humanity, especially in Atlanta.
               </p>
             </motion.div>
 

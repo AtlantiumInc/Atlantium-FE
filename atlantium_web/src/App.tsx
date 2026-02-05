@@ -19,6 +19,7 @@ import { PrivacyPage } from "@/pages/PrivacyPage";
 import { TermsPage } from "@/pages/TermsPage";
 import { ServicesPage } from "@/pages/ServicesPage";
 import { MissionPage } from "@/pages/MissionPage";
+import { CommunityPage } from "@/pages/CommunityPage";
 import { StyleGuidePage } from "@/pages/StyleGuidePage";
 import { ComponentsPage } from "@/pages/ComponentsPage";
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
@@ -76,6 +77,7 @@ function AppRoutes() {
       <Route path="/policies" element={<TermsPage />} />
       <Route path="/services" element={<ServicesPage />} />
       <Route path="/mission" element={<MissionPage />} />
+      <Route path="/community" element={<CommunityPage />} />
       <Route
         path="/login"
         element={
