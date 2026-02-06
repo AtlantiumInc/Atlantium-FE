@@ -260,3 +260,9 @@ export interface LobbyJoinResponse {
   thread_id: string;
   position: LobbyPosition;
 }
+
+export interface LobbyLivekitTokenResponse {
+  success: boolean;
+  token: string;
+  url: string;
+}

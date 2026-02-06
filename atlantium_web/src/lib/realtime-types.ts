@@ -22,7 +22,9 @@ export type RealtimeAction =
   | "history"
   | "lobby_join"
   | "lobby_leave"
-  | "position_update";
+  | "position_update"
+  | "admin_mute"
+  | "admin_kick";
 
 // Generic realtime message from Xano
 export interface RealtimeMessage {
@@ -68,7 +70,7 @@ export interface PresencePayload {
 // Presence tracking map
 export type PresenceMap = Map<string, PresencePayload>;
 
-// Lobby payloads
+// Lobby realtime payloads
 export interface LobbyJoinPayload {
   user_id: string;
   position: { col: number; row: number };
@@ -84,6 +86,17 @@ export interface LobbyLeavePayload {
 export interface PositionUpdatePayload {
   user_id: string;
   position: { col: number; row: number };
+}
+
+export interface AdminMutePayload {
+  target_user_id: string;
+  track_type: "audio" | "video";
+  admin_user_id: string;
+}
+
+export interface AdminKickPayload {
+  target_user_id: string;
+  admin_user_id: string;
 }
 
 // Channel subscription info

@@ -17,6 +17,7 @@ import type {
   UserSettings,
   LobbyResponse,
   LobbyJoinResponse,
+  LobbyLivekitTokenResponse,
 } from "./types";
 
 const AUTH_API_BASE_URL = "https://cloud.atlantium.ai/api:_c66cUCc";
@@ -623,6 +624,26 @@ class ApiClient {
     return this.request<{ success: boolean; position: { col: number; row: number } }>("/lobby/move", {
       method: "POST",
       body: JSON.stringify({ col, row }),
+    }, APP_API_BASE_URL);
+  }
+
+  async getLobbyLivekitToken(): Promise<LobbyLivekitTokenResponse> {
+    return this.request<LobbyLivekitTokenResponse>("/lobby/livekit-token", {
+      method: "POST",
+    }, APP_API_BASE_URL);
+  }
+
+  async lobbyAdminAction(action: "mute" | "kick", targetUserId: string, trackType?: "audio" | "video"): Promise<{ success: boolean }> {
+    const payload: Record<string, string> = {
+      action,
+      target_user_id: targetUserId,
+    };
+    if (trackType) {
+      payload.track_type = trackType;
+    }
+    return this.request<{ success: boolean }>("/lobby/admin-action", {
+      method: "POST",
+      body: JSON.stringify(payload),
     }, APP_API_BASE_URL);
   }
 

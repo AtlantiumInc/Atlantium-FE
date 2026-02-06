@@ -7,6 +7,8 @@ import type {
   LobbyJoinPayload,
   LobbyLeavePayload,
   PositionUpdatePayload,
+  AdminMutePayload,
+  AdminKickPayload,
 } from "@/lib/realtime-types";
 import type { ThreadMessage } from "@/lib/types";
 import type { XanoClient } from "@xano/js-sdk";
@@ -19,6 +21,8 @@ interface UseLobbyChannelOptions {
   onMemberLeave?: (payload: LobbyLeavePayload) => void;
   onPositionUpdate?: (payload: PositionUpdatePayload) => void;
   onNewMessage?: (message: ThreadMessage) => void;
+  onAdminMute?: (payload: AdminMutePayload) => void;
+  onAdminKick?: (payload: AdminKickPayload) => void;
 }
 
 interface UseLobbyChannelReturn {
@@ -31,6 +35,8 @@ export function useLobbyChannel({
   onMemberLeave,
   onPositionUpdate,
   onNewMessage,
+  onAdminMute,
+  onAdminKick,
 }: UseLobbyChannelOptions): UseLobbyChannelReturn {
   const { client, isConnected } = useXanoRealtime();
 
@@ -38,13 +44,17 @@ export function useLobbyChannel({
   const onMemberLeaveRef = useRef(onMemberLeave);
   const onPositionUpdateRef = useRef(onPositionUpdate);
   const onNewMessageRef = useRef(onNewMessage);
+  const onAdminMuteRef = useRef(onAdminMute);
+  const onAdminKickRef = useRef(onAdminKick);
 
   useEffect(() => {
     onMemberJoinRef.current = onMemberJoin;
     onMemberLeaveRef.current = onMemberLeave;
     onPositionUpdateRef.current = onPositionUpdate;
     onNewMessageRef.current = onNewMessage;
-  }, [onMemberJoin, onMemberLeave, onPositionUpdate, onNewMessage]);
+    onAdminMuteRef.current = onAdminMute;
+    onAdminKickRef.current = onAdminKick;
+  }, [onMemberJoin, onMemberLeave, onPositionUpdate, onNewMessage, onAdminMute, onAdminKick]);
 
   const channelRef = useRef<XanoChannel | null>(null);
 
@@ -132,6 +142,22 @@ export function useLobbyChannel({
                 created_at: msgPayload.created_at,
               };
               onNewMessageRef.current?.(threadMessage);
+            }
+            break;
+          }
+
+          case "admin_mute": {
+            const mutePayload = payload as AdminMutePayload;
+            if (mutePayload.target_user_id) {
+              onAdminMuteRef.current?.(mutePayload);
+            }
+            break;
+          }
+
+          case "admin_kick": {
+            const kickPayload = payload as AdminKickPayload;
+            if (kickPayload.target_user_id) {
+              onAdminKickRef.current?.(kickPayload);
             }
             break;
           }

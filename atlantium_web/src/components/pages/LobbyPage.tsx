@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLobbyChannel } from "@/hooks/useLobbyChannel";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -6,11 +7,17 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Send, Users } from "lucide-react";
 import { api } from "@/lib/api";
+import { LobbyMediaPanel } from "@/components/lobby/LobbyMediaPanel";
+import { LobbyControls } from "@/components/lobby/LobbyControls";
+import { AdminPanel } from "@/components/lobby/AdminPanel";
+import { toast } from "sonner";
 import type { LobbyMember, LobbyPosition, ThreadMessage } from "@/lib/types";
 import type {
   LobbyJoinPayload,
   LobbyLeavePayload,
   PositionUpdatePayload,
+  AdminMutePayload,
+  AdminKickPayload,
 } from "@/lib/realtime-types";
 
 const GRID_COLS = 10;
@@ -18,6 +25,9 @@ const GRID_ROWS = 6;
 
 export function LobbyPage() {
   const { user } = useAuth();
+  const userId = user?.id || "";
+  const isAdmin = user?.is_admin === true;
+
   const [threadId, setThreadId] = useState<string | null>(null);
   const [members, setMembers] = useState<Map<string, LobbyMember>>(new Map());
   const [myPosition, setMyPosition] = useState<LobbyPosition | null>(null);
@@ -26,6 +36,8 @@ export function LobbyPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [livekitToken, setLivekitToken] = useState<string | null>(null);
+  const [livekitUrl, setLivekitUrl] = useState<string | null>(null);
   const isMovingRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const threadIdRef = useRef<string | null>(null);
@@ -73,7 +85,6 @@ export function LobbyPage() {
   }, []);
 
   const handleNewMessage = useCallback((message: ThreadMessage) => {
-    // Skip realtime messages from self (we already have the optimistic one)
     if (message.sender_id === user?.id) return;
     setMessages((prev) => {
       if (prev.some((m) => m.message_id === message.message_id)) return prev;
@@ -81,14 +92,53 @@ export function LobbyPage() {
     });
   }, [user?.id]);
 
-  // broadcastMessage available for client-side message broadcast if needed
+  const handleAdminMute = useCallback(
+    (payload: AdminMutePayload) => {
+      if (payload.target_user_id === userId) {
+        toast.warning(
+          `An admin muted your ${payload.track_type}. Please keep it muted.`
+        );
+        window.dispatchEvent(
+          new CustomEvent("lobby-admin-mute", {
+            detail: { trackType: payload.track_type },
+          })
+        );
+      }
+    },
+    [userId]
+  );
+
+  const handleAdminKick = useCallback(
+    (payload: AdminKickPayload) => {
+      if (payload.target_user_id === userId) {
+        toast.error("You have been kicked from the lobby by an admin.");
+        setLivekitToken(null);
+        setMembers(new Map());
+        setMyPosition(null);
+      }
+    },
+    [userId]
+  );
+
   const { broadcastMessage: _broadcastMessage } = useLobbyChannel({
     threadId,
     onMemberJoin: handleMemberJoin,
     onMemberLeave: handleMemberLeave,
     onPositionUpdate: handlePositionUpdate,
     onNewMessage: handleNewMessage,
+    onAdminMute: handleAdminMute,
+    onAdminKick: handleAdminKick,
   });
+
+  // Listen for admin mute events
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      console.log("[Lobby] Admin mute received for track:", detail.trackType);
+    };
+    window.addEventListener("lobby-admin-mute", handler);
+    return () => window.removeEventListener("lobby-admin-mute", handler);
+  }, []);
 
   // Initialize lobby on mount
   useEffect(() => {
@@ -111,7 +161,7 @@ export function LobbyPage() {
         if (cancelled) return;
         setMyPosition(joinData.position);
 
-        // Re-fetch lobby to get accurate members list (includes ourselves with correct profile data)
+        // Re-fetch lobby to get accurate members list
         const freshData = await api.getLobby();
         if (cancelled) return;
         const membersMap = new Map<string, LobbyMember>();
@@ -126,7 +176,19 @@ export function LobbyPage() {
           if (cancelled) return;
           setMessages(msgData.messages.reverse());
         } catch {
-          // Messages may fail if thread is brand new, that's ok
+          // Messages may fail if thread is brand new
+        }
+
+        // Get LiveKit token
+        try {
+          const lkResponse = await api.getLobbyLivekitToken();
+          if (cancelled) return;
+          console.log("[Lobby] LiveKit token received, url:", lkResponse.url);
+          setLivekitToken(lkResponse.token);
+          setLivekitUrl(lkResponse.url);
+        } catch (lkErr: any) {
+          console.warn("[Lobby] LiveKit token failed, continuing without media:", lkErr.message);
+          toast.warning("Voice/video unavailable: " + (lkErr.message || "token error"));
         }
       } catch (err) {
         if (cancelled) return;
@@ -153,11 +215,6 @@ export function LobbyPage() {
       if (threadIdRef.current) {
         const token = api.getAuthToken();
         if (token) {
-          navigator.sendBeacon(
-            `${window.location.origin}/api/lobby-leave`,
-            // sendBeacon doesn't support auth headers, so fall back to fetch keepalive
-          );
-          // Use fetch with keepalive as fallback
           fetch("https://cloud.atlantium.ai/api:_c66cUCc/lobby/leave", {
             method: "POST",
             headers: {
@@ -213,7 +270,7 @@ export function LobbyPage() {
           member.position.row === newRow &&
           member.user_id !== user?.id
         ) {
-          return; // Cell occupied
+          return;
         }
       }
 
@@ -301,7 +358,6 @@ export function LobbyPage() {
     setMessageInput("");
     setIsSending(true);
 
-    // Optimistic message
     const tempId = `temp-${Date.now()}`;
     const optimisticMessage: ThreadMessage = {
       message_id: tempId,
@@ -318,7 +374,6 @@ export function LobbyPage() {
 
     try {
       const result = await api.sendMessage(threadId, content);
-      // Replace temp message with real one
       setMessages((prev) =>
         prev.map((m) =>
           m.message_id === tempId
@@ -327,10 +382,21 @@ export function LobbyPage() {
         )
       );
     } catch {
-      // Remove optimistic message on error
       setMessages((prev) => prev.filter((m) => m.message_id !== tempId));
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleLeave = async () => {
+    try {
+      await api.leaveLobby();
+      threadIdRef.current = null;
+      setLivekitToken(null);
+      setMembers(new Map());
+      setMyPosition(null);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to leave lobby");
     }
   };
 
@@ -366,7 +432,10 @@ export function LobbyPage() {
     );
   }
 
-  return (
+  // Convert members map to array for AdminPanel
+  const membersArray: LobbyMember[] = Array.from(members.values());
+
+  const lobbyContent = (
     <div className="flex h-full">
       {/* Grid panel */}
       <div className="flex-1 flex flex-col p-4 overflow-auto">
@@ -419,13 +488,27 @@ export function LobbyPage() {
         </p>
       </div>
 
-      {/* Chat panel */}
+      {/* Right sidebar: Media + Admin + Chat */}
       <div className="w-80 border-l border-border flex flex-col">
+        {/* Media panel (only when LiveKit connected) */}
+        {livekitToken && (
+          <div className="p-3 border-b border-border overflow-y-auto max-h-64">
+            <LobbyMediaPanel />
+          </div>
+        )}
+
+        {/* Admin panel (only for admins) */}
+        {isAdmin && (
+          <div className="p-3 border-b border-border">
+            <AdminPanel members={membersArray} currentUserId={userId} />
+          </div>
+        )}
+
+        {/* Chat */}
         <div className="p-3 border-b border-border">
           <h3 className="text-sm font-medium">Chat</h3>
         </div>
 
-        {/* Messages */}
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {messages.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center mt-4">
@@ -481,4 +564,28 @@ export function LobbyPage() {
       </div>
     </div>
   );
+
+  // Wrap with LiveKitRoom if we have a token
+  if (livekitToken && livekitUrl) {
+    return (
+      <LiveKitRoom
+        token={livekitToken}
+        serverUrl={livekitUrl}
+        connect={true}
+        audio={false}
+        video={false}
+        onDisconnected={() => {
+          console.log("[Lobby] LiveKit disconnected");
+        }}
+      >
+        <RoomAudioRenderer />
+        <div className="flex flex-col h-full">
+          <div className="flex-1 min-h-0">{lobbyContent}</div>
+          <LobbyControls onLeave={handleLeave} />
+        </div>
+      </LiveKitRoom>
+    );
+  }
+
+  return lobbyContent;
 }
