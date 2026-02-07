@@ -1,5 +1,4 @@
 import { useLocalParticipant } from "@livekit/components-react";
-import { Track } from "livekit-client";
 import { Button } from "@/components/ui/button";
 import { Mic, MicOff, Video, VideoOff, LogOut } from "lucide-react";
 
