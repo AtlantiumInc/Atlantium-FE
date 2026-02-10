@@ -59,6 +59,20 @@ export function StepName({ formData, errors, onUpdate }: StepNameProps) {
             <p className="text-sm text-destructive">{errors.last_name}</p>
           )}
         </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="phone_number">Phone number</Label>
+          <Input
+            id="phone_number"
+            type="tel"
+            placeholder="+1 (555) 123-4567"
+            value={formData.phone_number ?? ""}
+            onChange={(e) => onUpdate("phone_number", e.target.value)}
+          />
+          {errors.phone_number && (
+            <p className="text-sm text-destructive">{errors.phone_number}</p>
+          )}
+        </div>
       </div>
     </motion.div>
   );

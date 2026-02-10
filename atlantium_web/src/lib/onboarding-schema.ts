@@ -49,6 +49,11 @@ export const nameSchema = z.object({
     .string()
     .min(1, "Last name is required")
     .max(50, "Last name must be 50 characters or less"),
+  phone_number: z
+    .string()
+    .min(10, "Phone number must be at least 10 digits")
+    .max(20, "Phone number must be 20 characters or less")
+    .regex(/^[0-9+\-\s()]+$/, "Please enter a valid phone number"),
 });
 
 export const timezoneSchema = z.object({
@@ -126,6 +131,11 @@ export const onboardingFormSchema = z
       .string()
       .min(1, "Last name is required")
       .max(50, "Last name must be 50 characters or less"),
+    phone_number: z
+      .string()
+      .min(10, "Phone number must be at least 10 digits")
+      .max(20, "Phone number must be 20 characters or less")
+      .regex(/^[0-9+\-\s()]+$/, "Please enter a valid phone number"),
     avatar_url: z.string().url().optional().or(z.literal("")),
 
     // registration_details fields

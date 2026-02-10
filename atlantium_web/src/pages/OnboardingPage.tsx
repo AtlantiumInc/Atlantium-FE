@@ -154,6 +154,7 @@ export function OnboardingPage() {
     initialData: {
       first_name: user?.first_name || (profile?.first_name as string) || "",
       last_name: user?.last_name || (profile?.last_name as string) || "",
+      phone_number: "",
       avatar_url: googleAvatarUrl || "",
     },
     onComplete: handleComplete,
@@ -210,10 +211,10 @@ export function OnboardingPage() {
 
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">
-            Thank you for joining!
+            Application Submitted
           </h1>
           <p className="text-muted-foreground leading-relaxed">
-            Your onboarding is submitted and pending approval. Our team will review your application and contact you shortly with next steps.
+            Thank you for your submission. We will reach out to you within 1 business day to discuss next steps.
           </p>
         </div>
 

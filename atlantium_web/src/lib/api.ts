@@ -56,6 +56,7 @@ export interface User {
   is_email_verified: boolean;
   created_at?: string;
   is_admin?: boolean;
+  has_access?: boolean;
   avatar?: string;
   display_name?: string;
   first_name?: string;
@@ -251,6 +252,36 @@ class ApiClient {
     return this.request("/events/delete", {
       method: "POST",
       body: JSON.stringify({ event_id: eventId }),
+    }, ADMIN_API_BASE_URL, true);
+  }
+
+  // Admin user methods
+  async getAllUsers(): Promise<Array<{
+    id: string;
+    email: string;
+    display_name?: string;
+    is_admin: boolean;
+    is_email_verified: boolean;
+    has_access: boolean;
+    created_at: string;
+    last_login?: string;
+  }>> {
+    return this.request("/users/list", {
+      method: "GET",
+    }, ADMIN_API_BASE_URL, true);
+  }
+
+  async updateUserAccess(userId: string, hasAccess: boolean): Promise<{ success: boolean; message: string }> {
+    return this.request("/users/update-access", {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId, has_access: hasAccess }),
+    }, ADMIN_API_BASE_URL, true);
+  }
+
+  async updateUserAdmin(userId: string, isAdmin: boolean): Promise<{ success: boolean; message: string }> {
+    return this.request("/users/update-admin", {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId, is_admin: isAdmin }),
     }, ADMIN_API_BASE_URL, true);
   }
 

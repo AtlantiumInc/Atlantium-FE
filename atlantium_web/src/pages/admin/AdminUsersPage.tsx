@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   MoreHorizontal,
@@ -6,6 +6,9 @@ import {
   ShieldOff,
   Users,
   Mail,
+  CheckCircle2,
+  Clock,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +38,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 interface User {
   id: string;
@@ -42,53 +47,37 @@ interface User {
   display_name?: string;
   is_admin: boolean;
   is_email_verified: boolean;
+  has_access: boolean;
   created_at: string;
   last_login?: string;
 }
 
-// Placeholder data
-const mockUsers: User[] = [
-  {
-    id: "1",
-    email: "admin@atlantium.ai",
-    display_name: "Admin User",
-    is_admin: true,
-    is_email_verified: true,
-    created_at: "2024-12-01T10:00:00Z",
-    last_login: "2024-12-30T08:00:00Z",
-  },
-  {
-    id: "2",
-    email: "john@example.com",
-    display_name: "John Doe",
-    is_admin: false,
-    is_email_verified: true,
-    created_at: "2024-12-15T14:00:00Z",
-    last_login: "2024-12-29T16:30:00Z",
-  },
-  {
-    id: "3",
-    email: "jane@example.com",
-    display_name: "Jane Smith",
-    is_admin: false,
-    is_email_verified: true,
-    created_at: "2024-12-20T09:00:00Z",
-    last_login: "2024-12-28T10:00:00Z",
-  },
-  {
-    id: "4",
-    email: "new.user@example.com",
-    is_admin: false,
-    is_email_verified: false,
-    created_at: "2024-12-29T11:00:00Z",
-  },
-];
-
 export function AdminUsersPage() {
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [toggleAdminConfirm, setToggleAdminConfirm] = useState<User | null>(null);
+  const [toggleAccessConfirm, setToggleAccessConfirm] = useState<User | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Load users on mount
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    setIsLoading(true);
+    try {
+      const data = await api.getAllUsers();
+      setUsers(data);
+    } catch (error) {
+      toast.error("Failed to load users");
+      console.error("Error loading users:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredUsers = users.filter(
     (user) =>
@@ -115,13 +104,46 @@ export function AdminUsersPage() {
     });
   };
 
-  const handleToggleAdmin = (user: User) => {
-    // TODO: Implement API call to toggle admin status
-    console.log("Toggling admin status for:", user.email);
-    setUsers(users.map((u) =>
-      u.id === user.id ? { ...u, is_admin: !u.is_admin } : u
-    ));
-    setToggleAdminConfirm(null);
+  const handleToggleAdmin = async (user: User) => {
+    if (!toggleAdminConfirm) return;
+    setIsUpdating(true);
+    try {
+      await api.updateUserAdmin(user.id, !user.is_admin);
+      setUsers(users.map((u) =>
+        u.id === user.id ? { ...u, is_admin: !u.is_admin } : u
+      ));
+      if (selectedUser?.id === user.id) {
+        setSelectedUser({ ...selectedUser, is_admin: !user.is_admin });
+      }
+      toast.success(`Admin status ${!user.is_admin ? "granted" : "removed"}`);
+      setToggleAdminConfirm(null);
+    } catch (error) {
+      toast.error("Failed to update admin status");
+      console.error("Error:", error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleToggleAccess = async (user: User) => {
+    if (!toggleAccessConfirm) return;
+    setIsUpdating(true);
+    try {
+      await api.updateUserAccess(user.id, !user.has_access);
+      setUsers(users.map((u) =>
+        u.id === user.id ? { ...u, has_access: !u.has_access } : u
+      ));
+      if (selectedUser?.id === user.id) {
+        setSelectedUser({ ...selectedUser, has_access: !user.has_access });
+      }
+      toast.success(`Access ${!user.has_access ? "granted" : "revoked"}`);
+      setToggleAccessConfirm(null);
+    } catch (error) {
+      toast.error("Failed to update access status");
+      console.error("Error:", error);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   return (
@@ -130,7 +152,7 @@ export function AdminUsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Users</h2>
-          <p className="text-muted-foreground">Manage user accounts and permissions</p>
+          <p className="text-muted-foreground">Manage user accounts, permissions, and access</p>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Users className="h-4 w-4" />
@@ -159,91 +181,124 @@ export function AdminUsersPage() {
           <CardTitle>All Users ({filteredUsers.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Last Login</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{user.display_name || "No name"}</div>
-                      <div className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Mail className="h-3 w-3" />
-                        {user.email}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {user.is_email_verified ? (
-                      <Badge variant="secondary" className="bg-green-500/10 text-green-500">
-                        Verified
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-yellow-500 border-yellow-500/50">
-                        Pending
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {user.is_admin ? (
-                      <Badge className="bg-primary">
-                        <Shield className="h-3 w-3 mr-1" />
-                        Admin
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline">User</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>{formatDate(user.created_at)}</TableCell>
-                  <TableCell>{formatDateTime(user.last_login)}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setSelectedUser(user)}>
-                          View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setToggleAdminConfirm(user)}>
-                          {user.is_admin ? (
-                            <>
-                              <ShieldOff className="h-4 w-4 mr-2" />
-                              Remove Admin
-                            </>
-                          ) : (
-                            <>
-                              <Shield className="h-4 w-4 mr-2" />
-                              Make Admin
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filteredUsers.length === 0 && (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    No users found
-                  </TableCell>
+                  <TableHead>User</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Access</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Last Login</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{user.display_name || "No name"}</div>
+                        <div className="text-sm text-muted-foreground flex items-center gap-1">
+                          <Mail className="h-3 w-3" />
+                          {user.email}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {user.is_email_verified ? (
+                        <Badge variant="secondary" className="bg-green-500/10 text-green-500">
+                          Verified
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-yellow-500 border-yellow-500/50">
+                          Pending
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {user.has_access ? (
+                        <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 gap-1">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Granted
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-orange-500 border-orange-500/50 gap-1">
+                          <Clock className="h-3 w-3" />
+                          Pending
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {user.is_admin ? (
+                        <Badge className="bg-primary">
+                          <Shield className="h-3 w-3 mr-1" />
+                          Admin
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">User</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>{formatDate(user.created_at)}</TableCell>
+                    <TableCell>{formatDateTime(user.last_login)}</TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setSelectedUser(user)}>
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setToggleAccessConfirm(user)}>
+                            {user.has_access ? (
+                              <>
+                                <Clock className="h-4 w-4 mr-2" />
+                                Revoke Access
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 className="h-4 w-4 mr-2" />
+                                Grant Access
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setToggleAdminConfirm(user)}>
+                            {user.is_admin ? (
+                              <>
+                                <ShieldOff className="h-4 w-4 mr-2" />
+                                Remove Admin
+                              </>
+                            ) : (
+                              <>
+                                <Shield className="h-4 w-4 mr-2" />
+                                Make Admin
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {filteredUsers.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      No users found
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -284,6 +339,18 @@ export function AdminUsersPage() {
               </div>
               <div className="flex items-center justify-between py-2 border-t">
                 <div>
+                  <Label>Dashboard Access</Label>
+                  <p className="text-sm text-muted-foreground">
+                    User can access the dashboard and features
+                  </p>
+                </div>
+                <Switch
+                  checked={selectedUser.has_access}
+                  onCheckedChange={() => setToggleAccessConfirm(selectedUser)}
+                />
+              </div>
+              <div className="flex items-center justify-between py-2 border-t">
+                <div>
                   <Label>Admin Status</Label>
                   <p className="text-sm text-muted-foreground">
                     Grant admin access to this user
@@ -304,6 +371,43 @@ export function AdminUsersPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Toggle Access Confirmation Dialog */}
+      <Dialog open={!!toggleAccessConfirm} onOpenChange={() => setToggleAccessConfirm(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {toggleAccessConfirm?.has_access ? "Revoke Access" : "Grant Access"}
+            </DialogTitle>
+            <DialogDescription>
+              {toggleAccessConfirm?.has_access
+                ? `Are you sure you want to revoke dashboard access from ${toggleAccessConfirm?.email}? They will see the pending approval overlay.`
+                : `Are you sure you want to grant dashboard access to ${toggleAccessConfirm?.email}? They will be able to use all features immediately.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setToggleAccessConfirm(null)} disabled={isUpdating}>
+              Cancel
+            </Button>
+            <Button
+              variant={toggleAccessConfirm?.has_access ? "destructive" : "default"}
+              onClick={() => toggleAccessConfirm && handleToggleAccess(toggleAccessConfirm)}
+              disabled={isUpdating}
+            >
+              {isUpdating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : toggleAccessConfirm?.has_access ? (
+                "Revoke Access"
+              ) : (
+                "Grant Access"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Toggle Admin Confirmation Dialog */}
       <Dialog open={!!toggleAdminConfirm} onOpenChange={() => setToggleAdminConfirm(null)}>
         <DialogContent>
@@ -318,14 +422,24 @@ export function AdminUsersPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setToggleAdminConfirm(null)}>
+            <Button variant="outline" onClick={() => setToggleAdminConfirm(null)} disabled={isUpdating}>
               Cancel
             </Button>
             <Button
               variant={toggleAdminConfirm?.is_admin ? "destructive" : "default"}
               onClick={() => toggleAdminConfirm && handleToggleAdmin(toggleAdminConfirm)}
+              disabled={isUpdating}
             >
-              {toggleAdminConfirm?.is_admin ? "Remove Admin" : "Grant Admin"}
+              {isUpdating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : toggleAdminConfirm?.is_admin ? (
+                "Remove Admin"
+              ) : (
+                "Grant Admin"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
