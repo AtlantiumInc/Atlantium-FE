@@ -971,23 +971,12 @@ export function LandingPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="text-2xl font-bold">
-                    <ShinyText
-                      text="$49/mo"
-                      className="text-2xl font-bold"
-                      color="#00d4ff"
-                      shineColor="#ffffff"
-                      speed={4}
-                    />
-                  </div>
-                  <Link to="/signup">
-                    <Button size="sm" variant="outline" className="gap-1.5 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10">
-                      Enter Lobby
-                      <ArrowRight className="h-3 w-3" />
-                    </Button>
-                  </Link>
-                </div>
+                <Link to="/signup">
+                  <Button size="sm" variant="outline" className="w-full gap-1.5 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10">
+                    Enter Lobby
+                    <ArrowRight className="h-3 w-3" />
+                  </Button>
+                </Link>
               </SpotlightCard>
             </div>
           </motion.div>

@@ -13,7 +13,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoginPage } from "@/pages/LoginPage";
 import { SignupPage } from "@/pages/SignupPage";
 import { AdminLoginPage } from "@/pages/AdminLoginPage";
-import { HomePage } from "@/pages/HomePage";
+import { DashboardPage } from "@/pages/DashboardPage";
 import { LandingPage } from "@/pages/LandingPage";
 import { PrivacyPage } from "@/pages/PrivacyPage";
 import { TermsPage } from "@/pages/TermsPage";
@@ -98,7 +98,7 @@ function AppRoutes() {
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <HomePage />
+            <DashboardPage />
           </ProtectedRoute>
         }
       />

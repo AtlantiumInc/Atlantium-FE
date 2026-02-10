@@ -209,6 +209,10 @@ export function shouldShowStep(
   step: number,
   data: Partial<OnboardingFormData>
 ): boolean {
+  // Step 5 (pricing) hidden for now - admin grants access separately
+  if (step === 5) {
+    return false;
+  }
   // Step 7 (project description) only shown if working on a project
   if (step === 7) {
     return (

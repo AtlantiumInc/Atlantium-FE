@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Sidebar } from "@/components/Sidebar";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
+import { AccessPendingOverlay } from "@/components/AccessPendingOverlay";
 import { useAuth } from "@/contexts/AuthContext";
 
 // Page components
@@ -16,11 +17,16 @@ import { ConnectionsPage } from "@/components/pages/ConnectionsPage";
 import { ProjectsPage } from "@/components/pages/ProjectsPage";
 import { LobbyPage } from "@/components/pages/LobbyPage";
 
-export function HomePage() {
-  const { user, logout } = useAuth();
+export function DashboardPage() {
+  const { user, logout, hasAccess } = useAuth();
   const [activePage, setActivePage] = useState("hq");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [initialThreadId, setInitialThreadId] = useState<string | null>(null);
+
+  // If user doesn't have access, show pending approval overlay
+  if (!hasAccess) {
+    return <AccessPendingOverlay onLogout={logout} />;
+  }
 
   const handleNavigate = (page: string) => {
     setActivePage(page);

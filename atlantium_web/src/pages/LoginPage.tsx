@@ -119,6 +119,10 @@ export function LoginPage() {
       const response = await api.verifyOtp(email, code, refCode || undefined);
       // Clear ref_code after successful verification
       if (refCode) clearReferralCode();
+
+      // Store email for use in pending access overlay
+      localStorage.setItem("userEmail", email);
+
       login(response.auth_token, response.user);
       // Fetch full user data (including profile with registration_details)
       const fullUser = await checkAuth();
