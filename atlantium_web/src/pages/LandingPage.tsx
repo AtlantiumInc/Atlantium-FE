@@ -18,6 +18,8 @@ import {
   ChevronRight,
   Code,
   Rocket,
+  Mic,
+  Radio,
 } from "lucide-react";
 import { motion, useAnimationFrame } from "motion/react";
 import { useRef, useState, useEffect } from "react";
@@ -892,7 +894,7 @@ export function LandingPage() {
             </SpotlightCard>
           </motion.div>
 
-          {/* Club Card */}
+          {/* Club Card - The Lobby */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -908,47 +910,83 @@ export function LandingPage() {
                 className="relative h-full p-6"
                 spotlightColor="rgba(0, 212, 255, 0.15)"
               >
-                {/* Badge */}
+                {/* Live badge */}
                 <div className="absolute top-4 right-4">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/30">
-                    <Sparkles className="h-3 w-3 text-cyan-400" />
-                    <span className="text-[10px] font-semibold text-cyan-400 uppercase tracking-wider">Join Us</span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                    </span>
+                    <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">Live</span>
                   </span>
                 </div>
 
                 <div className="mb-5">
                   <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/20 flex items-center justify-center mb-4">
-                    <Sparkles className="h-5 w-5 text-cyan-400" />
+                    <Radio className="h-5 w-5 text-cyan-400" />
                   </div>
-                  <div className="text-sm text-muted-foreground mb-2">Club Membership</div>
-                  <div className="text-3xl font-bold">
+                  <div className="text-sm text-muted-foreground mb-1">Club Membership</div>
+                  <h3 className="text-xl font-bold text-foreground mb-1">The Lobby</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    A live digital space where members connect through audio, video, and chat in real time.
+                  </p>
+                </div>
+
+                {/* Mini lobby visualization */}
+                <div className="relative rounded-lg bg-background/30 border border-border/30 p-3 mb-4">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <div className="flex -space-x-1.5">
+                      {[
+                        "from-cyan-500 to-blue-500",
+                        "from-violet-500 to-purple-500",
+                        "from-emerald-500 to-teal-500",
+                        "from-amber-500 to-orange-500",
+                      ].map((gradient, i) => (
+                        <motion.div
+                          key={i}
+                          initial={{ opacity: 0, scale: 0.5 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.5 + i * 0.08 }}
+                          className={`h-6 w-6 rounded-full bg-gradient-to-br ${gradient} ring-2 ring-background flex items-center justify-center`}
+                        >
+                          <span className="text-[7px] font-bold text-white">
+                            {["KL", "AR", "JM", "SC"][i]}
+                          </span>
+                        </motion.div>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-500/10">
+                        <Mic className="h-2.5 w-2.5 text-cyan-400" />
+                      </div>
+                      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-500/10">
+                        <Video className="h-2.5 w-2.5 text-cyan-400" />
+                      </div>
+                    </div>
+                  </div>
+                  {/* Simulated chat line */}
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground/70">
+                    <span className="font-medium text-cyan-400/70">KL:</span>
+                    <span className="truncate">just shipped the new API endpoint...</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="text-2xl font-bold">
                     <ShinyText
                       text="$49/mo"
-                      className="text-3xl font-bold"
+                      className="text-2xl font-bold"
                       color="#00d4ff"
                       shineColor="#ffffff"
                       speed={4}
                     />
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
-                    Exclusive events
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
-                    Group office hours
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
-                    Member messaging
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
-                    Member directory
-                  </div>
+                  <Link to="/signup">
+                    <Button size="sm" variant="outline" className="gap-1.5 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10">
+                      Enter Lobby
+                      <ArrowRight className="h-3 w-3" />
+                    </Button>
+                  </Link>
                 </div>
               </SpotlightCard>
             </div>

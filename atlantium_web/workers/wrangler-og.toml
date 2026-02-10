@@ -1,0 +1,10 @@
+name = "atlantium-og-worker"
+main = "og-worker.js"
+compatibility_date = "2024-01-01"
+
+routes = [
+  { pattern = "atlantium.ai/u/*", zone_name = "atlantium.ai" },
+  { pattern = "atlantium.ai/index/*", zone_name = "atlantium.ai" },
+  { pattern = "atlantium.ai/groups/*", zone_name = "atlantium.ai" },
+  { pattern = "atlantium.ai/focus-groups", zone_name = "atlantium.ai" },
+]
