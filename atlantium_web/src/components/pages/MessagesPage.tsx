@@ -18,10 +18,13 @@ import {
   Users,
   Sparkles,
   Share2,
+  Video,
 } from "lucide-react";
 import { InviteShareDialog } from "@/components/InviteShareDialog";
+import { GroupLiveRoom } from "@/components/groups/GroupLiveRoom";
 import { api } from "@/lib/api";
 import { showMessageNotification } from "@/lib/notifications";
+import { cn } from "@/lib/utils";
 import type { Thread, ThreadMessage, ThreadDetail } from "@/lib/types";
 
 // Mock files data (no backend yet)
@@ -51,6 +54,7 @@ export function MessagesPage({ initialThreadId, onThreadSelected }: MessagesPage
   const [threadDetails, setThreadDetails] = useState<ThreadDetail | null>(null);
   const [showFiles, setShowFiles] = useState(true);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isLiveRoomActive, setIsLiveRoomActive] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const isInitialLoadRef = useRef(true);
@@ -388,11 +392,16 @@ export function MessagesPage({ initialThreadId, onThreadSelected }: MessagesPage
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex overflow-hidden min-w-0">
         {selectedThread ? (
           <>
-            {/* Chat Header */}
-            <div className="flex items-center justify-between p-4 border-b border-border">
+            {/* Messages Panel */}
+            <div className={cn(
+              "flex flex-col",
+              isLiveRoomActive ? "w-1/2" : "w-full"
+            )}>
+              {/* Chat Header */}
+              <div className="flex items-center justify-between p-4 border-b border-border">
               <div className="flex items-center gap-3">
                 <div className="relative">
                   {isGroupThread(selectedThread) ? (
@@ -442,14 +451,25 @@ export function MessagesPage({ initialThreadId, onThreadSelected }: MessagesPage
               </div>
               <div className="flex items-center gap-2">
                 {isGroupThread(selectedThread) && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setIsShareDialogOpen(true)}
-                    title="Share invite link"
-                  >
-                    <Share2 className="h-4 w-4" />
-                  </Button>
+                  <>
+                    <Button
+                      variant={isLiveRoomActive ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setIsLiveRoomActive(!isLiveRoomActive)}
+                      className="gap-2"
+                    >
+                      <Video className="h-4 w-4" />
+                      {isLiveRoomActive ? "Hide Live" : "Join Live"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setIsShareDialogOpen(true)}
+                      title="Share invite link"
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </Button>
+                  </>
                 )}
               </div>
               {/* Connection status indicator */}
@@ -610,6 +630,17 @@ export function MessagesPage({ initialThreadId, onThreadSelected }: MessagesPage
                 </Button>
               </div>
             </div>
+            </div>
+
+            {/* Live Room Panel */}
+            {isLiveRoomActive && selectedThread && isGroupThread(selectedThread) && (
+              <div className="w-1/2 flex flex-col border-l border-border">
+                <GroupLiveRoom
+                  groupId={selectedThread.thread_id}
+                  onLeave={() => setIsLiveRoomActive(false)}
+                />
+              </div>
+            )}
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
@@ -620,7 +651,7 @@ export function MessagesPage({ initialThreadId, onThreadSelected }: MessagesPage
       </div>
 
       {/* Right Sidebar - Files */}
-      {selectedThread && (
+      {selectedThread && !isLiveRoomActive && (
         <div className="w-64 flex-shrink-0 border-l border-border overflow-y-auto bg-card">
           <div className="p-4">
             <button

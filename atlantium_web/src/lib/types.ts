@@ -266,3 +266,10 @@ export interface LobbyLivekitTokenResponse {
   token: string;
   url: string;
 }
+
+export interface GroupLivekitTokenResponse {
+  success: boolean;
+  token: string;
+  url: string;
+  room_name: string;
+}

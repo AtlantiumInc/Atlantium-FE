@@ -18,6 +18,7 @@ import type {
   LobbyResponse,
   LobbyJoinResponse,
   LobbyLivekitTokenResponse,
+  GroupLivekitTokenResponse,
 } from "./types";
 
 const AUTH_API_BASE_URL = "https://cloud.atlantium.ai/api:_c66cUCc";
@@ -660,6 +661,12 @@ class ApiClient {
 
   async getLobbyLivekitToken(): Promise<LobbyLivekitTokenResponse> {
     return this.request<LobbyLivekitTokenResponse>("/lobby/livekit-token", {
+      method: "POST",
+    }, APP_API_BASE_URL);
+  }
+
+  async getGroupLivekitToken(groupId: string): Promise<GroupLivekitTokenResponse> {
+    return this.request<GroupLivekitTokenResponse>(`/groups/${groupId}/livekit-token`, {
       method: "POST",
     }, APP_API_BASE_URL);
   }
