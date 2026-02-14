@@ -323,6 +323,34 @@ class ApiClient {
     }, ADMIN_API_BASE_URL, true);
   }
 
+  // Admin article methods
+  async getAdminArticles(): Promise<FrontierArticle[]> {
+    return this.request<FrontierArticle[]>("/articles/list", {
+      method: "GET",
+    }, ADMIN_API_BASE_URL, true);
+  }
+
+  async createAdminArticle(data: { content: FrontierArticle["content"]; status?: string }): Promise<FrontierArticle> {
+    return this.request<FrontierArticle>("/articles/create", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, ADMIN_API_BASE_URL, true);
+  }
+
+  async updateAdminArticle(data: { article_id: string; content: FrontierArticle["content"]; status?: string }): Promise<FrontierArticle> {
+    return this.request<FrontierArticle>("/articles/update", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, ADMIN_API_BASE_URL, true);
+  }
+
+  async deleteAdminArticle(articleId: string): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>("/articles/delete", {
+      method: "POST",
+      body: JSON.stringify({ article_id: articleId }),
+    }, ADMIN_API_BASE_URL, true);
+  }
+
   // Profile methods
   async getProfile(): Promise<{
     id: string;
