@@ -9,7 +9,29 @@ import {
   CheckCircle2,
   Clock,
   Loader2,
+  Phone,
+  Globe,
+  Target,
+  Sparkles,
+  Code,
+  Heart,
+  Timer,
+  MapPin,
+  FileText,
+  Calendar,
 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import {
+  getOptionLabel,
+  PRIMARY_GOAL_OPTIONS,
+  INTERESTS_OPTIONS,
+  PROJECT_STATUS_OPTIONS,
+  TECHNICAL_LEVEL_OPTIONS,
+  COMMUNITY_HOPES_OPTIONS,
+  TIME_COMMITMENT_OPTIONS,
+  TIMEZONE_OPTIONS,
+} from "@/lib/onboarding-options";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,6 +82,8 @@ export function AdminUsersPage() {
   const [toggleAdminConfirm, setToggleAdminConfirm] = useState<User | null>(null);
   const [toggleAccessConfirm, setToggleAccessConfirm] = useState<User | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [userProfile, setUserProfile] = useState<Awaited<ReturnType<typeof api.getAdminUserProfile>> | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
   // Load users on mount
   useEffect(() => {
@@ -102,6 +126,20 @@ export function AdminUsersPage() {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const handleViewDetails = async (user: User) => {
+    setSelectedUser(user);
+    setUserProfile(null);
+    setIsLoadingProfile(true);
+    try {
+      const profile = await api.getAdminUserProfile(user.id);
+      setUserProfile(profile);
+    } catch (error) {
+      console.error("Error loading profile:", error);
+    } finally {
+      setIsLoadingProfile(false);
+    }
   };
 
   const handleToggleAdmin = async (user: User) => {
@@ -254,7 +292,7 @@ export function AdminUsersPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setSelectedUser(user)}>
+                          <DropdownMenuItem onClick={() => handleViewDetails(user)}>
                             View Details
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setToggleAccessConfirm(user)}>
@@ -303,68 +341,267 @@ export function AdminUsersPage() {
       </Card>
 
       {/* User Details Dialog */}
-      <Dialog open={!!selectedUser} onOpenChange={() => setSelectedUser(null)}>
-        <DialogContent>
+      <Dialog open={!!selectedUser} onOpenChange={() => { setSelectedUser(null); setUserProfile(null); }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>User Details</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              {userProfile?.avatar_url && (
+                <img src={userProfile.avatar_url} alt="" className="h-8 w-8 rounded-full" />
+              )}
+              {selectedUser?.display_name || selectedUser?.email}
+            </DialogTitle>
+            <DialogDescription>
+              User profile and registration details
+            </DialogDescription>
           </DialogHeader>
           {selectedUser && (
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">Email</Label>
-                  <p className="font-medium">{selectedUser.email}</p>
+            <ScrollArea className="flex-1 -mx-6 px-6">
+              <div className="space-y-5 py-2">
+                {/* Account Info */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Email</Label>
+                    <p className="text-sm font-medium flex items-center gap-1.5">
+                      <Mail className="h-3 w-3 text-muted-foreground" />
+                      {selectedUser.email}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Display Name</Label>
+                    <p className="text-sm font-medium">{selectedUser.display_name || "-"}</p>
+                  </div>
+                  {userProfile && (
+                    <>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Full Name</Label>
+                        <p className="text-sm font-medium">
+                          {[userProfile.first_name, userProfile.last_name].filter(Boolean).join(" ") || "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Username</Label>
+                        <p className="text-sm font-medium">{userProfile.username || "-"}</p>
+                      </div>
+                    </>
+                  )}
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Created</Label>
+                    <p className="text-sm font-medium flex items-center gap-1.5">
+                      <Calendar className="h-3 w-3 text-muted-foreground" />
+                      {formatDate(selectedUser.created_at)}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Last Login</Label>
+                    <p className="text-sm font-medium">{formatDateTime(selectedUser.last_login)}</p>
+                  </div>
                 </div>
-                <div>
-                  <Label className="text-muted-foreground">Display Name</Label>
-                  <p className="font-medium">{selectedUser.display_name || "-"}</p>
+
+                {/* Toggles */}
+                <Separator />
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm">Email Verified</Label>
+                    </div>
+                    <Switch checked={selectedUser.is_email_verified} disabled />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm">Dashboard Access</Label>
+                    </div>
+                    <Switch
+                      checked={selectedUser.has_access}
+                      onCheckedChange={() => setToggleAccessConfirm(selectedUser)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm">Admin Status</Label>
+                    </div>
+                    <Switch
+                      checked={selectedUser.is_admin}
+                      onCheckedChange={() => setToggleAdminConfirm(selectedUser)}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label className="text-muted-foreground">Created</Label>
-                  <p className="font-medium">{formatDate(selectedUser.created_at)}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Last Login</Label>
-                  <p className="font-medium">{formatDateTime(selectedUser.last_login)}</p>
-                </div>
-              </div>
-              <div className="flex items-center justify-between py-2 border-t">
-                <div>
-                  <Label>Email Verified</Label>
-                  <p className="text-sm text-muted-foreground">
-                    User has verified their email address
+
+                {/* Registration Details */}
+                <Separator />
+                {isLoadingProfile ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : userProfile?.registration_details ? (
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-muted-foreground tracking-wider uppercase">
+                      Registration Form
+                    </h3>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Phone */}
+                      {userProfile.registration_details.phone_number && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Phone className="h-3 w-3" /> Phone
+                          </Label>
+                          <p className="text-sm font-medium">{userProfile.registration_details.phone_number}</p>
+                        </div>
+                      )}
+
+                      {/* Timezone */}
+                      {userProfile.registration_details.timezone && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Globe className="h-3 w-3" /> Timezone
+                          </Label>
+                          <p className="text-sm font-medium">
+                            {getOptionLabel(TIMEZONE_OPTIONS, userProfile.registration_details.timezone)}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Georgia Resident */}
+                      <div>
+                        <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                          <MapPin className="h-3 w-3" /> Georgia Resident
+                        </Label>
+                        <p className="text-sm font-medium">
+                          {userProfile.registration_details.is_georgia_resident ? "Yes" : "No"}
+                        </p>
+                      </div>
+
+                      {/* Primary Goal */}
+                      {userProfile.registration_details.primary_goal && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Target className="h-3 w-3" /> Primary Goal
+                          </Label>
+                          <p className="text-sm font-medium">
+                            {getOptionLabel(PRIMARY_GOAL_OPTIONS, userProfile.registration_details.primary_goal)}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Technical Level */}
+                      {userProfile.registration_details.technical_level && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Code className="h-3 w-3" /> Technical Level
+                          </Label>
+                          <p className="text-sm font-medium">
+                            {getOptionLabel(TECHNICAL_LEVEL_OPTIONS, userProfile.registration_details.technical_level)}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Time Commitment */}
+                      {userProfile.registration_details.time_commitment && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Timer className="h-3 w-3" /> Time Commitment
+                          </Label>
+                          <p className="text-sm font-medium">
+                            {getOptionLabel(TIME_COMMITMENT_OPTIONS, userProfile.registration_details.time_commitment)}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Project Status */}
+                      {userProfile.registration_details.working_on_project && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                            <FileText className="h-3 w-3" /> Project Status
+                          </Label>
+                          <p className="text-sm font-medium">
+                            {getOptionLabel(PROJECT_STATUS_OPTIONS, userProfile.registration_details.working_on_project)}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Membership Tier */}
+                      {userProfile.registration_details.membership_tier && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Sparkles className="h-3 w-3" /> Membership Tier
+                          </Label>
+                          <Badge variant="secondary" className="mt-0.5">
+                            {userProfile.registration_details.membership_tier === "club" ? "Club" :
+                             userProfile.registration_details.membership_tier === "club_annual" ? "Club (Annual)" : "Free"}
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Interests - full width */}
+                    {userProfile.registration_details.interests && userProfile.registration_details.interests.length > 0 && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-1.5">
+                          <Sparkles className="h-3 w-3" /> Interests
+                        </Label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {userProfile.registration_details.interests.map((interest) => (
+                            <Badge key={interest} variant="outline" className="text-xs">
+                              {getOptionLabel(INTERESTS_OPTIONS, interest)}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Community Hopes - full width */}
+                    {userProfile.registration_details.community_hopes && userProfile.registration_details.community_hopes.length > 0 && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-1.5">
+                          <Heart className="h-3 w-3" /> Community Hopes
+                        </Label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {userProfile.registration_details.community_hopes.map((hope) => (
+                            <Badge key={hope} variant="outline" className="text-xs">
+                              {getOptionLabel(COMMUNITY_HOPES_OPTIONS, hope)}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Project Description */}
+                    {userProfile.registration_details.project_description && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Project Description</Label>
+                        <p className="text-sm mt-1 p-3 rounded-md bg-muted/50 border">
+                          {userProfile.registration_details.project_description}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Success Definition */}
+                    {userProfile.registration_details.success_definition && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">How They Define Success</Label>
+                        <p className="text-sm mt-1 p-3 rounded-md bg-muted/50 border italic">
+                          "{userProfile.registration_details.success_definition}"
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Onboarding Completed At */}
+                    {userProfile.registration_details.onboarding_completed_at && (
+                      <p className="text-xs text-muted-foreground">
+                        Onboarding completed {formatDate(userProfile.registration_details.onboarding_completed_at)}
+                      </p>
+                    )}
+                  </div>
+                ) : !isLoadingProfile && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No registration details found
                   </p>
-                </div>
-                <Switch checked={selectedUser.is_email_verified} disabled />
+                )}
               </div>
-              <div className="flex items-center justify-between py-2 border-t">
-                <div>
-                  <Label>Dashboard Access</Label>
-                  <p className="text-sm text-muted-foreground">
-                    User can access the dashboard and features
-                  </p>
-                </div>
-                <Switch
-                  checked={selectedUser.has_access}
-                  onCheckedChange={() => setToggleAccessConfirm(selectedUser)}
-                />
-              </div>
-              <div className="flex items-center justify-between py-2 border-t">
-                <div>
-                  <Label>Admin Status</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Grant admin access to this user
-                  </p>
-                </div>
-                <Switch
-                  checked={selectedUser.is_admin}
-                  onCheckedChange={() => setToggleAdminConfirm(selectedUser)}
-                />
-              </div>
-            </div>
+            </ScrollArea>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedUser(null)}>
+            <Button variant="outline" onClick={() => { setSelectedUser(null); setUserProfile(null); }}>
               Close
             </Button>
           </DialogFooter>

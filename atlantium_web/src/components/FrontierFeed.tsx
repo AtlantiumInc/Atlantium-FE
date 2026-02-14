@@ -155,7 +155,10 @@ function FrontierArticleCard({ article }: { article: FrontierArticle }) {
 export function FrontierFeed({ limit = 10 }: FrontierFeedProps) {
   const { data: articles, isLoading, error } = useQuery({
     queryKey: ["frontierArticles"],
-    queryFn: () => api.getFrontierArticles(),
+    queryFn: async () => {
+      const data = await api.getFrontierArticles();
+      return data.filter(a => a.content != null);
+    },
   });
 
   if (isLoading) {

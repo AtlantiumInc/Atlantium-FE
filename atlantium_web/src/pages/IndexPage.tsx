@@ -231,8 +231,8 @@ export function IndexPage() {
 
       try {
         const data = await api.getFrontierArticles();
-        // Cast to ArticleWithSlug - the API should return slug
-        setArticles(data as ArticleWithSlug[]);
+        // Cast to ArticleWithSlug - the API should return slug, filter out articles with null content
+        setArticles((data as ArticleWithSlug[]).filter(a => a.content != null));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load articles");
       } finally {

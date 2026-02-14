@@ -20,6 +20,8 @@ import {
   Rocket,
   Mic,
   Radio,
+  Lightbulb,
+  MessageSquare,
 } from "lucide-react";
 import { motion, useAnimationFrame } from "motion/react";
 import { useRef, useState, useEffect } from "react";
@@ -149,8 +151,9 @@ function LatestArticleBanner() {
       })
       .then((data: Article[]) => {
         if (data && data.length > 0) {
-          const sorted = [...data].sort((a, b) => b.created_at - a.created_at);
-          setArticle(sorted[0]);
+          const valid = data.filter(a => a.content != null);
+          const sorted = [...valid].sort((a, b) => b.created_at - a.created_at);
+          if (sorted.length > 0) setArticle(sorted[0]);
         }
       })
       .catch(() => {
@@ -635,7 +638,7 @@ export function LandingPage() {
 
                 {/* Subhead */}
                 <p className="text-muted-foreground text-lg mb-8 mx-auto">
-                  Curated AI/tech news. Exclusive events. A network that ships.
+                  Where builders get the intel, connections, and tools to ship what's next.
                 </p>
 
                 {/* CTAs */}
@@ -840,23 +843,38 @@ export function LandingPage() {
             className="col-span-12 lg:col-span-4 row-span-2"
           >
             <SpotlightCard
-              className="h-full p-6"
+              className="h-full p-6 flex flex-col"
               spotlightColor="rgba(167, 139, 250, 0.15)"
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="h-10 w-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-4">
-                    <Briefcase className="h-5 w-5 text-purple-500" />
-                  </div>
-                  <h3 className="text-lg font-bold text-foreground mb-2">Services</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Ship faster with dev support, GTM strategy, and warm intros.
-                  </p>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-10 w-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+                  <Briefcase className="h-5 w-5 text-purple-500" />
                 </div>
+                <h3 className="text-lg font-bold text-foreground">Services</h3>
               </div>
-              <Link to="/services">
-                <Button variant="outline" size="sm" className="gap-2">
-                  Learn more
+
+              <div className="space-y-3 flex-1">
+                {[
+                  { icon: Code, label: "Development", desc: "MVPs & enterprise software", color: "blue" },
+                  { icon: Lightbulb, label: "GTM Strategy", desc: "Go-to-market playbooks", color: "amber" },
+                  { icon: Sparkles, label: "Generative Media", desc: "AI video, audio & content", color: "emerald" },
+                  { icon: MessageSquare, label: "Tech Advisor", desc: "Fractional CTO & AI strategy", color: "violet" },
+                ].map((svc) => (
+                  <div key={svc.label} className="flex items-center gap-3">
+                    <div className={`h-8 w-8 flex-shrink-0 rounded-lg bg-${svc.color}-500/10 border border-${svc.color}-500/20 flex items-center justify-center`}>
+                      <svc.icon className={`h-4 w-4 text-${svc.color}-500`} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground leading-tight">{svc.label}</p>
+                      <p className="text-xs text-muted-foreground leading-tight">{svc.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <Link to="/services" className="mt-4 pt-4 border-t border-border/50 block">
+                <Button variant="outline" size="sm" className="w-full gap-2">
+                  Explore Services
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
               </Link>

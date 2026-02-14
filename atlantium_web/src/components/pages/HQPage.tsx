@@ -126,7 +126,7 @@ export function HQPage({ user: userProp, onNavigateToThread }: HQPageProps) {
   const fetchFrontierArticles = async () => {
     try {
       const articles = await api.getFrontierArticles();
-      setFeaturedArticles(articles);
+      setFeaturedArticles(articles.filter(a => a.content != null));
     } catch (error) {
       console.error("Failed to fetch frontier articles:", error);
     } finally {
@@ -877,7 +877,7 @@ export function HQPage({ user: userProp, onNavigateToThread }: HQPageProps) {
                 {/* Body */}
                 {selectedArticle.content.body && (
                   <div
-                    className="prose prose-invert prose-sm max-w-none prose-headings:text-foreground prose-p:text-muted-foreground prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground prose-img:rounded-xl"
+                    className="prose prose-invert prose-sm prose-cyan max-w-none prose-headings:text-foreground prose-p:text-muted-foreground prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground prose-blockquote:border-cyan-500 prose-blockquote:text-muted-foreground prose-img:rounded-xl prose-img:my-4 prose-hr:border-border prose-figcaption:text-xs prose-figcaption:text-muted-foreground prose-figcaption:italic prose-li:text-muted-foreground prose-code:text-cyan-400"
                     dangerouslySetInnerHTML={{ __html: selectedArticle.content.body }}
                   />
                 )}

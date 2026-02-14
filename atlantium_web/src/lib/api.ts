@@ -286,6 +286,43 @@ class ApiClient {
     }, ADMIN_API_BASE_URL, true);
   }
 
+  async getAdminUserProfile(userId: string): Promise<{
+    id: string;
+    user_id: string;
+    username: string;
+    display_name: string;
+    first_name?: string;
+    last_name?: string;
+    bio?: string;
+    avatar_url?: string;
+    location?: string;
+    website_url?: string;
+    linkedin_url?: string;
+    registration_details?: {
+      timezone?: string;
+      interests?: string[];
+      is_completed?: boolean;
+      phone_number?: string;
+      primary_goal?: string;
+      community_hopes?: string[];
+      membership_tier?: string;
+      technical_level?: string;
+      time_commitment?: string;
+      pending_approval?: boolean;
+      success_definition?: string;
+      working_on_project?: string;
+      is_georgia_resident?: boolean;
+      project_description?: string;
+      onboarding_completed_at?: string;
+    };
+    created_at: string;
+    updated_at: string;
+  }> {
+    return this.request(`/users/${userId}/profile`, {
+      method: "GET",
+    }, ADMIN_API_BASE_URL, true);
+  }
+
   // Profile methods
   async getProfile(): Promise<{
     id: string;

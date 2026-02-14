@@ -58,7 +58,7 @@ export function ArticleTLDR({ points, className = "" }: ArticleTLDRProps) {
                   {index + 1}
                 </span>
               </span>
-              <span className="text-sm text-foreground/90 leading-relaxed">
+              <span className="text-xl text-foreground/90 leading-relaxed">
                 {point}
               </span>
             </motion.li>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "motion/react";
 import {
@@ -62,6 +62,8 @@ export function ArticleDetailPage() {
   const [ogData, setOgData] = useState<OGMetadata | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showMobileBar, setShowMobileBar] = useState(false);
+  const articleBodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function fetchArticle() {
@@ -129,6 +131,19 @@ export function ArticleDetailPage() {
       document.title = "Atlantium";
     };
   }, [ogData]);
+
+  // Show mobile sticky bar when article body is ~70% scrolled into view
+  useEffect(() => {
+    const el = articleBodyRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowMobileBar(entry.isIntersecting),
+      { threshold: 0.3 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [article]);
 
   const handleShare = () => {
     if (navigator.share) {
@@ -327,7 +342,7 @@ export function ArticleDetailPage() {
                               {index + 1}
                             </span>
                           </span>
-                          <span className="text-xs text-muted-foreground leading-relaxed">
+                          <span className="text-sm text-muted-foreground leading-relaxed">
                             {point}
                           </span>
                         </li>
@@ -436,8 +451,8 @@ export function ArticleDetailPage() {
                 </div>
               )}
 
-              {/* Share Action */}
-              <div className="pt-6 border-t border-border/50">
+              {/* Share Action - hidden on mobile, shown in sticky bar instead */}
+              <div className="hidden lg:block pt-6 border-t border-border/50">
                 <Button
                   variant="outline"
                   size="sm"
@@ -449,9 +464,9 @@ export function ArticleDetailPage() {
                 </Button>
               </div>
 
-              {/* CTA for non-authenticated users */}
+              {/* CTA for non-authenticated users - hidden on mobile */}
               {!isAuthenticated && (
-                <div className="mt-6 pt-6 border-t border-border/50">
+                <div className="hidden lg:block mt-6 pt-6 border-t border-border/50">
                   <div className="text-center">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <Sparkles className="h-4 w-4 text-cyan-400" />
@@ -473,6 +488,7 @@ export function ArticleDetailPage() {
 
           {/* Article Body - Full or 8 columns */}
           <motion.div
+            ref={articleBodyRef}
             className="col-span-12 lg:col-span-8"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -488,12 +504,10 @@ export function ArticleDetailPage() {
                   DOCUMENT CONTENT
                 </h2>
               </div>
-              <article className="prose prose-invert prose-cyan max-w-none">
-                <div
-                  className="text-foreground leading-relaxed whitespace-pre-wrap"
-                  dangerouslySetInnerHTML={{ __html: content.body }}
-                />
-              </article>
+              <article
+                className="prose prose-invert prose-cyan max-w-none prose-headings:text-foreground prose-h1:text-3xl prose-h1:font-bold prose-h1:mt-8 prose-h1:mb-4 prose-h2:text-2xl prose-h2:font-semibold prose-h3:text-xl prose-p:text-muted-foreground prose-p:leading-relaxed prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground prose-blockquote:border-cyan-500 prose-blockquote:text-muted-foreground prose-img:rounded-xl prose-img:my-6 prose-hr:border-border prose-figcaption:text-sm prose-figcaption:text-muted-foreground prose-figcaption:italic prose-li:text-muted-foreground prose-code:text-cyan-400"
+                dangerouslySetInnerHTML={{ __html: content.body }}
+              />
             </SpotlightCard>
           </motion.div>
         </div>
@@ -513,6 +527,40 @@ export function ArticleDetailPage() {
           </Link>
         </motion.div>
       </main>
+
+      {/* Mobile Sticky Bottom Bar */}
+      <motion.div
+        className="fixed bottom-0 left-0 right-0 z-50 lg:hidden border-t bg-background/90 backdrop-blur-xl px-4 py-3"
+        initial={{ y: 100 }}
+        animate={{ y: showMobileBar ? 0 : 100 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      >
+        <div className="flex items-center gap-3 max-w-lg mx-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleShare}
+            className="flex-shrink-0"
+          >
+            <Share2 className="h-4 w-4 mr-2" />
+            Share
+          </Button>
+          {!isAuthenticated ? (
+            <Link to="/signup" className="flex-1">
+              <Button size="sm" className="w-full gap-2">
+                <Sparkles className="h-3.5 w-3.5" />
+                Join Atlantium
+              </Button>
+            </Link>
+          ) : (
+            <Link to="/dashboard" className="flex-1">
+              <Button size="sm" variant="outline" className="w-full">
+                Dashboard
+              </Button>
+            </Link>
+          )}
+        </div>
+      </motion.div>
 
       {/* Footer */}
       <footer className="border-t bg-background/80 backdrop-blur-xl mt-16 relative z-10">
