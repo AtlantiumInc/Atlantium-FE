@@ -26,6 +26,7 @@ import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
 import { AdminEventsPage } from "@/pages/admin/AdminEventsPage";
 import { AdminArticlesPage } from "@/pages/admin/AdminArticlesPage";
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
+import { AdminGTMPage } from "@/pages/admin/AdminGTMPage";
 import { GitHubCallbackPage } from "@/pages/GitHubCallbackPage";
 import { GoogleCallbackPage } from "@/pages/GoogleCallbackPage";
 import { OnboardingPage } from "@/pages/OnboardingPage";
@@ -124,6 +125,7 @@ function AppRoutes() {
         <Route path="events" element={<AdminEventsPage />} />
         <Route path="articles" element={<AdminArticlesPage />} />
         <Route path="users" element={<AdminUsersPage />} />
+        <Route path="gtm" element={<AdminGTMPage />} />
       </Route>
       {/* Google OAuth callback */}
       <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />

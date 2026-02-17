@@ -9,6 +9,7 @@ import {
   ChevronRight,
   LogOut,
   Shield,
+  Rocket,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -48,6 +49,12 @@ export function AdminSidebar({
       path: "/admin/users",
       icon: <Users size={20} />,
       label: "Users",
+    },
+    {
+      id: "gtm",
+      path: "/admin/gtm",
+      icon: <Rocket size={20} />,
+      label: "GTM Plan",
     },
   ];
 
