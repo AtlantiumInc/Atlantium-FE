@@ -24,8 +24,6 @@ import {
 } from "lucide-react";
 import { motion, useInView } from "motion/react";
 
-const APP_STORE_URL =
-  "https://apps.apple.com/us/app/atlantium-the-frontier/id6757367750";
 
 const pillars = [
   {
@@ -433,12 +431,12 @@ export function MissionPage() {
                 </p>
 
                 <div className="flex flex-wrap justify-center gap-3">
-                  <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
+                  <Link to="/focus-groups">
                     <Button className="gap-2 bg-white text-black hover:bg-gray-100 shadow-lg shadow-black/20 border-0 px-6">
-                      <img src="/apple-logo.svg" alt="Apple" className="h-4 w-auto" />
-                      Get the App
+                      Join a Focus Group
+                      <ArrowRight className="h-4 w-4" />
                     </Button>
-                  </a>
+                  </Link>
                   <Link to="/">
                     <Button variant="outline" className="gap-2 px-6">
                       Back to Home

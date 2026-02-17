@@ -26,8 +26,6 @@ import {
 import { motion, useAnimationFrame } from "motion/react";
 import { useRef, useState, useEffect } from "react";
 
-const APP_STORE_URL =
-  "https://apps.apple.com/us/app/atlantium-the-frontier/id6757367750";
 
 const EVENTS_API_URL =
   "https://cloud.atlantium.ai/api:-ulnKZsX/events/public";
@@ -60,14 +58,14 @@ interface Article {
 }
 
 const feedItems = [
-  { time: "2m", title: "OpenAI releases GPT-5 with reasoning capabilities", tag: "Breaking" },
-  { time: "15m", title: "Anthropic raises $4B at $60B valuation", tag: "Funding" },
-  { time: "32m", title: "Apple integrates on-device AI across iOS 19", tag: "Product" },
-  { time: "1h", title: "New robotics startup demos humanoid warehouse workers", tag: "Robotics" },
-  { time: "2h", title: "EU passes comprehensive AI regulation framework", tag: "Policy" },
-  { time: "3h", title: "Meta open-sources new 400B parameter model", tag: "Open Source" },
-  { time: "4h", title: "Nvidia stock surges on datacenter demand", tag: "Markets" },
-  { time: "5h", title: "DeepMind achieves breakthrough in protein design", tag: "Research" },
+  { time: "1d", title: "Anthropic raises $3.5B at $61.5B valuation led by Lightspeed", tag: "Funding" },
+  { time: "1d", title: "ByteDance drops Seedance 2.0 -- AI video generation goes mainstream", tag: "Product" },
+  { time: "2d", title: "OpenAI launches GPT-4.5 with improved reasoning and creativity", tag: "Product" },
+  { time: "3d", title: "Google DeepMind unveils Gemini 2.0 Flash with native tool use", tag: "Research" },
+  { time: "4d", title: "Nvidia reports record Q4 revenue of $39.3B on AI chip demand", tag: "Markets" },
+  { time: "5d", title: "Anthropic ships Claude's extended thinking for complex tasks", tag: "Product" },
+  { time: "6d", title: "Sora officially launches -- OpenAI enters AI video generation", tag: "Product" },
+  { time: "1w", title: "EU AI Act enforcement begins for high-risk systems", tag: "Policy" },
 ];
 
 const focusGroups = [
@@ -333,7 +331,7 @@ function AutoScrollFeed() {
 
   useAnimationFrame(() => {
     setScrollY((prev) => {
-      const newY = prev + 0.5;
+      const newY = prev + 0.15;
       // Reset when scrolled through one set of items
       const itemHeight = 64; // Approximate height of each item
       const totalHeight = feedItems.length * itemHeight;
@@ -619,7 +617,7 @@ export function LandingPage() {
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
                   </span>
                   <ShinyText
-                    text="Free on iOS"
+                    text="Now Enrolling"
                     className="text-xs font-medium uppercase tracking-wider"
                     color="#00d4ff"
                     shineColor="#ffffff"
@@ -642,23 +640,18 @@ export function LandingPage() {
                 </p>
 
                 {/* CTAs */}
-                <div className="flex flex-wrap justify-center gap-3 mb-4">
-                  <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
+                <div className="flex flex-wrap justify-center gap-3 mb-10">
+                  <Link to="/signup">
                     <Button size="lg" className="gap-2 bg-white text-black hover:bg-gray-100 shadow-lg shadow-black/20 border-0">
-                      <img src="/apple-logo.svg" alt="Apple" className="h-5 w-auto" />
-                      Download for iOS
+                      Enter Lab
+                      <ArrowRight className="h-4 w-4" />
                     </Button>
-                  </a>
+                  </Link>
                   <Link to="/services">
                     <Button variant="outline" size="lg" className="gap-2">
                       Explore Services
                       <ArrowRight className="h-4 w-4" />
                     </Button>
-                  </Link>
-                </div>
-                <div className="mb-10">
-                  <Link to="/signup" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                    or <span className="underline underline-offset-4">sign up on web</span>
                   </Link>
                 </div>
 
@@ -821,12 +814,11 @@ export function LandingPage() {
                     <p className="text-xs text-muted-foreground">Live AI news • Updated every hour</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
                   <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
                   </span>
-                  <span className="text-[10px] font-medium text-green-500 uppercase tracking-wider">Live</span>
+                  <span className="text-[10px] font-medium text-amber-400 uppercase tracking-wider">Latest</span>
                 </div>
               </div>
 
@@ -889,7 +881,7 @@ export function LandingPage() {
             className="col-span-12 lg:col-span-4 row-span-2"
           >
             <SpotlightCard
-              className="h-full p-6 overflow-hidden"
+              className="h-full p-6 overflow-hidden flex flex-col"
               spotlightColor="rgba(245, 158, 11, 0.15)"
             >
               <div className="flex items-center gap-3 mb-4">
@@ -898,17 +890,20 @@ export function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-foreground">Office Hours</h3>
-                  <p className="text-xs text-muted-foreground">Weekly live sessions with experts</p>
+                  <p className="text-xs text-muted-foreground">Daily live sessions with experts</p>
                 </div>
               </div>
               {/* GIF Container */}
-              <div className="relative rounded-lg overflow-hidden bg-muted/30 border border-border/50">
+              <div className="relative rounded-lg overflow-hidden bg-muted/30 border border-border/50 flex-1">
                 <img
                   src="https://media.giphy.com/media/Is1O1TWV0LEJi/giphy.gif"
                   alt="Office Hours"
-                  className="w-full h-32 object-cover"
+                  className="w-full h-full object-cover"
                 />
               </div>
+              <p className="text-sm text-muted-foreground mt-4 leading-relaxed">
+                Drop in daily for live Q&A with founders, engineers, and AI practitioners building on the frontier.
+              </p>
             </SpotlightCard>
           </motion.div>
 
@@ -1016,26 +1011,21 @@ export function LandingPage() {
               <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                 <div>
                   <h3 className="text-xl font-bold text-foreground mb-1">Ready to join the frontier?</h3>
-                  <p className="text-muted-foreground">Download the app and start building with us today.</p>
+                  <p className="text-muted-foreground">Join an AI-matched focus group and start building with us today.</p>
                 </div>
-                <div className="flex flex-col items-center md:items-end gap-2">
-                  <div className="flex gap-3">
-                    <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
-                      <Button className="gap-2 bg-white text-black hover:bg-gray-100 shadow-lg shadow-black/20 border-0">
-                        <img src="/apple-logo.svg" alt="Apple" className="h-4 w-auto" />
-                        Get the App
-                      </Button>
-                    </a>
-                    <a href="mailto:team@atlantium.ai">
-                      <Button variant="ghost" className="gap-2">
-                        Contact
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </a>
-                  </div>
-                  <Link to="/signup" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                    or <span className="underline underline-offset-4">sign up on web</span>
+                <div className="flex gap-3">
+                  <Link to="/signup">
+                    <Button className="gap-2 bg-white text-black hover:bg-gray-100 shadow-lg shadow-black/20 border-0">
+                      Enter Lab
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
                   </Link>
+                  <a href="mailto:team@atlantium.ai">
+                    <Button variant="ghost" className="gap-2">
+                      Contact
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </a>
                 </div>
               </div>
             </SpotlightCard>

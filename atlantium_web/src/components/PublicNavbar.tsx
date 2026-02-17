@@ -3,8 +3,6 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import type { ReactNode } from "react";
 
-const APP_STORE_URL =
-  "https://apps.apple.com/us/app/atlantium-the-frontier/id6757367750";
 
 const navLinks = [
   { to: "/mission", label: "Mission" },
@@ -58,12 +56,11 @@ export function PublicNavbar({ center }: PublicNavbarProps) {
               Sign In
             </Button>
           </Link>
-          <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
+          <Link to="/signup">
             <Button size="sm" className="gap-1.5 sm:gap-2 bg-white text-black hover:bg-gray-100 border-0 text-xs sm:text-sm">
-              <img src="/apple-logo.svg" alt="Apple" className="h-4 sm:h-4 w-auto" />
-              Get App
+              Enter Lab
             </Button>
-          </a>
+          </Link>
           <ThemeToggle />
         </div>
       </div>
