@@ -735,8 +735,8 @@ export function LandingPage() {
 
                   {/* Quote */}
                   <blockquote className="text-lg font-medium text-foreground leading-relaxed mb-6">
-                    "The Frontier Feed had me building with Claude Code the day it dropped. While competitors were still copy and pasting,
-                    <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent font-semibold"> I shipped features they couldn't match for months.</span>"
+                    "Being in Atlantium gave me an unfair advantage. I was shipping production features
+                    <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent font-semibold"> twice as fast as my peers</span> -- while they were still figuring out the tools, I was already building with them."
                   </blockquote>
                 </div>
 
@@ -746,19 +746,19 @@ export function LandingPage() {
                   <div className="relative">
                     <div className="absolute inset-0 rounded-full bg-gradient-to-r from-slate-500 to-blue-500 blur-md opacity-50" />
                     <div className="relative h-12 w-12 rounded-full bg-gradient-to-br from-slate-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg ring-2 ring-background">
-                      MR
+                      JK
                     </div>
                   </div>
                   <div>
                     <div className="font-semibold text-foreground flex items-center gap-2">
-                      Marcus Rivera
+                      Jordan Kim
                       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                         <span className="text-[10px] font-medium text-emerald-500">Verified</span>
                       </span>
                     </div>
-                    <div className="text-sm text-muted-foreground">CTO, Synth Labs</div>
-                    <div className="text-xs text-muted-foreground/70">AI-native startup • YC W24</div>
+                    <div className="text-sm text-muted-foreground">Full-Stack Engineer</div>
+                    <div className="text-xs text-muted-foreground/70">Atlantium Member • Early Access</div>
                   </div>
                 </div>
               </SpotlightCard>

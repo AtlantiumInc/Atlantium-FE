@@ -342,7 +342,7 @@ export function ArticleDetailPage() {
                               {index + 1}
                             </span>
                           </span>
-                          <span className="text-sm text-muted-foreground leading-relaxed">
+                          <span className="text-xs text-muted-foreground leading-relaxed">
                             {point}
                           </span>
                         </li>
@@ -383,9 +383,9 @@ export function ArticleDetailPage() {
             </motion.div>
           )}
 
-          {/* Metadata Sidebar - 4 columns */}
+          {/* Metadata Sidebar - 4 columns (or full width if no featured image) */}
           <motion.div
-            className={`col-span-12 ${content.featured_image?.url ? "lg:col-span-4" : "lg:col-span-4 lg:col-start-9"}`}
+            className={`col-span-12 ${content.featured_image?.url ? "lg:col-span-4" : "lg:col-span-12"}`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
