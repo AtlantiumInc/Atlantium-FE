@@ -25,7 +25,7 @@ interface Job {
   posted_at: string | null;
   apply_url: string;
   hiring_cafe_url: string;
-  security_clearance: string | boolean;
+  security_clearance: string;
   visa_sponsorship: boolean;
 }
 
@@ -69,7 +69,7 @@ function JobCard({ job, index }: { job: Job; index: number }) {
   const [expanded, setExpanded] = useState(false);
   const salary = formatSalary(job.salary_min, job.salary_max);
   const commitment = Array.isArray(job.commitment) ? job.commitment[0] : job.commitment;
-  const clearanceRequired = job.security_clearance && job.security_clearance !== "None" && job.security_clearance !== false;
+  const clearanceRequired = job.security_clearance && job.security_clearance !== "None" && job.security_clearance !== "false";
 
   return (
     <motion.div
