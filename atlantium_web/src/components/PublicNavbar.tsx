@@ -9,6 +9,7 @@ const navLinks = [
   { to: "/focus-groups", label: "Focus Groups" },
   { to: "/services", label: "Services" },
   { to: "/index", label: "Newsroom" },
+  { to: "/jobs", label: "Jobs" },
 ];
 
 interface PublicNavbarProps {

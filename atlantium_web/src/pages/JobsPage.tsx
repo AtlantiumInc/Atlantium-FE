@@ -1,0 +1,387 @@
+import { useState, useMemo } from "react";
+import { motion } from "motion/react";
+import { ExternalLink, MapPin, Briefcase, Search, Building2, Clock, ChevronDown, ChevronUp, Cpu } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { PublicNavbar } from "@/components/PublicNavbar";
+import Aurora from "@/components/Aurora";
+import rawJobs from "@/data/jobs.json";
+
+interface Job {
+  id: string;
+  title: string;
+  company: string;
+  company_website: string;
+  company_size: number | null;
+  location: string;
+  workplace_type: string;
+  commitment: string | string[];
+  seniority: string;
+  salary_min: number | null;
+  salary_max: number | null;
+  requirements_summary: string;
+  tech_stack: string[];
+  yoe: number | null;
+  posted_at: string | null;
+  apply_url: string;
+  hiring_cafe_url: string;
+  security_clearance: string | boolean;
+  visa_sponsorship: boolean;
+}
+
+const jobs = rawJobs as Job[];
+
+const WORKPLACE_FILTERS = ["All", "Remote", "Hybrid", "Onsite"];
+const SENIORITY_FILTERS = ["All", "Entry Level", "Mid Level", "Senior Level", "Lead", "Manager"];
+
+function formatSalary(min: number | null, max: number | null): string | null {
+  if (!min && !max) return null;
+  const fmt = (n: number) =>
+    n >= 1000 ? `$${(n / 1000).toFixed(0)}k` : `$${n}`;
+  if (min && max) return `${fmt(min)} – ${fmt(max)}`;
+  if (min) return `${fmt(min)}+`;
+  if (max) return `Up to ${fmt(max)}`;
+  return null;
+}
+
+function formatPostedDate(isoDate: string | null): string {
+  if (!isoDate) return "";
+  const d = new Date(isoDate);
+  const now = new Date();
+  const days = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+}
+
+function getWorkplaceColor(type: string) {
+  switch (type?.toLowerCase()) {
+    case "remote": return "bg-emerald-500/10 border-emerald-500/30 text-emerald-400";
+    case "hybrid": return "bg-violet-500/10 border-violet-500/30 text-violet-400";
+    case "onsite": return "bg-blue-500/10 border-blue-500/30 text-blue-400";
+    default: return "bg-muted/50 border-border/50 text-muted-foreground";
+  }
+}
+
+function JobCard({ job, index }: { job: Job; index: number }) {
+  const [expanded, setExpanded] = useState(false);
+  const salary = formatSalary(job.salary_min, job.salary_max);
+  const commitment = Array.isArray(job.commitment) ? job.commitment[0] : job.commitment;
+  const clearanceRequired = job.security_clearance && job.security_clearance !== "None" && job.security_clearance !== false;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, delay: Math.min(index * 0.04, 0.5) }}
+      className="group rounded-xl border border-border/50 bg-card/40 backdrop-blur-sm hover:border-cyan-500/30 hover:bg-card/60 transition-all duration-200"
+    >
+      <div className="p-5">
+        {/* Top row */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-foreground group-hover:text-cyan-400 transition-colors leading-tight mb-1 truncate">
+              {job.title}
+            </h3>
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Building2 className="h-3.5 w-3.5 flex-shrink-0" />
+              <span className="truncate">{job.company}</span>
+            </div>
+          </div>
+          <a
+            href={job.apply_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Button size="sm" variant="outline" className="gap-1.5 flex-shrink-0 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity">
+              Apply
+              <ExternalLink className="h-3 w-3" />
+            </Button>
+          </a>
+        </div>
+
+        {/* Meta row */}
+        <div className="flex flex-wrap items-center gap-2 mt-3">
+          {job.workplace_type && (
+            <Badge variant="outline" className={`text-[10px] font-medium ${getWorkplaceColor(job.workplace_type)}`}>
+              {job.workplace_type}
+            </Badge>
+          )}
+          {job.seniority && (
+            <Badge variant="outline" className="text-[10px] bg-muted/50 border-border/50 text-muted-foreground">
+              {job.seniority}
+            </Badge>
+          )}
+          {commitment && commitment !== "Full Time" && (
+            <Badge variant="outline" className="text-[10px] bg-amber-500/10 border-amber-500/30 text-amber-400">
+              {commitment}
+            </Badge>
+          )}
+          {clearanceRequired && (
+            <Badge variant="outline" className="text-[10px] bg-orange-500/10 border-orange-500/30 text-orange-400">
+              Clearance Req.
+            </Badge>
+          )}
+          {salary && (
+            <span className="text-xs font-medium text-emerald-400 ml-auto">{salary}</span>
+          )}
+        </div>
+
+        {/* Location & date */}
+        <div className="flex items-center justify-between mt-2.5 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <MapPin className="h-3 w-3" />
+            <span className="truncate max-w-[220px]">{job.location}</span>
+          </div>
+          {job.posted_at && (
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <Clock className="h-3 w-3" />
+              <span>{formatPostedDate(job.posted_at)}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Expand toggle */}
+        <button
+          className="mt-3 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          {expanded ? "Less" : "Details"}
+        </button>
+      </div>
+
+      {/* Expanded details */}
+      {expanded && (
+        <div className="px-5 pb-5 border-t border-border/30 pt-4 space-y-3">
+          {job.requirements_summary && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Requirements</p>
+              <p className="text-sm text-foreground/80 leading-relaxed">{job.requirements_summary}</p>
+            </div>
+          )}
+          {job.tech_stack && job.tech_stack.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Tech Stack</p>
+              <div className="flex flex-wrap gap-1.5">
+                {job.tech_stack.slice(0, 12).map((tool) => (
+                  <span
+                    key={tool}
+                    className="inline-block px-2 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-[10px] font-medium"
+                  >
+                    {tool}
+                  </span>
+                ))}
+                {job.tech_stack.length > 12 && (
+                  <span className="text-[10px] text-muted-foreground self-center">+{job.tech_stack.length - 12} more</span>
+                )}
+              </div>
+            </div>
+          )}
+          <div className="flex flex-wrap gap-4 text-xs text-muted-foreground pt-1">
+            {job.yoe !== null && <span><span className="text-foreground font-medium">{job.yoe}+</span> yrs exp</span>}
+            {job.company_size && <span><span className="text-foreground font-medium">{job.company_size.toLocaleString()}</span> employees</span>}
+            {job.visa_sponsorship && <span className="text-emerald-400">✓ Visa Sponsorship</span>}
+          </div>
+          <div className="flex gap-2 pt-1">
+            <a href={job.apply_url} target="_blank" rel="noopener noreferrer">
+              <Button size="sm" className="gap-1.5 bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30">
+                Apply Now
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            </a>
+            <a href={job.hiring_cafe_url} target="_blank" rel="noopener noreferrer">
+              <Button size="sm" variant="ghost" className="gap-1.5 text-muted-foreground hover:text-foreground text-xs">
+                View on hiring.cafe
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            </a>
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+export function JobsPage() {
+  const [search, setSearch] = useState("");
+  const [workplaceFilter, setWorkplaceFilter] = useState("All");
+  const [seniorityFilter, setSeniorityFilter] = useState("All");
+
+  const filtered = useMemo(() => {
+    return jobs.filter((job) => {
+      const q = search.toLowerCase();
+      const matchesSearch =
+        !q ||
+        job.title.toLowerCase().includes(q) ||
+        job.company.toLowerCase().includes(q) ||
+        job.tech_stack.some((t) => t.toLowerCase().includes(q));
+
+      const matchesWorkplace =
+        workplaceFilter === "All" ||
+        job.workplace_type?.toLowerCase() === workplaceFilter.toLowerCase();
+
+      const matchesSeniority =
+        seniorityFilter === "All" ||
+        job.seniority?.toLowerCase() === seniorityFilter.toLowerCase();
+
+      return matchesSearch && matchesWorkplace && matchesSeniority;
+    });
+  }, [search, workplaceFilter, seniorityFilter]);
+
+  const remoteCount = jobs.filter((j) => j.workplace_type === "Remote").length;
+  const hybridCount = jobs.filter((j) => j.workplace_type === "Hybrid").length;
+
+  return (
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Aurora */}
+      <div className="fixed inset-0 z-0 opacity-20 dark:opacity-30">
+        <Aurora
+          colorStops={["#0ea5e9", "#6366f1", "#334155"]}
+          amplitude={0.7}
+          blend={0.5}
+          speed={0.3}
+        />
+      </div>
+      <div
+        className="fixed inset-0 z-[1] pointer-events-none opacity-[0.02] dark:opacity-[0.04]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+        }}
+      />
+
+      <PublicNavbar />
+
+      <main className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="flex items-center gap-4 mb-4">
+            <div className="h-12 w-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center flex-shrink-0">
+              <Cpu className="h-6 w-6 text-cyan-500" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold">AI Engineering Jobs</h1>
+              <div className="flex items-center gap-1.5 mt-0.5 text-sm text-muted-foreground">
+                <MapPin className="h-3.5 w-3.5" />
+                <span>Atlanta, GA · 50 mile radius</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+            <span><span className="text-foreground font-semibold">{jobs.length}</span> open roles</span>
+            <span><span className="text-emerald-400 font-semibold">{remoteCount}</span> remote</span>
+            <span><span className="text-violet-400 font-semibold">{hybridCount}</span> hybrid</span>
+            <span className="text-xs self-center opacity-60">via hiring.cafe · updated Feb 2026</span>
+          </div>
+        </motion.div>
+
+        {/* Filters */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="flex flex-col sm:flex-row gap-3 mb-6"
+        >
+          {/* Search */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search title, company, or tech..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 rounded-lg bg-card/60 border border-border/60 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all"
+            />
+          </div>
+
+          {/* Workplace filter */}
+          <div className="flex gap-1.5 flex-wrap">
+            {WORKPLACE_FILTERS.map((f) => (
+              <button
+                key={f}
+                onClick={() => setWorkplaceFilter(f)}
+                className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
+                  workplaceFilter === f
+                    ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-300"
+                    : "bg-card/40 border-border/50 text-muted-foreground hover:border-border hover:text-foreground"
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Seniority filter */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.15 }}
+          className="flex gap-1.5 flex-wrap mb-6"
+        >
+          {SENIORITY_FILTERS.map((f) => (
+            <button
+              key={f}
+              onClick={() => setSeniorityFilter(f)}
+              className={`px-2.5 py-1 rounded-md text-[10px] font-medium border transition-all ${
+                seniorityFilter === f
+                  ? "bg-violet-500/20 border-violet-500/40 text-violet-300"
+                  : "bg-card/40 border-border/40 text-muted-foreground hover:border-border hover:text-foreground"
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </motion.div>
+
+        {/* Results count */}
+        {(search || workplaceFilter !== "All" || seniorityFilter !== "All") && (
+          <p className="text-xs text-muted-foreground mb-4">
+            {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+            {search && ` for "${search}"`}
+          </p>
+        )}
+
+        {/* Job list */}
+        <div className="space-y-3">
+          {filtered.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground">
+              <Briefcase className="h-10 w-10 mx-auto mb-3 opacity-30" />
+              <p>No jobs match your filters.</p>
+              <button
+                className="mt-2 text-sm text-cyan-400 hover:underline"
+                onClick={() => { setSearch(""); setWorkplaceFilter("All"); setSeniorityFilter("All"); }}
+              >
+                Clear filters
+              </button>
+            </div>
+          ) : (
+            filtered.map((job, i) => <JobCard key={job.id} job={job} index={i} />)
+          )}
+        </div>
+
+        {/* Footer attribution */}
+        <div className="mt-10 pt-6 border-t border-border/30 flex items-center justify-between text-xs text-muted-foreground">
+          <span>Jobs sourced from hiring.cafe · Atlanta, GA · 50mi radius</span>
+          <a
+            href="https://hiring.cafe/?searchState=%7B%22locations%22%3A%5B%7B%22id%22%3A%22xhk1yZQBoEtHp_8Ur67o%22%2C%22types%22%3A%5B%22locality%22%5D%2C%22address_components%22%3A%5B%7B%22long_name%22%3A%22Atlanta%22%2C%22short_name%22%3A%22Atlanta%22%2C%22types%22%3A%5B%22locality%22%5D%7D%2C%7B%22long_name%22%3A%22Georgia%22%2C%22short_name%22%3A%22GA%22%2C%22types%22%3A%5B%22administrative_area_level_1%22%5D%7D%2C%7B%22long_name%22%3A%22United+States%22%2C%22short_name%22%3A%22US%22%2C%22types%22%3A%5B%22country%22%5D%7D%5D%2C%22geometry%22%3A%7B%22location%22%3A%7B%22lat%22%3A33.749%2C%22lon%22%3A-84.38798%7D%7D%2C%22formatted_address%22%3A%22Atlanta%2C+GA%2C+US%22%2C%22population%22%3A463878%2C%22workplace_types%22%3A%5B%5D%2C%22options%22%3A%7B%22radius%22%3A50%2C%22radius_unit%22%3A%22miles%22%2C%22ignore_radius%22%3Afalse%7D%7D%5D%2C%22searchQuery%22%3A%22ai+engineer%22%7D"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 hover:text-foreground transition-colors"
+          >
+            View on hiring.cafe <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+      </main>
+    </div>
+  );
+}

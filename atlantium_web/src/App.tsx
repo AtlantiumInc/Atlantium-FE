@@ -35,6 +35,7 @@ import { PublicGroupPage } from "@/pages/PublicGroupPage";
 import { ArticleDetailPage } from "@/pages/ArticleDetailPage";
 import { InvitePage } from "@/pages/InvitePage";
 import { IndexPage } from "@/pages/IndexPage";
+import { JobsPage } from "@/pages/JobsPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient({
@@ -73,6 +74,7 @@ function AppRoutes() {
       <Route path="/groups/:slug" element={<PublicGroupPage />} />
       <Route path="/invite/:token" element={<InvitePage />} />
       <Route path="/index" element={<IndexPage />} />
+      <Route path="/jobs" element={<JobsPage />} />
       <Route path="/index/:slug" element={<ArticleDetailPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/policies" element={<TermsPage />} />
