@@ -10,6 +10,7 @@ const navLinks = [
   { to: "/services", label: "Services" },
   { to: "/index", label: "Newsroom" },
   { to: "/jobs", label: "Jobs" },
+  { to: "/training", label: "Training" },
 ];
 
 interface PublicNavbarProps {
