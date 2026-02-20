@@ -1,9 +1,11 @@
 import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "motion/react";
-import { ExternalLink, MapPin, Briefcase, Search, Building2, Clock, ChevronDown, ChevronUp, Cpu } from "lucide-react";
+import { ExternalLink, MapPin, Briefcase, Search, Building2, Clock, ChevronDown, ChevronUp, Cpu, GraduationCap, Bell, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PublicNavbar } from "@/components/PublicNavbar";
+import SpotlightCard from "@/components/ui/SpotlightCard";
 import Aurora from "@/components/Aurora";
 import rawJobs from "@/data/jobs.json";
 
@@ -206,6 +208,94 @@ function JobCard({ job, index }: { job: Job; index: number }) {
   );
 }
 
+// ── Sidebar Cards ────────────────────────────────────────────────────────────
+function TrainingCard() {
+  return (
+    <SpotlightCard className="p-5" spotlightColor="rgba(99, 102, 241, 0.15)">
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className="h-9 w-9 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
+          <GraduationCap className="h-4.5 w-4.5 h-[18px] w-[18px] text-violet-400" />
+        </div>
+        <div>
+          <p className="text-[10px] font-bold text-violet-400 uppercase tracking-widest">Atlantium</p>
+          <h3 className="font-semibold text-foreground text-sm leading-tight">AI Engineer Training</h3>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground leading-relaxed mb-4">
+        Not ready to apply yet? Our 4-week hands-on program teaches you to build enterprise apps, refactor legacy systems, and land a role — with daily office hours and warm introductions.
+      </p>
+      <div className="space-y-1.5 mb-4">
+        {["4 weeks, fully hands-on", "Daily office hours", "Portfolio + introductions"].map((item) => (
+          <div key={item} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <CheckCircle2 className="h-3 w-3 text-violet-400 flex-shrink-0" />
+            {item}
+          </div>
+        ))}
+      </div>
+      <Link to="/training">
+        <Button size="sm" className="w-full gap-2 bg-violet-500/20 border border-violet-500/40 text-violet-300 hover:bg-violet-500/30">
+          Learn More
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Button>
+      </Link>
+    </SpotlightCard>
+  );
+}
+
+function JobAlertsCard() {
+  const [email, setEmail] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    // TODO: wire to backend
+    setSubmitted(true);
+  };
+
+  return (
+    <SpotlightCard className="p-5" spotlightColor="rgba(14, 165, 233, 0.12)">
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className="h-9 w-9 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center flex-shrink-0">
+          <Bell className="h-[18px] w-[18px] text-cyan-400" />
+        </div>
+        <div>
+          <p className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest">Job Alerts</p>
+          <h3 className="font-semibold text-foreground text-sm leading-tight">New Roles, Weekly</h3>
+        </div>
+      </div>
+
+      {submitted ? (
+        <div className="flex flex-col items-center gap-2 py-3 text-center">
+          <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+          <p className="text-sm font-medium text-foreground">You're on the list!</p>
+          <p className="text-xs text-muted-foreground">We'll email you when new AI roles drop in Atlanta.</p>
+        </div>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground leading-relaxed mb-4">
+            Get notified when new AI engineering jobs are posted in Atlanta.
+          </p>
+          <form onSubmit={handleSubmit} className="space-y-2">
+            <input
+              type="email"
+              placeholder="your@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full px-3 py-2 rounded-lg bg-background/60 border border-border/60 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all"
+            />
+            <Button type="submit" size="sm" className="w-full gap-2 bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30">
+              <Bell className="h-3.5 w-3.5" />
+              Notify Me
+            </Button>
+          </form>
+        </>
+      )}
+    </SpotlightCard>
+  );
+}
+
 export function JobsPage() {
   const [search, setSearch] = useState("");
   const [workplaceFilter, setWorkplaceFilter] = useState("All");
@@ -255,7 +345,7 @@ export function JobsPage() {
 
       <PublicNavbar />
 
-      <main className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-8">
+      <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -351,35 +441,44 @@ export function JobsPage() {
           </p>
         )}
 
-        {/* Job list */}
-        <div className="space-y-3">
-          {filtered.length === 0 ? (
-            <div className="text-center py-16 text-muted-foreground">
-              <Briefcase className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p>No jobs match your filters.</p>
-              <button
-                className="mt-2 text-sm text-cyan-400 hover:underline"
-                onClick={() => { setSearch(""); setWorkplaceFilter("All"); setSeniorityFilter("All"); }}
-              >
-                Clear filters
-              </button>
-            </div>
-          ) : (
-            filtered.map((job, i) => <JobCard key={job.id} job={job} index={i} />)
-          )}
-        </div>
+        {/* Two-column layout: job list + sidebar */}
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
+          {/* Job list */}
+          <div className="flex-1 min-w-0 space-y-3">
+            {filtered.length === 0 ? (
+              <div className="text-center py-16 text-muted-foreground">
+                <Briefcase className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <p>No jobs match your filters.</p>
+                <button
+                  className="mt-2 text-sm text-cyan-400 hover:underline"
+                  onClick={() => { setSearch(""); setWorkplaceFilter("All"); setSeniorityFilter("All"); }}
+                >
+                  Clear filters
+                </button>
+              </div>
+            ) : (
+              filtered.map((job, i) => <JobCard key={job.id} job={job} index={i} />)
+            )}
 
-        {/* Footer attribution */}
-        <div className="mt-10 pt-6 border-t border-border/30 flex items-center justify-between text-xs text-muted-foreground">
-          <span>Jobs sourced from hiring.cafe · Atlanta, GA · 50mi radius</span>
-          <a
-            href="https://hiring.cafe/?searchState=%7B%22locations%22%3A%5B%7B%22id%22%3A%22xhk1yZQBoEtHp_8Ur67o%22%2C%22types%22%3A%5B%22locality%22%5D%2C%22address_components%22%3A%5B%7B%22long_name%22%3A%22Atlanta%22%2C%22short_name%22%3A%22Atlanta%22%2C%22types%22%3A%5B%22locality%22%5D%7D%2C%7B%22long_name%22%3A%22Georgia%22%2C%22short_name%22%3A%22GA%22%2C%22types%22%3A%5B%22administrative_area_level_1%22%5D%7D%2C%7B%22long_name%22%3A%22United+States%22%2C%22short_name%22%3A%22US%22%2C%22types%22%3A%5B%22country%22%5D%7D%5D%2C%22geometry%22%3A%7B%22location%22%3A%7B%22lat%22%3A33.749%2C%22lon%22%3A-84.38798%7D%7D%2C%22formatted_address%22%3A%22Atlanta%2C+GA%2C+US%22%2C%22population%22%3A463878%2C%22workplace_types%22%3A%5B%5D%2C%22options%22%3A%7B%22radius%22%3A50%2C%22radius_unit%22%3A%22miles%22%2C%22ignore_radius%22%3Afalse%7D%7D%5D%2C%22searchQuery%22%3A%22ai+engineer%22%7D"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 hover:text-foreground transition-colors"
-          >
-            View on hiring.cafe <ExternalLink className="h-3 w-3" />
-          </a>
+            {/* Footer attribution */}
+            <div className="mt-6 pt-6 border-t border-border/30 flex items-center justify-between text-xs text-muted-foreground">
+              <span>Jobs sourced from hiring.cafe · Atlanta, GA · 50mi radius</span>
+              <a
+                href="https://hiring.cafe/?searchState=%7B%22locations%22%3A%5B%7B%22id%22%3A%22xhk1yZQBoEtHp_8Ur67o%22%2C%22types%22%3A%5B%22locality%22%5D%2C%22address_components%22%3A%5B%7B%22long_name%22%3A%22Atlanta%22%2C%22short_name%22%3A%22Atlanta%22%2C%22types%22%3A%5B%22locality%22%5D%7D%2C%7B%22long_name%22%3A%22Georgia%22%2C%22short_name%22%3A%22GA%22%2C%22types%22%3A%5B%22administrative_area_level_1%22%5D%7D%2C%7B%22long_name%22%3A%22United+States%22%2C%22short_name%22%3A%22US%22%2C%22types%22%3A%5B%22country%22%5D%7D%5D%2C%22geometry%22%3A%7B%22location%22%3A%7B%22lat%22%3A33.749%2C%22lon%22%3A-84.38798%7D%7D%2C%22formatted_address%22%3A%22Atlanta%2C+GA%2C+US%22%2C%22population%22%3A463878%2C%22workplace_types%22%3A%5B%5D%2C%22options%22%3A%7B%22radius%22%3A50%2C%22radius_unit%22%3A%22miles%22%2C%22ignore_radius%22%3Afalse%7D%7D%5D%2C%22searchQuery%22%3A%22ai+engineer%22%7D"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 hover:text-foreground transition-colors"
+              >
+                View on hiring.cafe <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="w-full lg:w-72 xl:w-80 flex-shrink-0 space-y-4 lg:sticky lg:top-24">
+            <TrainingCard />
+            <JobAlertsCard />
+          </div>
         </div>
       </main>
     </div>
