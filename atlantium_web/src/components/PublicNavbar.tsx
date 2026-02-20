@@ -60,7 +60,7 @@ export function PublicNavbar({ center }: PublicNavbarProps) {
           </Link>
           <Link to="/signup">
             <Button size="sm" className="gap-1.5 sm:gap-2 bg-white text-black hover:bg-gray-100 border-0 text-xs sm:text-sm">
-              Enter Lab
+              Join Lab
             </Button>
           </Link>
           <ThemeToggle />
