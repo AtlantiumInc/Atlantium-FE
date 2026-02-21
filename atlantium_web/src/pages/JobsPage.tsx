@@ -158,45 +158,45 @@ function JobCard({ job, index }: { job: Job; index: number }) {
 
       {/* Expanded details */}
       {expanded && (
-        <div className="px-5 pb-5 border-t border-border/30 pt-4 space-y-3">
+        <div className="px-3 sm:px-5 pb-3 sm:pb-5 border-t border-border/30 pt-3 sm:pt-4 space-y-2 sm:space-y-3">
           {job.requirements_summary && (
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Requirements</p>
-              <p className="text-sm text-foreground/80 leading-relaxed">{job.requirements_summary}</p>
+              <p className="text-[11px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Requirements</p>
+              <p className="text-xs sm:text-sm text-foreground/80 leading-relaxed">{job.requirements_summary}</p>
             </div>
           )}
           {job.tech_stack && job.tech_stack.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Tech Stack</p>
-              <div className="flex flex-wrap gap-1.5">
+              <p className="text-[11px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Tech Stack</p>
+              <div className="flex flex-wrap gap-1">
                 {job.tech_stack.slice(0, 12).map((tool) => (
                   <span
                     key={tool}
-                    className="inline-block px-2 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-[10px] font-medium"
+                    className="inline-block px-1.5 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-[9px] sm:text-[10px] font-medium whitespace-nowrap"
                   >
                     {tool}
                   </span>
                 ))}
                 {job.tech_stack.length > 12 && (
-                  <span className="text-[10px] text-muted-foreground self-center">+{job.tech_stack.length - 12} more</span>
+                  <span className="text-[9px] sm:text-[10px] text-muted-foreground self-center">+{job.tech_stack.length - 12} more</span>
                 )}
               </div>
             </div>
           )}
-          <div className="flex flex-wrap gap-4 text-xs text-muted-foreground pt-1">
+          <div className="flex flex-wrap gap-2 sm:gap-4 text-xs text-muted-foreground pt-1">
             {job.yoe !== null && <span><span className="text-foreground font-medium">{job.yoe}+</span> yrs exp</span>}
             {job.company_size && <span><span className="text-foreground font-medium">{job.company_size.toLocaleString()}</span> employees</span>}
             {job.visa_sponsorship && <span className="text-emerald-400">✓ Visa Sponsorship</span>}
           </div>
-          <div className="flex gap-2 pt-1">
-            <a href={job.apply_url} target="_blank" rel="noopener noreferrer">
-              <Button size="sm" className="gap-1.5 bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30">
+          <div className="flex flex-col sm:flex-row gap-2 pt-1">
+            <a href={job.apply_url} target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none">
+              <Button size="sm" className="gap-1.5 w-full sm:w-auto bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30 text-xs sm:text-sm h-8 sm:h-9">
                 Apply Now
                 <ExternalLink className="h-3 w-3" />
               </Button>
             </a>
-            <a href={job.hiring_cafe_url} target="_blank" rel="noopener noreferrer">
-              <Button size="sm" variant="ghost" className="gap-1.5 text-muted-foreground hover:text-foreground text-xs">
+            <a href={job.hiring_cafe_url} target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none">
+              <Button size="sm" variant="ghost" className="gap-1.5 w-full sm:w-auto text-muted-foreground hover:text-foreground text-xs h-8 sm:h-9">
                 View on hiring.cafe
                 <ExternalLink className="h-3 w-3" />
               </Button>
