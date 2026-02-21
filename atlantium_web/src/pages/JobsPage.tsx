@@ -80,15 +80,15 @@ function JobCard({ job, index }: { job: Job; index: number }) {
       transition={{ duration: 0.35, delay: Math.min(index * 0.04, 0.5) }}
       className="group rounded-xl border border-border/50 bg-card/40 backdrop-blur-sm hover:border-cyan-500/30 hover:bg-card/60 transition-all duration-200"
     >
-      <div className="p-5">
+      <div className="p-3 sm:p-5">
         {/* Top row */}
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-2 sm:gap-3">
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-foreground group-hover:text-cyan-400 transition-colors leading-tight mb-1 truncate">
+            <h3 className="font-semibold text-foreground group-hover:text-cyan-400 transition-colors leading-tight mb-1 text-sm sm:text-base truncate">
               {job.title}
             </h3>
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Building2 className="h-3.5 w-3.5 flex-shrink-0" />
+            <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
+              <Building2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0" />
               <span className="truncate">{job.company}</span>
             </div>
           </div>
@@ -98,7 +98,7 @@ function JobCard({ job, index }: { job: Job; index: number }) {
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
           >
-            <Button size="sm" variant="outline" className="gap-1.5 flex-shrink-0 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+            <Button size="sm" variant="outline" className="gap-1.5 flex-shrink-0 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 md:opacity-0 md:group-hover:opacity-100 transition-opacity h-8 text-xs sm:h-9 sm:text-sm">
               Apply
               <ExternalLink className="h-3 w-3" />
             </Button>
@@ -106,24 +106,24 @@ function JobCard({ job, index }: { job: Job; index: number }) {
         </div>
 
         {/* Meta row */}
-        <div className="flex flex-wrap items-center gap-2 mt-3">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2 sm:mt-3">
           {job.workplace_type && (
-            <Badge variant="outline" className={`text-[10px] font-medium ${getWorkplaceColor(job.workplace_type)}`}>
+            <Badge variant="outline" className={`text-[9px] sm:text-[10px] font-medium px-2 py-0.5 ${getWorkplaceColor(job.workplace_type)}`}>
               {job.workplace_type}
             </Badge>
           )}
           {job.seniority && (
-            <Badge variant="outline" className="text-[10px] bg-muted/50 border-border/50 text-muted-foreground">
+            <Badge variant="outline" className="text-[9px] sm:text-[10px] bg-muted/50 border-border/50 text-muted-foreground px-2 py-0.5">
               {job.seniority}
             </Badge>
           )}
           {commitment && commitment !== "Full Time" && (
-            <Badge variant="outline" className="text-[10px] bg-amber-500/10 border-amber-500/30 text-amber-400">
+            <Badge variant="outline" className="text-[9px] sm:text-[10px] bg-amber-500/10 border-amber-500/30 text-amber-400 px-2 py-0.5">
               {commitment}
             </Badge>
           )}
           {clearanceRequired && (
-            <Badge variant="outline" className="text-[10px] bg-orange-500/10 border-orange-500/30 text-orange-400">
+            <Badge variant="outline" className="text-[9px] sm:text-[10px] bg-orange-500/10 border-orange-500/30 text-orange-400 px-2 py-0.5">
               Clearance Req.
             </Badge>
           )}
@@ -133,10 +133,10 @@ function JobCard({ job, index }: { job: Job; index: number }) {
         </div>
 
         {/* Location & date */}
-        <div className="flex items-center justify-between mt-2.5 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <MapPin className="h-3 w-3" />
-            <span className="truncate max-w-[220px]">{job.location}</span>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 mt-2 sm:mt-2.5 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1 truncate">
+            <MapPin className="h-3 w-3 flex-shrink-0" />
+            <span className="truncate">{job.location}</span>
           </div>
           {job.posted_at && (
             <div className="flex items-center gap-1 flex-shrink-0">
@@ -442,7 +442,7 @@ export function JobsPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.15 }}
-          className="flex gap-1.5 flex-wrap mb-6"
+          className="hidden sm:flex gap-1.5 flex-wrap mb-6"
         >
           {SENIORITY_FILTERS.map((f) => (
             <button
