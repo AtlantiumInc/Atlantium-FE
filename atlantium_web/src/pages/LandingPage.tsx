@@ -138,64 +138,6 @@ const focusGroups = [
 ];
 
 
-function LatestArticleBanner() {
-  const [article, setArticle] = useState<Article | null>(null);
-
-  useEffect(() => {
-    fetch(ARTICLES_API_URL)
-      .then((res) => {
-        if (!res.ok) throw new Error("Not found");
-        return res.json();
-      })
-      .then((data: Article[]) => {
-        if (data && data.length > 0) {
-          const valid = data.filter(a => a.content != null);
-          const sorted = [...valid].sort((a, b) => b.created_at - a.created_at);
-          if (sorted.length > 0) setArticle(sorted[0]);
-        }
-      })
-      .catch(() => {
-        // Fallback will show automatically when article is null
-      });
-  }, []);
-
-  const timeAgo = (timestamp: number) => {
-    const now = Date.now();
-    const diff = now - timestamp;
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(hours / 24);
-    if (days > 0) return `${days}d ago`;
-    if (hours > 0) return `${hours}h ago`;
-    return "Just now";
-  };
-
-  return (
-    <Link
-      to={article?.slug ? `/index/${article.slug}` : "/index"}
-      className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/20 hover:border-amber-500/40 transition-all group max-w-md"
-    >
-      {/* Blinking indicator */}
-      <span className="relative flex h-2 w-2 flex-shrink-0">
-        <span className="absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75 animate-ping" />
-        <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
-      </span>
-      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500 flex-shrink-0">
-        {article ? "Latest" : "New"}
-      </span>
-      <span className="text-xs text-foreground font-medium truncate group-hover:text-amber-500 transition-colors">
-        {article ? article.content.title : "Explore Atlantium Index"}
-      </span>
-      {article && (
-        <span className="text-[10px] text-muted-foreground whitespace-nowrap flex-shrink-0">
-          {timeAgo(article.created_at)}
-        </span>
-      )}
-      <ArrowRight className="h-3 w-3 text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-    </Link>
-  );
-}
-
-
 function EventsMarquee() {
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
