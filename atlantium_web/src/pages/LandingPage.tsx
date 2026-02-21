@@ -30,9 +30,6 @@ import { useRef, useState, useEffect } from "react";
 const EVENTS_API_URL =
   "https://cloud.atlantium.ai/api:-ulnKZsX/events/public";
 
-const ARTICLES_API_URL =
-  "https://cloud.atlantium.ai/api:-ulnKZsX/frontier/public";
-
 interface Event {
   id: string;
   title: string;
@@ -43,18 +40,6 @@ interface Event {
   location: string;
   featured_image: string;
   going_count: number;
-}
-
-interface Article {
-  id: number;
-  slug: string;
-  created_at: number;
-  content: {
-    title: string;
-    body: string;
-    tldr?: string[];
-    tags?: string[];
-  };
 }
 
 const feedItems = [
