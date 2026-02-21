@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import SpotlightCard from "@/components/ui/SpotlightCard";
+import ShinyText from "@/components/ui/ShinyText";
 import Aurora from "@/components/Aurora";
 import { api, type JobPosting } from "@/lib/api";
 
@@ -59,6 +60,20 @@ function getWorkplaceColor(type?: string) {
 function TrainingCard() {
   return (
     <SpotlightCard className="p-5" spotlightColor="rgba(99, 102, 241, 0.15)">
+      {/* Now Enrolling pill */}
+      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 mb-3">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-400" />
+        </span>
+        <ShinyText
+          text="Now Enrolling"
+          className="text-[10px] font-medium uppercase tracking-wider"
+          color="#a78bfa"
+          shineColor="#ffffff"
+          speed={3}
+        />
+      </div>
       <div className="flex items-center gap-2.5 mb-3">
         <div className="h-9 w-9 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
           <GraduationCap className="h-[18px] w-[18px] text-violet-400" />
