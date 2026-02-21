@@ -20,6 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import SpotlightCard from "@/components/ui/SpotlightCard";
 import ShinyText from "@/components/ui/ShinyText";
 import Aurora from "@/components/Aurora";
+import { PublicNavbar } from "@/components/PublicNavbar";
 import { api, type FrontierArticle } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -202,41 +203,7 @@ export function ArticleDetailPage() {
         />
       </div>
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              <span className="text-xl font-bold">Atlantium</span>
-            </Link>
-            <span className="text-muted-foreground">/</span>
-            <span className="text-sm text-muted-foreground font-mono">INDEX</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link to="/index">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                News
-              </Button>
-            </Link>
-            <Button variant="ghost" size="icon" onClick={handleShare}>
-              <Share2 className="h-4 w-4" />
-            </Button>
-            {isAuthenticated ? (
-              <Link to="/dashboard">
-                <Button variant="outline" size="sm">
-                  Dashboard
-                </Button>
-              </Link>
-            ) : (
-              <Link to="/login">
-                <Button variant="outline" size="sm">
-                  Sign in
-                </Button>
-              </Link>
-            )}
-          </div>
-        </div>
-      </header>
+      <PublicNavbar />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 relative z-10">
