@@ -15,7 +15,6 @@ import {
   ShieldCheck,
   Plane,
   GraduationCap,
-  Bell,
   CheckCircle2,
   ArrowRight,
   X,
@@ -90,57 +89,6 @@ function TrainingCard() {
   );
 }
 
-function JobAlertsCard() {
-  const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-    setSubmitted(true);
-  };
-
-  return (
-    <SpotlightCard className="p-5" spotlightColor="rgba(14, 165, 233, 0.12)">
-      <div className="flex items-center gap-2.5 mb-3">
-        <div className="h-9 w-9 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center flex-shrink-0">
-          <Bell className="h-[18px] w-[18px] text-cyan-400" />
-        </div>
-        <div>
-          <p className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest">Job Alerts</p>
-          <h3 className="font-semibold text-foreground text-sm leading-tight">New Roles, Weekly</h3>
-        </div>
-      </div>
-      {submitted ? (
-        <div className="flex flex-col items-center gap-2 py-3 text-center">
-          <CheckCircle2 className="h-8 w-8 text-emerald-400" />
-          <p className="text-sm font-medium text-foreground">You're on the list!</p>
-          <p className="text-xs text-muted-foreground">We'll email you when new AI roles drop in Atlanta.</p>
-        </div>
-      ) : (
-        <>
-          <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-            Get notified when new AI engineering jobs are posted in Atlanta.
-          </p>
-          <form onSubmit={handleSubmit} className="space-y-2">
-            <input
-              type="email"
-              placeholder="your@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-3 py-2 rounded-lg bg-background/60 border border-border/60 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all"
-            />
-            <Button type="submit" size="sm" className="w-full gap-2 bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30">
-              <Bell className="h-3.5 w-3.5" />
-              Notify Me
-            </Button>
-          </form>
-        </>
-      )}
-    </SpotlightCard>
-  );
-}
 
 export function JobDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -367,7 +315,6 @@ export function JobDetailPage() {
               {/* Right: sidebar */}
               <div className="w-full lg:w-64 xl:w-72 flex-shrink-0 space-y-4 lg:sticky lg:top-24">
                 <div className="hidden lg:block"><TrainingCard /></div>
-                <div className="hidden lg:block"><JobAlertsCard /></div>
                 <div className="rounded-xl border border-border/50 bg-card/40 backdrop-blur-sm p-5">
                   <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
                     Details
