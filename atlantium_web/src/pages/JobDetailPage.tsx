@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   ExternalLink,
   MapPin,
@@ -15,10 +15,15 @@ import {
   ShieldCheck,
   Plane,
   GraduationCap,
+  Bell,
+  CheckCircle2,
+  ArrowRight,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PublicNavbar } from "@/components/PublicNavbar";
+import SpotlightCard from "@/components/ui/SpotlightCard";
 import Aurora from "@/components/Aurora";
 import { api, type JobPosting } from "@/lib/api";
 
@@ -52,11 +57,103 @@ function getWorkplaceColor(type?: string) {
   }
 }
 
+function TrainingCard() {
+  return (
+    <SpotlightCard className="p-5" spotlightColor="rgba(99, 102, 241, 0.15)">
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className="h-9 w-9 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
+          <GraduationCap className="h-[18px] w-[18px] text-violet-400" />
+        </div>
+        <div>
+          <p className="text-[10px] font-bold text-violet-400 uppercase tracking-widest">Atlantium</p>
+          <h3 className="font-semibold text-foreground text-sm leading-tight">AI Engineer Training</h3>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground leading-relaxed mb-4">
+        Not ready to apply yet? Our 4-week hands-on program teaches you to build enterprise apps, refactor legacy systems, and land a role — with daily office hours and warm introductions.
+      </p>
+      <div className="space-y-1.5 mb-4">
+        {["4 weeks, fully hands-on", "Daily office hours", "Portfolio + introductions"].map((item) => (
+          <div key={item} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <CheckCircle2 className="h-3 w-3 text-violet-400 flex-shrink-0" />
+            {item}
+          </div>
+        ))}
+      </div>
+      <Link to="/training">
+        <Button size="sm" className="w-full gap-2 bg-violet-500/20 border border-violet-500/40 text-violet-300 hover:bg-violet-500/30">
+          Learn More
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Button>
+      </Link>
+    </SpotlightCard>
+  );
+}
+
+function JobAlertsCard() {
+  const [email, setEmail] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setSubmitted(true);
+  };
+
+  return (
+    <SpotlightCard className="p-5" spotlightColor="rgba(14, 165, 233, 0.12)">
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className="h-9 w-9 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center flex-shrink-0">
+          <Bell className="h-[18px] w-[18px] text-cyan-400" />
+        </div>
+        <div>
+          <p className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest">Job Alerts</p>
+          <h3 className="font-semibold text-foreground text-sm leading-tight">New Roles, Weekly</h3>
+        </div>
+      </div>
+      {submitted ? (
+        <div className="flex flex-col items-center gap-2 py-3 text-center">
+          <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+          <p className="text-sm font-medium text-foreground">You're on the list!</p>
+          <p className="text-xs text-muted-foreground">We'll email you when new AI roles drop in Atlanta.</p>
+        </div>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground leading-relaxed mb-4">
+            Get notified when new AI engineering jobs are posted in Atlanta.
+          </p>
+          <form onSubmit={handleSubmit} className="space-y-2">
+            <input
+              type="email"
+              placeholder="your@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full px-3 py-2 rounded-lg bg-background/60 border border-border/60 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all"
+            />
+            <Button type="submit" size="sm" className="w-full gap-2 bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30">
+              <Bell className="h-3.5 w-3.5" />
+              Notify Me
+            </Button>
+          </form>
+        </>
+      )}
+    </SpotlightCard>
+  );
+}
+
 export function JobDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const [job, setJob] = useState<JobPosting | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [bannerVisible, setBannerVisible] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setBannerVisible(true), 3000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!slug) return;
@@ -98,7 +195,7 @@ export function JobDetailPage() {
 
       <PublicNavbar />
 
-      <main className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-8 w-full">
+      <main className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-8 w-full pb-40 lg:pb-8">
         {/* Back link */}
         <Link
           to="/jobs"
@@ -268,7 +365,9 @@ export function JobDetailPage() {
               </div>
 
               {/* Right: sidebar */}
-              <div className="w-full lg:w-64 xl:w-72 flex-shrink-0 space-y-4">
+              <div className="w-full lg:w-64 xl:w-72 flex-shrink-0 space-y-4 lg:sticky lg:top-24">
+                <div className="hidden lg:block"><TrainingCard /></div>
+                <div className="hidden lg:block"><JobAlertsCard /></div>
                 <div className="rounded-xl border border-border/50 bg-card/40 backdrop-blur-sm p-5">
                   <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
                     Details
@@ -348,6 +447,47 @@ export function JobDetailPage() {
             </div>
           </motion.div>
         )}
+
+        {/* Mobile sticky training banner — appears after 3s, dismissible */}
+        <AnimatePresence>
+          {bannerVisible && !bannerDismissed && (
+            <motion.div
+              initial={{ y: 80, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 80, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="fixed bottom-0 left-0 right-0 z-40 lg:hidden p-3 bg-background/80 backdrop-blur-xl border-t border-border/30"
+            >
+              <SpotlightCard className="p-3" spotlightColor="rgba(99, 102, 241, 0.15)">
+                <div className="flex items-start gap-2">
+                  <div className="h-7 w-7 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
+                    <GraduationCap className="h-4 w-4 text-violet-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[9px] font-bold text-violet-400 uppercase tracking-widest">Training Program</p>
+                    <h3 className="font-semibold text-foreground text-xs leading-tight">4-Week AI Engineering</h3>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed mt-1 mb-2">
+                      Build enterprise apps, refactor legacy code, land a role — with daily office hours.
+                    </p>
+                    <Link to="/training" className="block">
+                      <Button size="sm" className="w-full gap-1.5 bg-violet-500/20 border border-violet-500/40 text-violet-300 hover:bg-violet-500/30 h-8 text-xs">
+                        Learn More
+                        <ArrowRight className="h-3 w-3" />
+                      </Button>
+                    </Link>
+                  </div>
+                  <button
+                    onClick={() => setBannerDismissed(true)}
+                    className="flex-shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
+                    aria-label="Dismiss"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </SpotlightCard>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );
