@@ -1,37 +1,39 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
-import { ExternalLink, MapPin, Briefcase, Search, Building2, Clock, ChevronDown, ChevronUp, Cpu, GraduationCap, Bell, ArrowRight, CheckCircle2 } from "lucide-react";
+import { ExternalLink, MapPin, Briefcase, Search, Building2, Clock, ChevronDown, ChevronUp, Cpu, GraduationCap, Bell, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import SpotlightCard from "@/components/ui/SpotlightCard";
 import Aurora from "@/components/Aurora";
-import rawJobs from "@/data/jobs.json";
+import { api, type JobPosting } from "@/lib/api";
 
-interface Job {
-  id: string;
-  title: string;
-  company: string;
-  company_website: string;
-  company_size: number | null;
-  location: string;
-  workplace_type: string;
-  commitment: string | string[];
-  seniority: string;
-  salary_min: number | null;
-  salary_max: number | null;
-  requirements_summary: string;
-  tech_stack: string[];
-  yoe: number | null;
-  posted_at: string | null;
-  apply_url: string;
-  hiring_cafe_url: string;
-  security_clearance: string;
-  visa_sponsorship: boolean;
+type Job = JobPosting & {
+  // convenience aliases derived from content
+  requirements_summary?: string;
+  tech_stack?: string[];
+  yoe?: number | null;
+  commitment?: string | string[];
+  company_size?: number | null;
+  company_website?: string;
+  security_clearance?: string;
+  visa_sponsorship?: boolean;
+};
+
+function toJob(p: JobPosting): Job {
+  return {
+    ...p,
+    requirements_summary: p.content?.requirements_summary,
+    tech_stack: p.content?.tech_stack,
+    yoe: p.content?.yoe,
+    commitment: p.content?.commitment,
+    company_size: p.content?.company_size,
+    company_website: p.content?.company_website,
+    security_clearance: p.content?.security_clearance,
+    visa_sponsorship: p.content?.visa_sponsorship,
+  };
 }
-
-const jobs = rawJobs as Job[];
 
 const WORKPLACE_FILTERS = ["All", "Remote", "Hybrid", "Onsite"];
 const SENIORITY_FILTERS = ["All", "Entry Level", "Mid Level", "Senior Level", "Lead", "Manager"];
@@ -83,7 +85,7 @@ function JobCard({ job, index }: { job: Job; index: number }) {
       <div className="p-3 sm:p-5">
         {/* Top row */}
         <div className="flex items-start justify-between gap-2 sm:gap-3">
-          <div className="flex-1 min-w-0">
+          <Link to={`/jobs/${job.slug}`} className="flex-1 min-w-0">
             <h3 className="font-semibold text-foreground group-hover:text-cyan-400 transition-colors leading-tight mb-1 text-sm sm:text-base truncate">
               {job.title}
             </h3>
@@ -91,18 +93,13 @@ function JobCard({ job, index }: { job: Job; index: number }) {
               <Building2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0" />
               <span className="truncate">{job.company}</span>
             </div>
-          </div>
-          <a
-            href={job.apply_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-          >
+          </Link>
+          <Link to={`/jobs/${job.slug}`} onClick={(e) => e.stopPropagation()}>
             <Button size="sm" variant="outline" className="gap-1.5 flex-shrink-0 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 md:opacity-0 md:group-hover:opacity-100 transition-opacity h-8 text-xs sm:h-9 sm:text-sm">
-              Apply
-              <ExternalLink className="h-3 w-3" />
+              View
+              <ArrowRight className="h-3 w-3" />
             </Button>
-          </a>
+          </Link>
         </div>
 
         {/* Meta row */}
@@ -189,8 +186,14 @@ function JobCard({ job, index }: { job: Job; index: number }) {
             {job.visa_sponsorship && <span className="text-emerald-400">✓ Visa Sponsorship</span>}
           </div>
           <div className="flex flex-col sm:flex-row gap-2 pt-1">
-            <a href={job.apply_url} target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none">
+            <Link to={`/jobs/${job.slug}`} className="flex-1 sm:flex-none">
               <Button size="sm" className="gap-1.5 w-full sm:w-auto bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30 text-xs sm:text-sm h-8 sm:h-9">
+                View Details
+                <ArrowRight className="h-3 w-3" />
+              </Button>
+            </Link>
+            <a href={job.apply_url} target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none">
+              <Button size="sm" variant="outline" className="gap-1.5 w-full sm:w-auto border-border/50 text-muted-foreground hover:text-foreground text-xs sm:text-sm h-8 sm:h-9">
                 Apply Now
                 <ExternalLink className="h-3 w-3" />
               </Button>
@@ -320,6 +323,16 @@ export function JobsPage() {
   const [search, setSearch] = useState("");
   const [workplaceFilter, setWorkplaceFilter] = useState("All");
   const [seniorityFilter, setSeniorityFilter] = useState("All");
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.getJobPostings()
+      .then((postings) => setJobs(postings.map(toJob)))
+      .catch(() => setError("Failed to load job postings. Please try again."))
+      .finally(() => setIsLoading(false));
+  }, []);
 
   const filtered = useMemo(() => {
     return jobs.filter((job) => {
@@ -328,7 +341,7 @@ export function JobsPage() {
         !q ||
         job.title.toLowerCase().includes(q) ||
         job.company.toLowerCase().includes(q) ||
-        job.tech_stack.some((t) => t.toLowerCase().includes(q));
+        (job.tech_stack ?? []).some((t) => t.toLowerCase().includes(q));
 
       const matchesWorkplace =
         workplaceFilter === "All" ||
@@ -340,7 +353,7 @@ export function JobsPage() {
 
       return matchesSearch && matchesWorkplace && matchesSeniority;
     });
-  }, [search, workplaceFilter, seniorityFilter]);
+  }, [jobs, search, workplaceFilter, seniorityFilter]);
 
   const remoteCount = jobs.filter((j) => j.workplace_type === "Remote").length;
   const hybridCount = jobs.filter((j) => j.workplace_type === "Hybrid").length;
@@ -465,7 +478,17 @@ export function JobsPage() {
         <div className="flex flex-col lg:flex-row gap-6 items-start pb-32 lg:pb-0 w-full min-w-0">
           {/* Job list */}
           <div className="w-full lg:flex-1 lg:min-w-0 space-y-3">
-            {filtered.length === 0 ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center py-16 text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                <span>Loading jobs...</span>
+              </div>
+            ) : error ? (
+              <div className="text-center py-16 text-muted-foreground">
+                <Briefcase className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <p>{error}</p>
+              </div>
+            ) : filtered.length === 0 ? (
               <div className="text-center py-16 text-muted-foreground">
                 <Briefcase className="h-10 w-10 mx-auto mb-3 opacity-30" />
                 <p>No jobs match your filters.</p>

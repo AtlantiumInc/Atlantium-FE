@@ -7,4 +7,5 @@ routes = [
   { pattern = "atlantium.ai/index/*", zone_name = "atlantium.ai" },
   { pattern = "atlantium.ai/groups/*", zone_name = "atlantium.ai" },
   { pattern = "atlantium.ai/focus-groups", zone_name = "atlantium.ai" },
+  { pattern = "atlantium.ai/jobs/*", zone_name = "atlantium.ai" },
 ]

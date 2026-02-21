@@ -9,6 +9,7 @@
  */
 
 const XANO_API_BASE = 'https://cloud.atlantium.ai/api:-ulnKZsX';
+const APP_API_BASE = 'https://cloud.atlantium.ai/api:_c66cUCc';
 const SITE_ORIGIN = 'https://atlantium.ai';
 
 const BOT_USER_AGENTS =
@@ -40,6 +41,10 @@ export default {
 
     if (pathname === '/focus-groups' || pathname === '/focus-groups/') {
       return handleOgRoute(request, () => staticFocusGroupsOg());
+    }
+
+    if ((match = pathname.match(/^\/jobs\/([^/]+)\/?$/))) {
+      return handleOgRoute(request, () => fetchJobOg(match[1]));
     }
 
     // All other requests — pass through
@@ -156,6 +161,31 @@ async function fetchGroupOg(slug) {
     imageWidth: '1200',
     imageHeight: '630',
     url: og.url,
+    twitterCard: 'summary_large_image',
+  });
+}
+
+async function fetchJobOg(slug) {
+  const res = await fetch(`${APP_API_BASE}/job_postings/${encodeURIComponent(slug)}`);
+  if (!res.ok) return null;
+  const job = await res.json();
+  if (!job) return null;
+
+  const salaryStr = job.salary_min
+    ? `$${Math.round(job.salary_min / 1000)}k\u2013$${Math.round(job.salary_max / 1000)}k`
+    : '';
+  const desc = [job.seniority, job.location, salaryStr, job.content?.requirements_summary]
+    .filter(Boolean)
+    .join(' \u00b7 ')
+    .slice(0, 200);
+
+  return buildOgString({
+    type: 'website',
+    siteName: 'Atlantium',
+    title: `${job.title} at ${job.company} | Atlantium Jobs`,
+    description: desc || `${job.title} at ${job.company}`,
+    image: `${SITE_ORIGIN}/og-jobs.png`,
+    url: `${SITE_ORIGIN}/jobs/${job.slug}`,
     twitterCard: 'summary_large_image',
   });
 }

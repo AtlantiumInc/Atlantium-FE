@@ -69,6 +69,35 @@ export interface User {
   _settings?: UserSettings;
 }
 
+export interface JobPostingContent {
+  requirements_summary?: string;
+  tech_stack?: string[];
+  yoe?: number | null;
+  commitment?: string | string[];
+  company_size?: number | null;
+  company_website?: string;
+  security_clearance?: string;
+  visa_sponsorship?: boolean;
+}
+
+export interface JobPosting {
+  id: string;
+  slug: string;
+  title: string;
+  company: string;
+  location: string;
+  workplace_type?: string;
+  seniority?: string;
+  salary_min?: number | null;
+  salary_max?: number | null;
+  apply_url: string;
+  status: string;
+  posted_at?: string | null;
+  content?: JobPostingContent;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface FrontierArticle {
   id: string;
   thread_id: string;
@@ -984,6 +1013,68 @@ class ApiClient {
     thread_id: string;
   }> {
     return this.request(`/groups/${encodeURIComponent(slug)}/join`, {
+      method: "POST",
+    }, APP_API_BASE_URL);
+  }
+
+  // Job posting methods
+  async getJobPostings(filters?: { status?: string; workplace_type?: string; seniority?: string }): Promise<JobPosting[]> {
+    const params = new URLSearchParams();
+    if (filters?.status) params.set("status", filters.status);
+    if (filters?.workplace_type) params.set("workplace_type", filters.workplace_type);
+    if (filters?.seniority) params.set("seniority", filters.seniority);
+    const qs = params.toString();
+    return this.request<JobPosting[]>(`/job_postings${qs ? `?${qs}` : ""}`, {
+      method: "GET",
+    }, APP_API_BASE_URL);
+  }
+
+  async getJobPosting(slug: string): Promise<JobPosting> {
+    return this.request<JobPosting>(`/job_postings/${encodeURIComponent(slug)}`, {
+      method: "GET",
+    }, APP_API_BASE_URL);
+  }
+
+  async createJobPosting(data: {
+    title: string;
+    company: string;
+    location: string;
+    workplace_type?: string;
+    seniority?: string;
+    salary_min?: number | null;
+    salary_max?: number | null;
+    apply_url: string;
+    status?: string;
+    posted_at?: string | null;
+    content?: JobPostingContent;
+  }): Promise<JobPosting> {
+    return this.request<JobPosting>("/job_postings/create", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, APP_API_BASE_URL);
+  }
+
+  async updateJobPosting(jobId: string, data: Partial<{
+    title: string;
+    company: string;
+    location: string;
+    workplace_type: string;
+    seniority: string;
+    salary_min: number | null;
+    salary_max: number | null;
+    apply_url: string;
+    status: string;
+    posted_at: string | null;
+    content: JobPostingContent;
+  }>): Promise<{ success: boolean; job: JobPosting }> {
+    return this.request<{ success: boolean; job: JobPosting }>(`/job_postings/${jobId}/update`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, APP_API_BASE_URL);
+  }
+
+  async deleteJobPosting(jobId: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/job_postings/${jobId}/delete`, {
       method: "POST",
     }, APP_API_BASE_URL);
   }

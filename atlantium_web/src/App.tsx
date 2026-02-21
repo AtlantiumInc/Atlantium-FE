@@ -36,6 +36,7 @@ import { ArticleDetailPage } from "@/pages/ArticleDetailPage";
 import { InvitePage } from "@/pages/InvitePage";
 import { IndexPage } from "@/pages/IndexPage";
 import { JobsPage } from "@/pages/JobsPage";
+import { JobDetailPage } from "@/pages/JobDetailPage";
 import { TrainingPage } from "@/pages/TrainingPage";
 import { Loader2 } from "lucide-react";
 
@@ -76,6 +77,7 @@ function AppRoutes() {
       <Route path="/invite/:token" element={<InvitePage />} />
       <Route path="/index" element={<IndexPage />} />
       <Route path="/jobs" element={<JobsPage />} />
+      <Route path="/jobs/:slug" element={<JobDetailPage />} />
       <Route path="/training" element={<TrainingPage />} />
       <Route path="/index/:slug" element={<ArticleDetailPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
