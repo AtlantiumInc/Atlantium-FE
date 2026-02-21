@@ -214,7 +214,7 @@ function TrainingCard() {
     <SpotlightCard className="p-5" spotlightColor="rgba(99, 102, 241, 0.15)">
       <div className="flex items-center gap-2.5 mb-3">
         <div className="h-9 w-9 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
-          <GraduationCap className="h-4.5 w-4.5 h-[18px] w-[18px] text-violet-400" />
+          <GraduationCap className="h-[18px] w-[18px] text-violet-400" />
         </div>
         <div>
           <p className="text-[10px] font-bold text-violet-400 uppercase tracking-widest">Atlantium</p>
@@ -236,6 +236,32 @@ function TrainingCard() {
         <Button size="sm" className="w-full gap-2 bg-violet-500/20 border border-violet-500/40 text-violet-300 hover:bg-violet-500/30">
           Learn More
           <ArrowRight className="h-3.5 w-3.5" />
+        </Button>
+      </Link>
+    </SpotlightCard>
+  );
+}
+
+// ── Compact Training Card for Mobile ───────────────────────────────────────
+function CompactTrainingCard() {
+  return (
+    <SpotlightCard className="p-3" spotlightColor="rgba(99, 102, 241, 0.15)">
+      <div className="flex items-start gap-2 mb-2">
+        <div className="h-7 w-7 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
+          <GraduationCap className="h-4 w-4 text-violet-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[9px] font-bold text-violet-400 uppercase tracking-widest">Training Program</p>
+          <h3 className="font-semibold text-foreground text-xs leading-tight">4-Week AI Engineering</h3>
+        </div>
+      </div>
+      <p className="text-[11px] text-muted-foreground leading-relaxed mb-2.5">
+        Build enterprise apps, refactor legacy code, land a role — with daily office hours.
+      </p>
+      <Link to="/training" className="block">
+        <Button size="sm" className="w-full gap-1.5 bg-violet-500/20 border border-violet-500/40 text-violet-300 hover:bg-violet-500/30 h-8 text-xs">
+          Learn More
+          <ArrowRight className="h-3 w-3" />
         </Button>
       </Link>
     </SpotlightCard>
@@ -482,8 +508,8 @@ export function JobsPage() {
         </div>
 
         {/* Mobile: sticky training card at bottom */}
-        <div className="fixed bottom-0 left-0 right-0 z-40 lg:hidden p-4 bg-background/80 backdrop-blur-xl border-t border-border/30">
-          <TrainingCard />
+        <div className="fixed bottom-0 left-0 right-0 z-40 lg:hidden p-3 bg-background/80 backdrop-blur-xl border-t border-border/30">
+          <CompactTrainingCard />
         </div>
       </main>
     </div>

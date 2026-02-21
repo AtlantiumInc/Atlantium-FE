@@ -41,7 +41,7 @@ export function PublicNavbar() {
           </Link>
 
           {/* Desktop nav */}
-          <div className="hidden sm:flex items-center gap-1 sm:gap-2">
+          <div className="hidden md:flex items-center gap-1 md:gap-2">
             {navLinks.map(({ to, label }) => {
               const isActive = pathname === to;
               return (
@@ -73,7 +73,7 @@ export function PublicNavbar() {
           </div>
 
           {/* Mobile right: Join Lab + hamburger */}
-          <div className="flex sm:hidden items-center gap-2">
+          <div className="flex md:hidden items-center gap-2">
             <Link to="/signup">
               <Button size="sm" className="gap-1.5 bg-white text-black hover:bg-gray-100 border-0 text-xs h-8 px-3">
                 Join Lab
