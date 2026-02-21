@@ -138,6 +138,48 @@
   }
 }
 
+/* ── Light mode: darken accent text colors for contrast ──────────────────── */
+/* In dark mode these light shades look great; in light mode they're invisible */
+:root:not(.dark) .text-cyan-300,
+:root:not(.dark) .text-cyan-400 {
+  color: oklch(0.38 0.16 200);
+}
+:root:not(.dark) .text-violet-300,
+:root:not(.dark) .text-violet-400 {
+  color: oklch(0.42 0.20 278);
+}
+:root:not(.dark) .text-emerald-400,
+:root:not(.dark) .text-emerald-300 {
+  color: oklch(0.40 0.15 160);
+}
+:root:not(.dark) .text-amber-400,
+:root:not(.dark) .text-amber-300 {
+  color: oklch(0.48 0.14 75);
+}
+:root:not(.dark) .text-orange-400 {
+  color: oklch(0.50 0.18 45);
+}
+:root:not(.dark) .border-cyan-500\/30,
+:root:not(.dark) .border-cyan-500\/40,
+:root:not(.dark) .border-cyan-500\/50 {
+  border-color: oklch(0.50 0.16 200 / 0.5);
+}
+:root:not(.dark) .bg-cyan-500\/10,
+:root:not(.dark) .bg-cyan-500\/20 {
+  background-color: oklch(0.50 0.16 200 / 0.12);
+}
+:root:not(.dark) .bg-violet-500\/10,
+:root:not(.dark) .bg-violet-500\/20 {
+  background-color: oklch(0.50 0.20 278 / 0.12);
+}
+/* Cards: boost opacity so they're visible on the light background */
+:root:not(.dark) .bg-card\/40 {
+  background-color: oklch(0.98 0.005 240 / 0.85);
+}
+:root:not(.dark) .bg-card\/60 {
+  background-color: oklch(0.98 0.005 240 / 0.92);
+}
+
 /* Glow utility classes - soft ambient for dark mode */
 .dark .text-glow {
   text-shadow:
