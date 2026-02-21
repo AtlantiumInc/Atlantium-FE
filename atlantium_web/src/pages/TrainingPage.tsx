@@ -184,10 +184,10 @@ export function TrainingPage() {
             <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">Now Enrolling · Cohort 1</span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05] mb-6">
-            <ShinyText text="Become an" className="text-4xl sm:text-5xl lg:text-6xl font-bold" color="#e2e8f0" shineColor="#22d3ee" speed={3} />
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight leading-[1.05] mb-6">
+            <ShinyText text="Become an" className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold" color="#e2e8f0" shineColor="#22d3ee" speed={3} />
             <br />
-            <ShinyText text="AI Engineer" className="text-4xl sm:text-5xl lg:text-6xl font-bold" color="#22d3ee" shineColor="#ffffff" speed={2} />
+            <ShinyText text="AI Engineer" className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold" color="#22d3ee" shineColor="#ffffff" speed={2} />
           </h1>
 
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-4 leading-relaxed">
@@ -212,15 +212,10 @@ export function TrainingPage() {
           <div className="flex flex-wrap justify-center gap-3">
             <Link to="/signup">
               <Button size="lg" className="gap-2 bg-white text-black hover:bg-gray-100 shadow-lg shadow-black/20 border-0 text-base">
-                Apply Now — It's Free
+                Begin Registration
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            <a href="#curriculum">
-              <Button size="lg" variant="outline" className="gap-2 text-base">
-                See Curriculum
-              </Button>
-            </a>
           </div>
         </motion.div>
       </section>
@@ -394,7 +389,7 @@ export function TrainingPage() {
                 </p>
                 <Link to="/signup">
                   <Button className="gap-2 bg-white text-black hover:bg-gray-100 border-0">
-                    Apply Now
+                    Begin Registration
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
@@ -439,7 +434,7 @@ export function TrainingPage() {
               </p>
               <Link to="/signup">
                 <Button size="lg" className="gap-2 bg-white text-black hover:bg-gray-100 shadow-xl shadow-black/20 border-0 text-base px-8">
-                  Apply Now — It's Free
+                  Begin Registration
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>

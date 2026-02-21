@@ -6,13 +6,14 @@ import { AnimatePresence, motion } from "motion/react";
 import { X, Menu, ChevronRight } from "lucide-react";
 
 const navLinks = [
-  { to: "/mission",       label: "Mission" },
-  { to: "/focus-groups",  label: "Focus Groups" },
   { to: "/services",      label: "Services" },
-  { to: "/index",         label: "Newsroom" },
-  { to: "/jobs",          label: "Jobs" },
+  { to: "/jobs",          label: "Job Board" },
   { to: "/training",      label: "Training" },
+  { to: "/focus-groups",  label: "Groups" },
+  { to: "/index",         label: "Blog" },
 ];
+
+const missionLink = { to: "/mission", label: "Mission" };
 
 export function PublicNavbar() {
   const { pathname } = useLocation();
@@ -31,14 +32,28 @@ export function PublicNavbar() {
     <>
       <nav className="sticky top-0 z-50 bg-background/70 backdrop-blur-xl border-b border-border/30">
         <div className="w-full px-6 h-16 flex items-center justify-between">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 sm:gap-3">
-            <img src="/logo.png" alt="Atlantium" className="h-7 w-7 sm:h-8 sm:w-8" />
-            <div>
-              <span className="text-lg sm:text-xl font-bold tracking-tight">Atlantium</span>
-              <p className="hidden sm:block text-[10px] text-muted-foreground tracking-wide">Citizen Technology Lab</p>
-            </div>
-          </Link>
+          {/* Logo + Mission */}
+          <div className="flex items-center gap-4 sm:gap-6">
+            <Link to="/" className="flex items-center gap-2 sm:gap-3">
+              <img src="/logo.png" alt="Atlantium" className="h-7 w-7 sm:h-8 sm:w-8" />
+              <div>
+                <span className="text-lg sm:text-xl font-bold tracking-tight">Atlantium</span>
+                <p className="hidden sm:block text-[10px] text-muted-foreground tracking-wide">Citizen Technology Lab</p>
+              </div>
+            </Link>
+            <Link to={missionLink.to} className="hidden md:block">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`relative text-muted-foreground hover:text-foreground ${pathname === missionLink.to ? "text-foreground" : ""}`}
+              >
+                {missionLink.label}
+                {pathname === missionLink.to && (
+                  <span className="absolute -bottom-1 left-2 right-2 h-[2px] rounded-full bg-foreground/60" />
+                )}
+              </Button>
+            </Link>
+          </div>
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-1 md:gap-2">
@@ -103,7 +118,7 @@ export function PublicNavbar() {
             style={{
               backdropFilter: "blur(10px)",
               WebkitBackdropFilter: "blur(10px)",
-              backgroundColor: "rgba(0,0,0,0.75)",
+              backgroundColor: "rgba(10,18,35,0.95)",
             }}
           >
             {/* Close button */}
@@ -123,7 +138,7 @@ export function PublicNavbar() {
 
             {/* Nav links */}
             <nav className="flex-1 overflow-y-auto px-6 py-4">
-              {navLinks.map(({ to, label }, i) => {
+              {[missionLink, ...navLinks].map(({ to, label }, i) => {
                 const isActive = pathname === to;
                 return (
                   <motion.div

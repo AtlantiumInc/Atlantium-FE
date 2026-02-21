@@ -6,25 +6,21 @@ import ShinyText from "@/components/ui/ShinyText";
 import Aurora from "@/components/Aurora";
 import {
   Calendar,
-  Newspaper,
   Briefcase,
   ArrowRight,
   Sparkles,
   Quote,
   Star,
-  Zap,
   Video,
-  ChevronLeft,
-  ChevronRight,
-  Code,
   Rocket,
   Mic,
-  Radio,
-  Lightbulb,
   MessageSquare,
+  CheckCircle2,
+  Radio,
 } from "lucide-react";
 import { motion, useAnimationFrame } from "motion/react";
 import { useRef, useState, useEffect } from "react";
+import jobsData from "@/data/jobs.json";
 
 
 const EVENTS_API_URL =
@@ -42,86 +38,60 @@ interface Event {
   going_count: number;
 }
 
-const feedItems = [
-  { time: "1d", title: "Anthropic raises $3.5B at $61.5B valuation led by Lightspeed", tag: "Funding" },
-  { time: "1d", title: "ByteDance drops Seedance 2.0 -- AI video generation goes mainstream", tag: "Product" },
-  { time: "2d", title: "OpenAI launches GPT-4.5 with improved reasoning and creativity", tag: "Product" },
-  { time: "3d", title: "Google DeepMind unveils Gemini 2.0 Flash with native tool use", tag: "Research" },
-  { time: "4d", title: "Nvidia reports record Q4 revenue of $39.3B on AI chip demand", tag: "Markets" },
-  { time: "5d", title: "Anthropic ships Claude's extended thinking for complex tasks", tag: "Product" },
-  { time: "6d", title: "Sora officially launches -- OpenAI enters AI video generation", tag: "Product" },
-  { time: "1w", title: "EU AI Act enforcement begins for high-risk systems", tag: "Policy" },
-];
 
-const focusGroups = [
-  {
-    topic: "Generative Media",
-    description:
-      "Master AI-powered content creation. Learn to produce stunning visuals, video, and audio using cutting-edge generative tools and workflows.",
-    spotsTotal: 7,
-    spotsFilled: 4,
-    icon: Sparkles,
-    color: {
-      spotlight: "rgba(139, 92, 246, 0.15)",
-      bg: "from-violet-500/10 via-purple-500/5 to-transparent",
-      accent: "text-violet-400",
-      iconBg: "from-violet-500/20 to-purple-500/10",
-      iconBorder: "border-violet-500/20",
-      badge: "bg-violet-500/20 border-violet-500/30 text-violet-400",
-    },
-    members: [
-      { initials: "AK", color: "from-violet-500 to-purple-600" },
-      { initials: "JM", color: "from-blue-500 to-cyan-500" },
-      { initials: "SL", color: "from-emerald-500 to-teal-500" },
-      { initials: "CR", color: "from-amber-500 to-orange-500" },
-    ],
-  },
-  {
-    topic: "Agentic Programming",
-    description:
-      "Build autonomous AI agents that reason, plan, and execute. Learn to architect multi-agent systems and ship production-ready agentic applications.",
-    spotsTotal: 7,
-    spotsFilled: 5,
-    icon: Code,
-    color: {
-      spotlight: "rgba(59, 130, 246, 0.15)",
-      bg: "from-blue-500/10 via-cyan-500/5 to-transparent",
-      accent: "text-blue-400",
-      iconBg: "from-blue-500/20 to-cyan-500/10",
-      iconBorder: "border-blue-500/20",
-      badge: "bg-blue-500/20 border-blue-500/30 text-blue-400",
-    },
-    members: [
-      { initials: "MT", color: "from-pink-500 to-rose-500" },
-      { initials: "RB", color: "from-indigo-500 to-violet-500" },
-      { initials: "DW", color: "from-cyan-500 to-blue-500" },
-      { initials: "JP", color: "from-fuchsia-500 to-pink-500" },
-      { initials: "KL", color: "from-emerald-500 to-green-500" },
-    ],
-  },
-  {
-    topic: "Go-To-Market Engineering",
-    description:
-      "Bridge the gap between product and growth. Learn to build landing pages, automate funnels, and ship GTM infrastructure that converts.",
-    spotsTotal: 7,
-    spotsFilled: 3,
-    icon: Rocket,
-    color: {
-      spotlight: "rgba(16, 185, 129, 0.15)",
-      bg: "from-emerald-500/10 via-teal-500/5 to-transparent",
-      accent: "text-emerald-400",
-      iconBg: "from-emerald-500/20 to-teal-500/10",
-      iconBorder: "border-emerald-500/20",
-      badge: "bg-emerald-500/20 border-emerald-500/30 text-emerald-400",
-    },
-    members: [
-      { initials: "PS", color: "from-violet-500 to-indigo-500" },
-      { initials: "TN", color: "from-amber-500 to-yellow-500" },
-      { initials: "LR", color: "from-blue-500 to-indigo-500" },
-    ],
-  },
-];
 
+function AutoScrollingJobsFeed() {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollY, setScrollY] = useState(0);
+  const jobs = jobsData as Array<{ id: string; title: string; company: string; seniority: string }>;
+
+  useAnimationFrame(() => {
+    setScrollY((prev) => {
+      const newY = prev + 0.1;
+      // Reset when scrolled through one set of items
+      const itemHeight = 52; // Approximate height of each item
+      const totalHeight = jobs.length * itemHeight;
+      return newY >= totalHeight ? 0 : newY;
+    });
+  });
+
+  // Duplicate items for seamless loop
+  const duplicatedJobs = [...jobs, ...jobs];
+
+  return (
+    <div className="relative h-[180px] overflow-hidden rounded-lg bg-background/50 border border-border/50">
+      {/* Gradient fade top */}
+      <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-background/90 to-transparent z-10 pointer-events-none" />
+
+      {/* Scrolling content */}
+      <div
+        ref={scrollRef}
+        className="absolute w-full"
+        style={{ transform: `translateY(-${scrollY}px)` }}
+      >
+        {duplicatedJobs.map((job, index) => (
+          <div
+            key={`${job.id}-${index}`}
+            className="px-3 py-2.5 border-b border-border/30 flex items-start gap-2 hover:bg-cyan-500/5 transition-colors cursor-pointer group"
+          >
+            <span className="text-[10px] text-cyan-400 font-mono whitespace-nowrap pt-0.5 font-semibold flex-shrink-0">
+              {job.seniority}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-foreground leading-tight line-clamp-1 group-hover:text-cyan-400 transition-colors">
+                {job.title}
+              </p>
+              <span className="text-[9px] text-muted-foreground">{job.company}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Gradient fade bottom */}
+      <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-background/90 to-transparent z-10 pointer-events-none" />
+    </div>
+  );
+}
 
 function EventsMarquee() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -252,239 +222,60 @@ function EventsMarquee() {
   );
 }
 
-function AutoScrollFeed() {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [scrollY, setScrollY] = useState(0);
-
-  useAnimationFrame(() => {
-    setScrollY((prev) => {
-      const newY = prev + 0.15;
-      // Reset when scrolled through one set of items
-      const itemHeight = 64; // Approximate height of each item
-      const totalHeight = feedItems.length * itemHeight;
-      return newY >= totalHeight ? 0 : newY;
-    });
-  });
-
-  // Duplicate items for seamless loop
-  const duplicatedItems = [...feedItems, ...feedItems];
-
-  return (
-    <div className="relative h-[180px] overflow-hidden rounded-lg bg-background/50 border border-border/50">
-      {/* Gradient fade top */}
-      <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-background/90 to-transparent z-10 pointer-events-none" />
-
-      {/* Scrolling content */}
-      <div
-        ref={scrollRef}
-        className="absolute w-full"
-        style={{ transform: `translateY(-${scrollY}px)` }}
-      >
-        {duplicatedItems.map((item, index) => (
-          <div
-            key={index}
-            className="px-4 py-3 border-b border-border/30 flex items-start gap-3 hover:bg-primary/5 transition-colors cursor-pointer"
-          >
-            <span className="text-xs text-muted-foreground font-mono whitespace-nowrap pt-0.5">
-              {item.time}
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-foreground leading-tight line-clamp-2">
-                {item.title}
-              </p>
-              <span className="inline-block mt-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-                {item.tag}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Gradient fade bottom */}
-      <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-background/90 to-transparent z-10 pointer-events-none" />
-    </div>
-  );
-}
-
 function FocusGroupsCard() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  const goNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % focusGroups.length);
-  };
-
-  const goPrev = () => {
-    setCurrentIndex((prev) => (prev - 1 + focusGroups.length) % focusGroups.length);
-  };
-
-  const group = focusGroups[currentIndex];
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.4, duration: 0.6 }}
-      className="col-span-12 row-span-2"
+      className="col-span-12 lg:col-span-4 row-span-2"
     >
       <SpotlightCard
-        className="h-full p-6 lg:p-8"
+        className="h-full p-6 flex flex-col"
         spotlightColor="rgba(139, 92, 246, 0.12)"
       >
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-violet-500" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-foreground">Focus Groups</h3>
-              <p className="text-xs text-muted-foreground">AI-powered collaboration cohorts</p>
-            </div>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="h-10 w-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+            <Sparkles className="h-5 w-5 text-violet-500" />
           </div>
-          <Link to="/focus-groups">
-            <Button variant="outline" size="sm" className="gap-2">
-              Learn more
+          <div>
+            <h3 className="text-lg font-bold text-foreground">Focus Groups</h3>
+            <p className="text-xs text-muted-foreground">AI-matched 2-week cohorts</p>
+          </div>
+        </div>
+
+        <p className="text-sm text-muted-foreground mb-5 leading-relaxed">
+          Get matched with 6 builders based on your goals and skill level. Ship real projects together, get expert guidance, and build lasting connections.
+        </p>
+
+        <div className="space-y-3 flex-1">
+          {[
+            { icon: Sparkles, label: "AI Matching", desc: "Paired by skills, goals & availability", color: "violet" },
+            { icon: Rocket, label: "Project-Based", desc: "Ship something real in 2 weeks", color: "blue" },
+            { icon: Star, label: "Expert Guidance", desc: "Weekly check-ins with mentors", color: "amber" },
+            { icon: MessageSquare, label: "Private Channel", desc: "Dedicated group chat & workspace", color: "emerald" },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center gap-3">
+              <div className={`h-8 w-8 flex-shrink-0 rounded-lg bg-${item.color}-500/10 border border-${item.color}-500/20 flex items-center justify-center`}>
+                <item.icon className={`h-4 w-4 text-${item.color}-500`} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground leading-tight">{item.label}</p>
+                <p className="text-xs text-muted-foreground leading-tight">{item.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-border/50">
+          <Link to="/focus-groups" className="block">
+            <Button size="sm" variant="outline" className="w-full gap-2 border-violet-500/30 bg-transparent text-violet-400 hover:bg-violet-500/10 hover:text-violet-400 dark:bg-transparent dark:border-violet-500/30 dark:hover:bg-violet-500/10 dark:hover:text-violet-300">
+              Join a Group
               <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           </Link>
-        </div>
-
-        {/* Two-column layout */}
-        <div className="flex flex-col lg:flex-row gap-6 items-stretch">
-          {/* Left - Description */}
-          <div className="flex-1 flex flex-col justify-center">
-            <h4 className="text-xl font-bold text-foreground mb-3">2-Week Intensive Collaborations</h4>
-            <p className="text-sm text-muted-foreground mb-5 leading-relaxed">
-              Our AI matches you with 6 members you'll work well with, led by an experienced guide. Build meaningful connections and ship together.
-            </p>
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Zap className="h-4 w-4 text-violet-400" />
-                AI-matched members
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Star className="h-4 w-4 text-violet-400" />
-                Expert group lead
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Sparkles className="h-4 w-4 text-violet-400" />
-                Monthly topics
-              </div>
-            </div>
-          </div>
-
-          {/* Right - Carousel */}
-          <div className="flex-1 max-w-sm lg:max-w-md">
-            {/* Live indicator */}
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
-              </span>
-              <span className="text-xs text-muted-foreground">Live on Atlantium</span>
-            </div>
-            {/* Card */}
-            <Link to="/focus-groups" className="block group">
-              <div className={`relative p-5 rounded-xl overflow-hidden bg-gradient-to-br ${group.color.bg} border ${group.color.iconBorder}`}>
-                {/* Header */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className={`h-9 w-9 rounded-lg bg-gradient-to-br ${group.color.iconBg} border ${group.color.iconBorder} flex items-center justify-center`}>
-                    <group.icon className={`h-4 w-4 ${group.color.accent}`} />
-                  </div>
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border ${group.color.badge}`}>
-                    <Zap className="h-3 w-3" />
-                    <span className="text-[10px] font-semibold uppercase tracking-wider">
-                      AI-Matched
-                    </span>
-                  </span>
-                </div>
-
-                {/* Content */}
-                <h4 className="text-base font-bold text-foreground mb-1">
-                  {group.topic}
-                </h4>
-                <p className="text-xs text-muted-foreground mb-3 leading-relaxed line-clamp-2">
-                  {group.description}
-                </p>
-
-                {/* Members + Progress inline */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="flex -space-x-1.5">
-                      {group.members.slice(0, 4).map((member, i) => (
-                        <div
-                          key={i}
-                          className={`h-6 w-6 rounded-full bg-gradient-to-br ${member.color} flex items-center justify-center text-white text-[8px] font-bold ring-2 ring-background`}
-                        >
-                          {member.initials}
-                        </div>
-                      ))}
-                      {group.members.length > 4 && (
-                        <div className="h-6 w-6 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground text-[8px] font-bold ring-2 ring-background">
-                          +{group.members.length - 4}
-                        </div>
-                      )}
-                    </div>
-                    <span className="text-[10px] text-muted-foreground">
-                      {group.spotsFilled}/{group.spotsTotal}
-                    </span>
-                  </div>
-                  <span className={`text-[10px] ${group.color.accent}`}>
-                    {group.spotsTotal - group.spotsFilled} spots left
-                  </span>
-                </div>
-
-                {/* Progress bar */}
-                <div className="mt-2 h-1 rounded-full bg-muted/30 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full bg-gradient-to-r ${group.color.iconBg.replace('/20', '').replace('/10', '')} transition-all`}
-                    style={{ width: `${(group.spotsFilled / group.spotsTotal) * 100}%` }}
-                  />
-                </div>
-              </div>
-            </Link>
-
-            {/* Navigation */}
-            <div className="flex items-center justify-center gap-4 mt-3">
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  goPrev();
-                }}
-                className="flex items-center justify-center h-7 w-7 rounded-full bg-card/80 border border-border/50 hover:border-violet-500/30 hover:bg-card transition-all"
-              >
-                <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-              </button>
-
-              {/* Dots */}
-              <div className="flex items-center gap-1.5">
-                {focusGroups.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setCurrentIndex(i);
-                    }}
-                    className={`h-1.5 rounded-full transition-all ${
-                      i === currentIndex
-                        ? `w-4 ${i === 0 ? "bg-violet-500" : i === 1 ? "bg-blue-500" : "bg-emerald-500"}`
-                        : "w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/50"
-                    }`}
-                  />
-                ))}
-              </div>
-
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  goNext();
-                }}
-                className="flex items-center justify-center h-7 w-7 rounded-full bg-card/80 border border-border/50 hover:border-violet-500/30 hover:bg-card transition-all"
-              >
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </button>
-            </div>
-          </div>
         </div>
       </SpotlightCard>
     </motion.div>
@@ -720,83 +511,119 @@ export function LandingPage() {
             </SpotlightCard>
           </motion.div>
 
-          {/* Frontier Feed Card */}
+          {/* Tech Job Postings - Auto Scroll */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25, duration: 0.6 }}
+            transition={{ delay: 0.22, duration: 0.6 }}
             className="col-span-12 lg:col-span-6 row-span-2"
           >
             <SpotlightCard
               className="h-full p-5"
-              spotlightColor="rgba(129, 140, 248, 0.12)"
+              spotlightColor="rgba(6, 182, 212, 0.12)"
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
-                    <Newspaper className="h-5 w-5 text-indigo-500" />
+                  <div className="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                    <Briefcase className="h-5 w-5 text-cyan-500" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white">Frontier Feed</h3>
-                    <p className="text-xs text-muted-foreground">Live AI news • Updated every hour</p>
+                    <h3 className="text-lg font-bold text-white">Tech Job Postings</h3>
+                    <p className="text-xs text-muted-foreground">Latest opportunities in tech</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
-                  </span>
-                  <span className="text-[10px] font-medium text-amber-400 uppercase tracking-wider">Latest</span>
-                </div>
               </div>
 
-              {/* Auto-scrolling feed */}
-              <AutoScrollFeed />
-            </SpotlightCard>
-          </motion.div>
+              {/* Auto-scrolling jobs feed */}
+              <AutoScrollingJobsFeed />
 
-          {/* Services Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.28, duration: 0.6 }}
-            className="col-span-12 lg:col-span-4 row-span-2"
-          >
-            <SpotlightCard
-              className="h-full p-6 flex flex-col"
-              spotlightColor="rgba(167, 139, 250, 0.15)"
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-10 w-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-                  <Briefcase className="h-5 w-5 text-purple-500" />
-                </div>
-                <h3 className="text-lg font-bold text-foreground">Services</h3>
-              </div>
-
-              <div className="space-y-3 flex-1">
-                {[
-                  { icon: Code, label: "Development", desc: "MVPs & enterprise software", color: "blue" },
-                  { icon: Lightbulb, label: "GTM Strategy", desc: "Go-to-market playbooks", color: "amber" },
-                  { icon: Sparkles, label: "Generative Media", desc: "AI video, audio & content", color: "emerald" },
-                  { icon: MessageSquare, label: "Tech Advisor", desc: "Fractional CTO & AI strategy", color: "violet" },
-                ].map((svc) => (
-                  <div key={svc.label} className="flex items-center gap-3">
-                    <div className={`h-8 w-8 flex-shrink-0 rounded-lg bg-${svc.color}-500/10 border border-${svc.color}-500/20 flex items-center justify-center`}>
-                      <svc.icon className={`h-4 w-4 text-${svc.color}-500`} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground leading-tight">{svc.label}</p>
-                      <p className="text-xs text-muted-foreground leading-tight">{svc.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <Link to="/services" className="mt-4 pt-4 border-t border-border/50 block">
-                <Button variant="outline" size="sm" className="w-full gap-2">
-                  Explore Services
+              {/* Button */}
+              <Link to="/jobs" className="block mt-4">
+                <Button size="sm" variant="outline" className="w-full gap-2 border-cyan-500/30 bg-transparent text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-400 dark:bg-transparent dark:border-cyan-500/30 dark:hover:bg-cyan-500/10 dark:hover:text-cyan-300">
+                  View All Jobs
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
               </Link>
+            </SpotlightCard>
+          </motion.div>
+
+          {/* Training Card with Visual */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25, duration: 0.6 }}
+            className="col-span-12 row-span-2"
+          >
+            <SpotlightCard
+              className="h-full overflow-hidden"
+              spotlightColor="rgba(139, 92, 246, 0.15)"
+            >
+              <div className="flex flex-col lg:flex-row h-full">
+                {/* Image Section - Left Side */}
+                <div className="relative w-full lg:w-2/5 h-64 lg:h-auto overflow-hidden bg-gradient-to-br from-violet-500/20 via-purple-500/10 to-violet-500/20">
+                  <img
+                    src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&h=500&fit=crop"
+                    alt="AI Engineering Training"
+                    className="w-full h-full object-cover opacity-80"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-r from-background via-transparent to-transparent" />
+
+                  {/* Badge overlay */}
+                  <div className="absolute bottom-4 left-4">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-500/40 border border-violet-500/60 backdrop-blur-sm">
+                      <span className="h-2 w-2 rounded-full bg-violet-300 animate-pulse" />
+                      <span className="text-xs font-semibold text-violet-200">Now Enrolling</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Content Section - Right Side */}
+                <div className="p-6 lg:p-8 flex flex-col flex-1 justify-between">
+                  {/* Header */}
+                  <div className="mb-6">
+                    <h3 className="text-2xl font-bold text-foreground mb-1">AI Engineering Bootcamp</h3>
+                    <p className="text-sm text-muted-foreground">Go from learner to job-ready in 4 weeks</p>
+                  </div>
+
+                  {/* Key Stats - Horizontal Row */}
+                  <div className="flex gap-4 mb-6 pb-6 border-b border-border/30">
+                    <div className="text-center flex-1">
+                      <div className="text-lg font-bold text-violet-400 mb-0.5">4</div>
+                      <p className="text-xs text-muted-foreground">weeks</p>
+                    </div>
+                    <div className="text-center flex-1">
+                      <div className="text-lg font-bold text-violet-400 mb-0.5">Daily</div>
+                      <p className="text-xs text-muted-foreground">office hours</p>
+                    </div>
+                    <div className="text-center flex-1">
+                      <div className="text-lg font-bold text-violet-400 mb-0.5">100%</div>
+                      <p className="text-xs text-muted-foreground">hands-on</p>
+                    </div>
+                  </div>
+
+                  {/* Features List - 2 Column Grid */}
+                  <div className="grid grid-cols-2 gap-3 mb-6 flex-1">
+                    {[
+                      "Build real-world AI apps",
+                      "Production frameworks",
+                      "Hiring partner intros",
+                      "Portfolio + guidance"
+                    ].map((feature, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-violet-400 flex-shrink-0 mt-0.5" />
+                        <span className="text-sm text-foreground">{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <Link to="/training" className="block">
+                    <Button size="lg" className="w-full gap-2 bg-violet-500/20 border border-violet-500/40 text-violet-300 hover:bg-violet-500/30 font-medium">
+                      Explore Program
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
             </SpotlightCard>
           </motion.div>
 
@@ -841,84 +668,115 @@ export function LandingPage() {
             transition={{ delay: 0.32, duration: 0.6 }}
             className="col-span-12 lg:col-span-4 row-span-2"
           >
-            <div className="relative h-full group">
-              {/* Animated gradient border */}
-              <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-500 opacity-30 group-hover:opacity-60 blur-sm transition-opacity duration-500" />
-              <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-500 opacity-20 group-hover:opacity-40 transition-opacity duration-500" />
-
-              <SpotlightCard
-                className="relative h-full p-6"
-                spotlightColor="rgba(0, 212, 255, 0.15)"
-              >
-                {/* Live badge */}
-                <div className="absolute top-4 right-4">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
-                    </span>
-                    <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">Live</span>
-                  </span>
-                </div>
-
-                <div className="mb-5">
-                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/20 flex items-center justify-center mb-4">
+            <SpotlightCard
+              className="h-full p-5 flex flex-col"
+              spotlightColor="rgba(0, 212, 255, 0.15)"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
                     <Radio className="h-5 w-5 text-cyan-400" />
                   </div>
-                  <div className="text-sm text-muted-foreground mb-1">Club Membership</div>
-                  <h3 className="text-xl font-bold text-foreground mb-1">The Lobby</h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    A live digital space where members connect through audio, video, and chat in real time.
-                  </p>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">The Lobby</h3>
+                    <p className="text-xs text-muted-foreground">Live with 12 builders now</p>
+                  </div>
                 </div>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex-shrink-0">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                  </span>
+                  <span className="text-[10px] font-semibold text-emerald-400">Live</span>
+                </div>
+              </div>
 
-                {/* Mini lobby visualization */}
-                <div className="relative rounded-lg bg-background/30 border border-border/30 p-3 mb-4">
-                  <div className="flex items-center justify-between mb-2.5">
-                    <div className="flex -space-x-1.5">
-                      {[
-                        "from-cyan-500 to-blue-500",
-                        "from-violet-500 to-purple-500",
-                        "from-emerald-500 to-teal-500",
-                        "from-amber-500 to-orange-500",
-                      ].map((gradient, i) => (
+              {/* Room Visual */}
+              <div className="relative rounded-xl bg-slate-950/80 border border-cyan-500/20 overflow-hidden mb-4 flex-1" style={{ minHeight: "140px" }}>
+                {/* Grid floor */}
+                <div className="absolute inset-0 opacity-[0.06]" style={{
+                  backgroundImage: "linear-gradient(rgba(0,212,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,1) 1px, transparent 1px)",
+                  backgroundSize: "24px 24px",
+                }} />
+                {/* Ambient glow */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 bg-cyan-500/10 rounded-full blur-2xl" />
+
+                {/* People grid */}
+                <div className="absolute inset-0 p-3 grid grid-cols-2 gap-2">
+                  {/* Active speaker */}
+                  <div className="flex flex-col items-center justify-center gap-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 p-2">
+                    <div className="relative">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center ring-2 ring-cyan-400/50">
+                        <span className="text-xs font-bold text-white">KL</span>
+                      </div>
+                      <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 bg-emerald-500 rounded-full flex items-center justify-center">
+                        <Mic className="h-2 w-2 text-white" />
+                      </div>
+                    </div>
+                    {/* Waveform */}
+                    <div className="flex items-center gap-px h-4">
+                      {[0.5, 0.9, 0.6, 1.0, 0.7, 0.85, 0.55, 0.95, 0.65].map((scale, i) => (
                         <motion.div
                           key={i}
-                          initial={{ opacity: 0, scale: 0.5 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: 0.5 + i * 0.08 }}
-                          className={`h-6 w-6 rounded-full bg-gradient-to-br ${gradient} ring-2 ring-background flex items-center justify-center`}
-                        >
-                          <span className="text-[7px] font-bold text-white">
-                            {["KL", "AR", "JM", "SC"][i]}
-                          </span>
-                        </motion.div>
+                          className="w-0.5 bg-cyan-400 rounded-full"
+                          style={{ height: "12px" }}
+                          animate={{ scaleY: [scale, scale * 0.3, scale * 1.1, scale * 0.5, scale] }}
+                          transition={{
+                            duration: 0.6 + i * 0.07,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                            delay: i * 0.08,
+                          }}
+                        />
                       ))}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-500/10">
-                        <Mic className="h-2.5 w-2.5 text-cyan-400" />
-                      </div>
-                      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-500/10">
-                        <Video className="h-2.5 w-2.5 text-cyan-400" />
-                      </div>
-                    </div>
                   </div>
-                  {/* Simulated chat line */}
-                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground/70">
-                    <span className="font-medium text-cyan-400/70">KL:</span>
-                    <span className="truncate">just shipped the new API endpoint...</span>
-                  </div>
-                </div>
 
-                <Link to="/signup">
-                  <Button size="sm" variant="outline" className="w-full gap-1.5 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10">
-                    Enter Lobby
-                    <ArrowRight className="h-3 w-3" />
-                  </Button>
-                </Link>
-              </SpotlightCard>
-            </div>
+                  {/* Other attendees */}
+                  {[
+                    { name: "AR", gradient: "from-violet-500 to-purple-600" },
+                    { name: "JM", gradient: "from-emerald-500 to-teal-600" },
+                    { name: "SC", gradient: "from-amber-500 to-orange-600" },
+                  ].map(({ name, gradient }) => (
+                    <div key={name} className="flex flex-col items-center justify-center gap-1.5 rounded-lg bg-white/[0.03] border border-white/10 p-2">
+                      <div className="relative">
+                        <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center`}>
+                          <span className="text-xs font-bold text-white">{name}</span>
+                        </div>
+                        <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-emerald-500 rounded-full border-2 border-slate-950" />
+                      </div>
+                      <span className="text-[9px] text-muted-foreground/70">Present</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                A live digital space where members connect through audio, video, and chat in real time.
+              </p>
+
+              {/* Features */}
+              <div className="flex gap-2 mb-4">
+                {[
+                  { icon: Mic, label: "Audio" },
+                  { icon: Video, label: "Video" },
+                  { icon: MessageSquare, label: "Chat" },
+                ].map(({ icon: Icon, label }) => (
+                  <div key={label} className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-500/10 border border-cyan-500/20">
+                    <Icon className="h-3 w-3 text-cyan-400" />
+                    <span className="text-xs text-cyan-300">{label}</span>
+                  </div>
+                ))}
+              </div>
+
+              <Link to="/signup" className="block">
+                <Button size="sm" variant="outline" className="w-full gap-1.5 border-cyan-500/30 bg-transparent text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-400 dark:bg-transparent dark:border-cyan-500/30 dark:hover:bg-cyan-500/10 dark:hover:text-cyan-300">
+                  Enter Lobby
+                  <ArrowRight className="h-3 w-3" />
+                </Button>
+              </Link>
+            </SpotlightCard>
           </motion.div>
 
           {/* Focus Groups Card */}

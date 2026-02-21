@@ -377,7 +377,7 @@ export function JobsPage() {
               <Cpu className="h-6 w-6 text-cyan-500" />
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">AI Engineering Jobs</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold">Tech Job Postings</h1>
               <div className="flex items-center gap-1.5 mt-0.5 text-sm text-muted-foreground">
                 <MapPin className="h-3.5 w-3.5" />
                 <span>Atlanta, GA · 50 mile radius</span>
