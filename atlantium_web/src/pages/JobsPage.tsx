@@ -38,7 +38,7 @@ function toJob(p: JobPosting): Job {
 const WORKPLACE_FILTERS = ["All", "Remote", "Hybrid", "Onsite"];
 const SENIORITY_FILTERS = ["All", "Entry Level", "Mid Level", "Senior Level", "Lead", "Manager"];
 
-function formatSalary(min: number | null, max: number | null): string | null {
+function formatSalary(min: number | null | undefined, max: number | null | undefined): string | null {
   if (!min && !max) return null;
   const fmt = (n: number) =>
     n >= 1000 ? `$${(n / 1000).toFixed(0)}k` : `$${n}`;
