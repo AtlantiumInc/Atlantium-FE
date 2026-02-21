@@ -166,26 +166,21 @@ async function fetchGroupOg(slug) {
 }
 
 async function fetchJobOg(slug) {
-  const res = await fetch(`${APP_API_BASE}/job_postings/${encodeURIComponent(slug)}`);
+  const res = await fetch(
+    `${XANO_API_BASE}/job?slug=${encodeURIComponent(slug)}`
+  );
   if (!res.ok) return null;
-  const job = await res.json();
-  if (!job) return null;
 
-  const salaryStr = job.salary_min
-    ? `$${Math.round(job.salary_min / 1000)}k\u2013$${Math.round(job.salary_max / 1000)}k`
-    : '';
-  const desc = [job.seniority, job.location, salaryStr, job.content?.requirements_summary]
-    .filter(Boolean)
-    .join(' \u00b7 ')
-    .slice(0, 200);
+  const { job, og } = await res.json();
+  if (!job || !og) return null;
 
   return buildOgString({
-    type: 'website',
-    siteName: 'Atlantium',
-    title: `${job.title} at ${job.company} | Atlantium Jobs`,
-    description: desc || `${job.title} at ${job.company}`,
-    image: `${SITE_ORIGIN}/og-jobs.png`,
-    url: `${SITE_ORIGIN}/jobs/${job.slug}`,
+    type: og.type,
+    siteName: og.site_name,
+    title: og.title,
+    description: og.description,
+    image: og.image,
+    url: og.url,
     twitterCard: 'summary_large_image',
   });
 }
