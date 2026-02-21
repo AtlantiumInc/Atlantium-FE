@@ -95,7 +95,7 @@ function JobCard({ job, index }: { job: Job; index: number }) {
             </div>
           </Link>
           <Link to={`/jobs/${job.slug}`} onClick={(e) => e.stopPropagation()}>
-            <Button size="sm" variant="outline" className="gap-1.5 flex-shrink-0 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-400 md:opacity-0 md:group-hover:opacity-100 transition-opacity h-8 text-xs sm:h-9 sm:text-sm">
+            <Button size="sm" variant="outline" className="gap-1.5 flex-shrink-0 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300 hover:border-cyan-500/50 md:opacity-0 md:group-hover:opacity-100 transition-all h-8 text-xs sm:h-9 sm:text-sm">
               View
               <ArrowRight className="h-3 w-3" />
             </Button>
