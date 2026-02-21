@@ -195,12 +195,6 @@ function JobCard({ job, index }: { job: Job; index: number }) {
                 <ExternalLink className="h-3 w-3" />
               </Button>
             </a>
-            <a href={job.hiring_cafe_url} target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none">
-              <Button size="sm" variant="ghost" className="gap-1.5 w-full sm:w-auto text-muted-foreground hover:text-foreground text-xs h-8 sm:h-9">
-                View on hiring.cafe
-                <ExternalLink className="h-3 w-3" />
-              </Button>
-            </a>
           </div>
         </div>
       )}
@@ -396,7 +390,7 @@ export function JobsPage() {
             <span><span className="text-foreground font-semibold">{jobs.length}</span> open roles</span>
             <span><span className="text-emerald-400 font-semibold">{remoteCount}</span> remote</span>
             <span><span className="text-violet-400 font-semibold">{hybridCount}</span> hybrid</span>
-            <span className="text-xs self-center opacity-60">via hiring.cafe · updated Feb 2026</span>
+            <span className="text-xs self-center opacity-60">updated Feb 2026</span>
           </div>
         </motion.div>
 
@@ -487,16 +481,8 @@ export function JobsPage() {
             )}
 
             {/* Footer attribution */}
-            <div className="mt-6 pt-6 border-t border-border/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-muted-foreground">
-              <span>Jobs sourced from hiring.cafe · Atlanta, GA · 50mi radius</span>
-              <a
-                href="https://hiring.cafe/?searchState=%7B%22locations%22%3A%5B%7B%22id%22%3A%22xhk1yZQBoEtHp_8Ur67o%22%2C%22types%22%3A%5B%22locality%22%5D%2C%22address_components%22%3A%5B%7B%22long_name%22%3A%22Atlanta%22%2C%22short_name%22%3A%22Atlanta%22%2C%22types%22%3A%5B%22locality%22%5D%7D%2C%7B%22long_name%22%3A%22Georgia%22%2C%22short_name%22%3A%22GA%22%2C%22types%22%3A%5B%22administrative_area_level_1%22%5D%7D%2C%7B%22long_name%22%3A%22United+States%22%2C%22short_name%22%3A%22US%22%2C%22types%22%3A%5B%22country%22%5D%7D%5D%2C%22geometry%22%3A%7B%22location%22%3A%7B%22lat%22%3A33.749%2C%22lon%22%3A-84.38798%7D%7D%2C%22formatted_address%22%3A%22Atlanta%2C+GA%2C+US%22%2C%22population%22%3A463878%2C%22workplace_types%22%3A%5B%5D%2C%22options%22%3A%7B%22radius%22%3A50%2C%22radius_unit%22%3A%22miles%22%2C%22ignore_radius%22%3Afalse%7D%7D%5D%2C%22searchQuery%22%3A%22ai+engineer%22%7D"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 hover:text-foreground transition-colors flex-shrink-0"
-              >
-                View on hiring.cafe <ExternalLink className="h-3 w-3" />
-              </a>
+            <div className="mt-6 pt-6 border-t border-border/30 text-xs text-muted-foreground">
+              <span>AI Engineering Opportunities in Atlanta, GA · 50mi radius</span>
             </div>
           </div>
 
