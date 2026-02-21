@@ -98,7 +98,7 @@ function JobCard({ job, index }: { job: Job; index: number }) {
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
           >
-            <Button size="sm" variant="outline" className="gap-1.5 flex-shrink-0 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button size="sm" variant="outline" className="gap-1.5 flex-shrink-0 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
               Apply
               <ExternalLink className="h-3 w-3" />
             </Button>
@@ -442,7 +442,7 @@ export function JobsPage() {
         )}
 
         {/* Two-column layout: job list + sidebar */}
-        <div className="flex flex-col lg:flex-row gap-6 items-start">
+        <div className="flex flex-col lg:flex-row gap-6 items-start pb-32 lg:pb-0">
           {/* Job list */}
           <div className="flex-1 min-w-0 space-y-3">
             {filtered.length === 0 ? (
@@ -474,11 +474,16 @@ export function JobsPage() {
             </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="w-full lg:w-72 xl:w-80 flex-shrink-0 space-y-4 lg:sticky lg:top-24">
+          {/* Desktop sidebar */}
+          <div className="hidden lg:flex lg:flex-col w-72 xl:w-80 flex-shrink-0 space-y-4 sticky top-24">
             <TrainingCard />
             <JobAlertsCard />
           </div>
+        </div>
+
+        {/* Mobile: sticky training card at bottom */}
+        <div className="fixed bottom-0 left-0 right-0 z-40 lg:hidden p-4 bg-background/80 backdrop-blur-xl border-t border-border/30">
+          <TrainingCard />
         </div>
       </main>
     </div>
