@@ -12,6 +12,8 @@ import type {
   SetupIntentResponse,
   SubscribeResponse,
   PortalSessionResponse,
+  PurchaseTrainingResponse,
+  ActivateTrainingResponse,
   UserSubscription,
   UserIntegrations,
   UserSettings,
@@ -821,6 +823,20 @@ class ApiClient {
   async getPortalSession(): Promise<PortalSessionResponse> {
     return this.request<PortalSessionResponse>("/stripe/portal-session", {
       method: "POST",
+    }, STRIPE_API_BASE_URL);
+  }
+
+  async purchaseTraining(paymentMethodId: string): Promise<PurchaseTrainingResponse> {
+    return this.request<PurchaseTrainingResponse>("/stripe/purchase-training", {
+      method: "POST",
+      body: JSON.stringify({ payment_method_id: paymentMethodId }),
+    }, STRIPE_API_BASE_URL);
+  }
+
+  async activateTraining(paymentIntentId: string): Promise<ActivateTrainingResponse> {
+    return this.request<ActivateTrainingResponse>("/stripe/activate-training", {
+      method: "POST",
+      body: JSON.stringify({ payment_intent_id: paymentIntentId }),
     }, STRIPE_API_BASE_URL);
   }
 

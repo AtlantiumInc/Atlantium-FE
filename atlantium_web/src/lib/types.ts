@@ -169,7 +169,7 @@ export interface MessagesResponse {
 
 // Subscription types
 export type MembershipTier = "free" | "club";
-export type SubscriptionStatus = "active" | "past_due" | "canceled" | "unpaid" | "incomplete" | null;
+export type SubscriptionStatus = "active" | "trialing" | "past_due" | "canceled" | "unpaid" | "incomplete" | null;
 export type ChatConfig = "connection_required" | "anyone" | "off";
 
 // User subscription info (embedded in auth/me response)
@@ -232,6 +232,93 @@ export interface SubscribeResponse {
 export interface PortalSessionResponse {
   success: boolean;
   portal_url: string;
+}
+
+export interface PurchaseTrainingResponse {
+  success: boolean;
+  requires_action: boolean;
+  client_secret: string | null;
+  payment_intent_id: string | null;
+  subscription: {
+    id: string;
+    status: string;
+  } | null;
+}
+
+export interface ActivateTrainingResponse {
+  success: boolean;
+  subscription: {
+    id: string;
+    status: string;
+  };
+}
+
+// Content / Production types
+export type Platform =
+  | "instagram"
+  | "youtube"
+  | "tiktok"
+  | "twitter"
+  | "linkedin"
+  | "facebook"
+  | "threads";
+
+export type ContentType = "short-video" | "long-video" | "image" | "article" | "audio";
+export type ContentStage = "draft" | "review" | "ready" | "published" | "archived";
+export type StageFilter = ContentStage | "all";
+export type ProductionType = "live" | "featured" | "series";
+
+export interface ChannelInfo {
+  id: string;
+  name: string;
+  platform: Platform;
+  username: string;
+  profile_picture_url: string | null;
+}
+
+export interface UnitData {
+  platform: Platform;
+  channel_id: string;
+  channel_info: ChannelInfo;
+  publishing_date: string;
+  share_to_feed: boolean;
+  cover_photo: string | null;
+  alt_caption: string | null;
+  alt_cap_off: boolean;
+  user_tags: string[];
+  collaborators: string[];
+  audio_name: string;
+  location: string | null;
+  automation_id: string;
+  production_id: string | null;
+}
+
+export interface MediaFile {
+  order: number;
+  cdn_url: string;
+  isImage: boolean;
+}
+
+export interface UnitDetails {
+  unit_id: string;
+  post_type: ContentType;
+  stage: ContentStage;
+  main_caption: string;
+  publishing_date: string;
+  media_files: MediaFile[];
+  workflows: string[];
+}
+
+export interface Unit {
+  unit_data: UnitData[];
+  unit_details: UnitDetails;
+}
+
+export interface Production {
+  id: string;
+  name: string;
+  type: ProductionType;
+  units: Unit[];
 }
 
 // Lobby types
