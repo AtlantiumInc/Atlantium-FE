@@ -186,7 +186,7 @@ function CheckoutSection({ onSuccess }: { onSuccess: () => void }) {
     }
   }, [isAuthenticated, clientSecret]);
 
-  const handleAuthSuccess = (user: User, token: string) => {
+  const handleAuthSuccess = (_user: User, token: string) => {
     api.setAuthToken(token);
     // Auth context will pick this up; setupIntent will init via the useEffect
     window.location.reload();
