@@ -292,9 +292,11 @@ class ApiClient {
     id: string;
     email: string;
     display_name?: string;
+    full_name?: string;
     is_admin: boolean;
     is_email_verified: boolean;
     has_access: boolean;
+    onboarding_completed: boolean;
     created_at: string;
     last_login?: string;
   }>> {
