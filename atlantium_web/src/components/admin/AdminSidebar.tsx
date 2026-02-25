@@ -10,17 +10,22 @@ import {
   LogOut,
   Shield,
   Rocket,
+  X,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 interface AdminSidebarProps {
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 export function AdminSidebar({
   collapsed = false,
   onToggleCollapse,
+  mobileOpen = false,
+  onMobileClose,
 }: AdminSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -70,13 +75,13 @@ export function AdminSidebar({
     navigate("/admin/login");
   };
 
-  return (
-    <aside
-      className={cn(
-        "fixed left-0 top-0 z-40 h-screen bg-card border-r border-border transition-all duration-300 flex flex-col",
-        collapsed ? "w-16" : "w-56"
-      )}
-    >
+  const handleNav = (path: string) => {
+    navigate(path);
+    onMobileClose?.();
+  };
+
+  const sidebarContent = (
+    <>
       {/* Header */}
       <div className={cn(
         "flex items-center h-14 border-b border-border px-3",
@@ -89,21 +94,31 @@ export function AdminSidebar({
           </div>
         )}
         {collapsed && <Shield size={20} className="text-primary" />}
+        {/* Desktop collapse button */}
         {!collapsed && (
           <Button
             variant="ghost"
             size="icon"
             onClick={onToggleCollapse}
-            className="h-8 w-8"
+            className="h-8 w-8 hidden md:flex"
           >
             <ChevronLeft size={16} />
           </Button>
         )}
+        {/* Mobile close button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onMobileClose}
+          className="h-8 w-8 md:hidden"
+        >
+          <X size={16} />
+        </Button>
       </div>
 
-      {/* Expand button when collapsed */}
+      {/* Expand button when collapsed (desktop only) */}
       {collapsed && (
-        <div className="px-2 py-2">
+        <div className="px-2 py-2 hidden md:block">
           <Button
             variant="ghost"
             size="icon"
@@ -123,12 +138,13 @@ export function AdminSidebar({
             variant={isActive(item.path) ? "secondary" : "ghost"}
             className={cn(
               "w-full justify-start gap-3",
-              collapsed && "justify-center px-2"
+              collapsed && "md:justify-center md:px-2"
             )}
-            onClick={() => navigate(item.path)}
+            onClick={() => handleNav(item.path)}
           >
             {item.icon}
-            {!collapsed && <span>{item.label}</span>}
+            {/* Always show label on mobile, respect collapsed on desktop */}
+            <span className={cn(collapsed && "md:hidden")}>{item.label}</span>
           </Button>
         ))}
       </nav>
@@ -139,14 +155,42 @@ export function AdminSidebar({
           variant="ghost"
           className={cn(
             "w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10",
-            collapsed && "justify-center px-2"
+            collapsed && "md:justify-center md:px-2"
           )}
           onClick={handleLogout}
         >
           <LogOut size={20} />
-          {!collapsed && <span>Logout</span>}
+          <span className={cn(collapsed && "md:hidden")}>Logout</span>
         </Button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile overlay backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={onMobileClose}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          // Base
+          "fixed left-0 top-0 z-50 h-screen bg-card border-r border-border flex flex-col",
+          // Mobile: slide in/out
+          "transition-transform duration-300 w-56 md:transition-all md:duration-300",
+          mobileOpen ? "translate-x-0" : "-translate-x-full",
+          // Desktop: always visible, width depends on collapsed
+          "md:translate-x-0",
+          collapsed ? "md:w-16" : "md:w-56"
+        )}
+      >
+        {sidebarContent}
+      </aside>
+    </>
   );
 }
