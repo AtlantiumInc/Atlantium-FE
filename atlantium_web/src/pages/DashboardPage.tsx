@@ -16,6 +16,7 @@ import { GroupsPage } from "@/components/pages/GroupsPage";
 import { ConnectionsPage } from "@/components/pages/ConnectionsPage";
 import { ProjectsPage } from "@/components/pages/ProjectsPage";
 import { LobbyPage } from "@/components/pages/LobbyPage";
+import { TrainingPage } from "@/components/pages/TrainingPage";
 
 export function DashboardPage() {
   const { user, logout, hasAccess } = useAuth();
@@ -56,6 +57,7 @@ export function DashboardPage() {
       connections: "Connections",
       projects: "Projects",
       leaderboard: "Leaderboard",
+      training: "Training",
     };
     return titles[activePage] || "HQ";
   };
@@ -80,6 +82,8 @@ export function DashboardPage() {
         return <ProjectsPage />;
       case "leaderboard":
         return <LeaderboardPage hasGithubConnected={false} />;
+      case "training":
+        return <TrainingPage />;
       default:
         return <HQPage user={user ?? undefined} onNavigateToThread={handleNavigateToThread} />;
     }
@@ -120,7 +124,7 @@ export function DashboardPage() {
           <div className="p-6 w-full">
             <div className={cn(
               "mx-auto",
-              ["connections", "leaderboard", "hq", "events", "projects", "groups"].includes(activePage) ? "max-w-7xl" : "max-w-4xl"
+              ["connections", "leaderboard", "hq", "events", "projects", "groups", "training"].includes(activePage) ? "max-w-7xl" : "max-w-4xl"
             )}>
               {renderPage()}
             </div>

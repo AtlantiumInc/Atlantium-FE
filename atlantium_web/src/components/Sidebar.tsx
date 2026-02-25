@@ -4,6 +4,7 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  GraduationCap,
   MessageCircle,
   Radio,
   UserPlus,
@@ -49,6 +50,11 @@ export function Sidebar({
       id: "connections",
       icon: <UserPlus size={20} />,
       label: "Connections",
+    },
+    {
+      id: "training",
+      icon: <GraduationCap size={20} />,
+      label: "Training",
     },
   ];
 
