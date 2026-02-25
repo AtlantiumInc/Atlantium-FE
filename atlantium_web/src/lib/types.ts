@@ -263,7 +263,7 @@ export type Platform =
   | "facebook"
   | "threads";
 
-export type ContentType = "short-video" | "long-video" | "image" | "article" | "audio";
+export type ContentType = "image" | "story" | "carousel" | "short-video" | "long-video";
 export type ContentStage = "draft" | "review" | "ready" | "published" | "archived";
 export type StageFilter = ContentStage | "all";
 export type ProductionType = "live" | "featured" | "series";
