@@ -198,7 +198,7 @@ function CheckoutSection({ onSuccess }: { onSuccess: () => void }) {
         <p className="text-sm text-muted-foreground text-center">
           Create your account to get started
         </p>
-        <InlineAuth onSuccess={handleAuthSuccess} ctaText="Continue to Payment" />
+        <InlineAuth onSuccess={handleAuthSuccess} ctaText="Login or Create an Account" hideGoogle />
       </div>
     );
   }
