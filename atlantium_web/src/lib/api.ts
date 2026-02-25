@@ -317,6 +317,13 @@ class ApiClient {
     }, ADMIN_API_BASE_URL, true);
   }
 
+  async sendUserEmail(userId: string, subject: string, htmlBody: string): Promise<{ success: boolean }> {
+    return this.request("/users/send-email", {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId, subject, html_body: htmlBody }),
+    }, ADMIN_API_BASE_URL, true);
+  }
+
   async getAdminUserProfile(userId: string): Promise<{
     id: string;
     user_id: string;

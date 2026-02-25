@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Search,
   MoreHorizontal,
@@ -8,6 +8,7 @@ import {
   Mail,
   CheckCircle2,
   Clock,
+  ClipboardCheck,
   Loader2,
   Phone,
   Globe,
@@ -19,6 +20,8 @@ import {
   MapPin,
   FileText,
   Calendar,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -34,15 +37,6 @@ import {
 } from "@/lib/onboarding-options";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,6 +51,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -67,11 +70,17 @@ interface User {
   id: string;
   email: string;
   display_name?: string;
+  full_name?: string;
   is_admin: boolean;
   is_email_verified: boolean;
   has_access: boolean;
+  onboarding_completed: boolean;
   created_at: string;
   last_login?: string;
+}
+
+function getUserName(user: User) {
+  return user.display_name || user.full_name || user.email.split("@")[0];
 }
 
 export function AdminUsersPage() {
@@ -84,6 +93,63 @@ export function AdminUsersPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [userProfile, setUserProfile] = useState<Awaited<ReturnType<typeof api.getAdminUserProfile>> | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [emailUser, setEmailUser] = useState<User | null>(null);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [sortAsc, setSortAsc] = useState(true);
+  const listRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+
+  const buildEmailHtml = (name: string, subject: string, body: string) => {
+    const escapedBody = body.replace(/\n/g, "<br/>");
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>${subject}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;">
+<tr><td align="center" style="padding:40px 20px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;">
+<tr><td style="padding:32px 40px 24px 40px;">
+<img src="https://atlantium.ai/logo-dark.png" alt="Atlantium" width="140" style="display:block;margin-bottom:24px;">
+<p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#18181b;">Hi ${name},</p>
+<div style="font-size:15px;line-height:1.7;color:#27272a;">${escapedBody}</div>
+</td></tr>
+<tr><td style="padding:0 40px 32px 40px;">
+<p style="margin:24px 0 0;padding-top:20px;border-top:1px solid #e4e4e7;font-size:12px;color:#a1a1aa;">Atlantium &mdash; AI Engineering Community</p>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailUser || !emailSubject.trim() || !emailBody.trim()) return;
+    setIsSendingEmail(true);
+    try {
+      const name = emailUser.display_name || "there";
+      const htmlBody = buildEmailHtml(name, emailSubject, emailBody);
+      await api.sendUserEmail(emailUser.id, emailSubject, htmlBody);
+      toast.success(`Email sent to ${emailUser.email}`);
+      setEmailUser(null);
+      setEmailSubject("");
+      setEmailBody("");
+    } catch (error) {
+      toast.error("Failed to send email");
+      console.error("Error sending email:", error);
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
 
   // Load users on mount
   useEffect(() => {
@@ -103,11 +169,19 @@ export function AdminUsersPage() {
     }
   };
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.display_name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredUsers = users
+    .filter((user) => {
+      const q = searchQuery.toLowerCase();
+      return (
+        user.email.toLowerCase().includes(q) ||
+        user.display_name?.toLowerCase().includes(q) ||
+        user.full_name?.toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      const cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      return sortAsc ? cmp : -cmp;
+    });
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "-";
@@ -128,7 +202,7 @@ export function AdminUsersPage() {
     });
   };
 
-  const handleViewDetails = async (user: User) => {
+  const handleSelectUser = useCallback(async (user: User) => {
     setSelectedUser(user);
     setUserProfile(null);
     setIsLoadingProfile(true);
@@ -140,16 +214,17 @@ export function AdminUsersPage() {
     } finally {
       setIsLoadingProfile(false);
     }
-  };
+  }, []);
 
   const handleToggleAdmin = async (user: User) => {
     if (!toggleAdminConfirm) return;
     setIsUpdating(true);
     try {
       await api.updateUserAdmin(user.id, !user.is_admin);
-      setUsers(users.map((u) =>
+      const updated = users.map((u) =>
         u.id === user.id ? { ...u, is_admin: !u.is_admin } : u
-      ));
+      );
+      setUsers(updated);
       if (selectedUser?.id === user.id) {
         setSelectedUser({ ...selectedUser, is_admin: !user.is_admin });
       }
@@ -168,9 +243,10 @@ export function AdminUsersPage() {
     setIsUpdating(true);
     try {
       await api.updateUserAccess(user.id, !user.has_access);
-      setUsers(users.map((u) =>
+      const updated = users.map((u) =>
         u.id === user.id ? { ...u, has_access: !u.has_access } : u
-      ));
+      );
+      setUsers(updated);
       if (selectedUser?.id === user.id) {
         setSelectedUser({ ...selectedUser, has_access: !user.has_access });
       }
@@ -184,10 +260,38 @@ export function AdminUsersPage() {
     }
   };
 
+  const navigateList = useCallback((direction: "up" | "down") => {
+    if (filteredUsers.length === 0) return;
+    const currentIndex = selectedUser
+      ? filteredUsers.findIndex((u) => u.id === selectedUser.id)
+      : -1;
+    let nextIndex: number;
+    if (direction === "down") {
+      nextIndex = currentIndex < filteredUsers.length - 1 ? currentIndex + 1 : 0;
+    } else {
+      nextIndex = currentIndex > 0 ? currentIndex - 1 : filteredUsers.length - 1;
+    }
+    const nextUser = filteredUsers[nextIndex];
+    handleSelectUser(nextUser);
+    // Scroll the item into view
+    const el = itemRefs.current.get(nextUser.id);
+    el?.scrollIntoView({ block: "nearest" });
+  }, [filteredUsers, selectedUser, handleSelectUser]);
+
+  const handleListKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      navigateList("down");
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      navigateList("up");
+    }
+  }, [navigateList]);
+
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-[calc(100vh-6.5rem)]">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-2xl font-bold">Users</h2>
           <p className="text-muted-foreground">Manage user accounts, permissions, and access</p>
@@ -198,178 +302,171 @@ export function AdminUsersPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search users by email or name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Users Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>All Users ({filteredUsers.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      {/* Master-Detail Layout */}
+      <div className="flex flex-1 min-h-0 gap-4">
+        {/* Left Panel - User List */}
+        <div
+          className="w-80 flex-shrink-0 border rounded-lg flex flex-col bg-card overflow-hidden"
+          onKeyDown={handleListKeyDown}
+          ref={listRef}
+        >
+          {/* Search */}
+          <div className="p-3 border-b">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search users..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 h-8 text-sm"
+              />
             </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Access</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Last Login</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <div className="flex items-center justify-between mt-2 px-0.5">
+              <span className="text-xs text-muted-foreground">{filteredUsers.length} users</span>
+              <button
+                onClick={() => setSortAsc(!sortAsc)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {sortAsc ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
+                {sortAsc ? "Oldest" : "Newest"}
+              </button>
+            </div>
+          </div>
+
+          {/* User List */}
+          <ScrollArea className="flex-1 min-h-0">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="p-1.5">
                 {filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{user.display_name || "No name"}</div>
-                        <div className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Mail className="h-3 w-3" />
-                          {user.email}
-                        </div>
+                  <button
+                    key={user.id}
+                    ref={(el) => {
+                      if (el) itemRefs.current.set(user.id, el);
+                      else itemRefs.current.delete(user.id);
+                    }}
+                    onClick={() => handleSelectUser(user)}
+                    className={`w-full text-left px-3 py-2.5 rounded-md transition-colors ${
+                      selectedUser?.id === user.id
+                        ? "bg-primary/10 border border-primary/20"
+                        : "hover:bg-muted/50 border border-transparent"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium truncate">
+                        {getUserName(user)}
+                      </span>
+                      <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                        {user.onboarding_completed ? (
+                          <ClipboardCheck className="h-3 w-3 text-blue-500" />
+                        ) : (
+                          <Clock className="h-3 w-3 text-muted-foreground/40" />
+                        )}
+                        {user.has_access ? (
+                          <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                        ) : (
+                          <Clock className="h-3 w-3 text-orange-500" />
+                        )}
+                        {user.is_admin && (
+                          <Shield className="h-3 w-3 text-primary" />
+                        )}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      {user.is_email_verified ? (
-                        <Badge variant="secondary" className="bg-green-500/10 text-green-500">
-                          Verified
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-yellow-500 border-yellow-500/50">
-                          Pending
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {user.has_access ? (
-                        <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 gap-1">
-                          <CheckCircle2 className="h-3 w-3" />
-                          Granted
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-orange-500 border-orange-500/50 gap-1">
-                          <Clock className="h-3 w-3" />
-                          Pending
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {user.is_admin ? (
-                        <Badge className="bg-primary">
-                          <Shield className="h-3 w-3 mr-1" />
-                          Admin
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">User</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>{formatDate(user.created_at)}</TableCell>
-                    <TableCell>{formatDateTime(user.last_login)}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleViewDetails(user)}>
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setToggleAccessConfirm(user)}>
-                            {user.has_access ? (
-                              <>
-                                <Clock className="h-4 w-4 mr-2" />
-                                Revoke Access
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle2 className="h-4 w-4 mr-2" />
-                                Grant Access
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setToggleAdminConfirm(user)}>
-                            {user.is_admin ? (
-                              <>
-                                <ShieldOff className="h-4 w-4 mr-2" />
-                                Remove Admin
-                              </>
-                            ) : (
-                              <>
-                                <Shield className="h-4 w-4 mr-2" />
-                                Make Admin
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">{user.email}</p>
+                  </button>
                 ))}
                 {filteredUsers.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      No users found
-                    </TableCell>
-                  </TableRow>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Users className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No users found</p>
+                  </div>
                 )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+              </div>
+            )}
+          </ScrollArea>
+        </div>
 
-      {/* User Details Dialog */}
-      <Dialog open={!!selectedUser} onOpenChange={() => { setSelectedUser(null); setUserProfile(null); }}>
-        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {userProfile?.avatar_url && (
-                <img src={userProfile.avatar_url} alt="" className="h-8 w-8 rounded-full" />
-              )}
-              {selectedUser?.display_name || selectedUser?.email}
-            </DialogTitle>
-            <DialogDescription>
-              User profile and registration details
-            </DialogDescription>
-          </DialogHeader>
-          {selectedUser && (
-            <ScrollArea className="flex-1 -mx-6 px-6">
-              <div className="space-y-5 py-2">
+        {/* Right Panel - User Detail */}
+        <div className="flex-1 border rounded-lg bg-card overflow-hidden min-h-0">
+          {selectedUser ? (
+            <ScrollArea className="h-full">
+              <div className="p-6">
+                {/* User Header */}
+                <div className="flex items-start justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    {userProfile?.avatar_url ? (
+                      <img src={userProfile.avatar_url} alt="" className="h-12 w-12 rounded-full" />
+                    ) : (
+                      <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+                        <Users className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="text-lg font-semibold">
+                        {getUserName(selectedUser)}
+                      </h3>
+                      <p className="text-sm text-muted-foreground flex items-center gap-1">
+                        <Mail className="h-3 w-3" />
+                        {selectedUser.email}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setEmailUser(selectedUser);
+                        setEmailSubject("");
+                        setEmailBody("");
+                      }}
+                      title="Send email"
+                    >
+                      <Mail className="h-4 w-4" />
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setToggleAccessConfirm(selectedUser)}>
+                          {selectedUser.has_access ? (
+                            <>
+                              <Clock className="h-4 w-4 mr-2" />
+                              Revoke Access
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="h-4 w-4 mr-2" />
+                              Grant Access
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setToggleAdminConfirm(selectedUser)}>
+                          {selectedUser.is_admin ? (
+                            <>
+                              <ShieldOff className="h-4 w-4 mr-2" />
+                              Remove Admin
+                            </>
+                          ) : (
+                            <>
+                              <Shield className="h-4 w-4 mr-2" />
+                              Make Admin
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+
                 {/* Account Info */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Email</Label>
-                    <p className="text-sm font-medium flex items-center gap-1.5">
-                      <Mail className="h-3 w-3 text-muted-foreground" />
-                      {selectedUser.email}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Display Name</Label>
-                    <p className="text-sm font-medium">{selectedUser.display_name || "-"}</p>
-                  </div>
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                   {userProfile && (
                     <>
                       <div>
@@ -397,28 +494,63 @@ export function AdminUsersPage() {
                   </div>
                 </div>
 
+                {/* Status Badges */}
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {selectedUser.is_email_verified ? (
+                    <Badge variant="secondary" className="bg-green-500/10 text-green-500">
+                      Verified
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-yellow-500 border-yellow-500/50">
+                      Email Pending
+                    </Badge>
+                  )}
+                  {selectedUser.has_access ? (
+                    <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 gap-1">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Access Granted
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-orange-500 border-orange-500/50 gap-1">
+                      <Clock className="h-3 w-3" />
+                      Access Pending
+                    </Badge>
+                  )}
+                  {selectedUser.onboarding_completed ? (
+                    <Badge variant="secondary" className="bg-blue-500/10 text-blue-500 gap-1">
+                      <ClipboardCheck className="h-3 w-3" />
+                      Form Done
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-muted-foreground border-muted-foreground/30 gap-1">
+                      <Clock className="h-3 w-3" />
+                      Form Incomplete
+                    </Badge>
+                  )}
+                  {selectedUser.is_admin && (
+                    <Badge className="bg-primary gap-1">
+                      <Shield className="h-3 w-3" />
+                      Admin
+                    </Badge>
+                  )}
+                </div>
+
                 {/* Toggles */}
-                <Separator />
-                <div className="space-y-3">
+                <Separator className="mb-4" />
+                <div className="space-y-3 mb-6">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-sm">Email Verified</Label>
-                    </div>
+                    <Label className="text-sm">Email Verified</Label>
                     <Switch checked={selectedUser.is_email_verified} disabled />
                   </div>
                   <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-sm">Dashboard Access</Label>
-                    </div>
+                    <Label className="text-sm">Dashboard Access</Label>
                     <Switch
                       checked={selectedUser.has_access}
                       onCheckedChange={() => setToggleAccessConfirm(selectedUser)}
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-sm">Admin Status</Label>
-                    </div>
+                    <Label className="text-sm">Admin Status</Label>
                     <Switch
                       checked={selectedUser.is_admin}
                       onCheckedChange={() => setToggleAdminConfirm(selectedUser)}
@@ -427,9 +559,9 @@ export function AdminUsersPage() {
                 </div>
 
                 {/* Registration Details */}
-                <Separator />
+                <Separator className="mb-4" />
                 {isLoadingProfile ? (
-                  <div className="flex items-center justify-center py-6">
+                  <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   </div>
                 ) : userProfile?.registration_details ? (
@@ -438,8 +570,7 @@ export function AdminUsersPage() {
                       Registration Form
                     </h3>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      {/* Phone */}
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                       {userProfile.registration_details.phone_number && (
                         <div>
                           <Label className="text-xs text-muted-foreground flex items-center gap-1">
@@ -449,7 +580,6 @@ export function AdminUsersPage() {
                         </div>
                       )}
 
-                      {/* Timezone */}
                       {userProfile.registration_details.timezone && (
                         <div>
                           <Label className="text-xs text-muted-foreground flex items-center gap-1">
@@ -461,7 +591,6 @@ export function AdminUsersPage() {
                         </div>
                       )}
 
-                      {/* Georgia Resident */}
                       <div>
                         <Label className="text-xs text-muted-foreground flex items-center gap-1">
                           <MapPin className="h-3 w-3" /> Georgia Resident
@@ -471,7 +600,6 @@ export function AdminUsersPage() {
                         </p>
                       </div>
 
-                      {/* Primary Goal */}
                       {userProfile.registration_details.primary_goal && (
                         <div>
                           <Label className="text-xs text-muted-foreground flex items-center gap-1">
@@ -483,7 +611,6 @@ export function AdminUsersPage() {
                         </div>
                       )}
 
-                      {/* Technical Level */}
                       {userProfile.registration_details.technical_level && (
                         <div>
                           <Label className="text-xs text-muted-foreground flex items-center gap-1">
@@ -495,7 +622,6 @@ export function AdminUsersPage() {
                         </div>
                       )}
 
-                      {/* Time Commitment */}
                       {userProfile.registration_details.time_commitment && (
                         <div>
                           <Label className="text-xs text-muted-foreground flex items-center gap-1">
@@ -507,7 +633,6 @@ export function AdminUsersPage() {
                         </div>
                       )}
 
-                      {/* Project Status */}
                       {userProfile.registration_details.working_on_project && (
                         <div>
                           <Label className="text-xs text-muted-foreground flex items-center gap-1">
@@ -519,7 +644,6 @@ export function AdminUsersPage() {
                         </div>
                       )}
 
-                      {/* Membership Tier */}
                       {userProfile.registration_details.membership_tier && (
                         <div>
                           <Label className="text-xs text-muted-foreground flex items-center gap-1">
@@ -533,7 +657,6 @@ export function AdminUsersPage() {
                       )}
                     </div>
 
-                    {/* Interests - full width */}
                     {userProfile.registration_details.interests && userProfile.registration_details.interests.length > 0 && (
                       <div>
                         <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-1.5">
@@ -549,7 +672,6 @@ export function AdminUsersPage() {
                       </div>
                     )}
 
-                    {/* Community Hopes - full width */}
                     {userProfile.registration_details.community_hopes && userProfile.registration_details.community_hopes.length > 0 && (
                       <div>
                         <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-1.5">
@@ -565,7 +687,6 @@ export function AdminUsersPage() {
                       </div>
                     )}
 
-                    {/* Project Description */}
                     {userProfile.registration_details.project_description && (
                       <div>
                         <Label className="text-xs text-muted-foreground">Project Description</Label>
@@ -575,7 +696,6 @@ export function AdminUsersPage() {
                       </div>
                     )}
 
-                    {/* Success Definition */}
                     {userProfile.registration_details.success_definition && (
                       <div>
                         <Label className="text-xs text-muted-foreground">How They Define Success</Label>
@@ -585,7 +705,6 @@ export function AdminUsersPage() {
                       </div>
                     )}
 
-                    {/* Onboarding Completed At */}
                     {userProfile.registration_details.onboarding_completed_at && (
                       <p className="text-xs text-muted-foreground">
                         Onboarding completed {formatDate(userProfile.registration_details.onboarding_completed_at)}
@@ -593,20 +712,23 @@ export function AdminUsersPage() {
                     )}
                   </div>
                 ) : !isLoadingProfile && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
+                  <p className="text-sm text-muted-foreground text-center py-6">
                     No registration details found
                   </p>
                 )}
               </div>
             </ScrollArea>
+          ) : (
+            <div className="h-full flex items-center justify-center text-muted-foreground">
+              <div className="text-center">
+                <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">Select a user to view details</p>
+                <p className="text-xs mt-1 opacity-60">Use arrow keys to navigate</p>
+              </div>
+            </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setSelectedUser(null); setUserProfile(null); }}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </div>
 
       {/* Toggle Access Confirmation Dialog */}
       <Dialog open={!!toggleAccessConfirm} onOpenChange={() => setToggleAccessConfirm(null)}>
@@ -681,6 +803,66 @@ export function AdminUsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Email Bottom Sheet */}
+      <Sheet open={!!emailUser} onOpenChange={(open) => { if (!open) setEmailUser(null); }}>
+        <SheetContent side="bottom" className="max-h-[80vh]">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Send Email
+            </SheetTitle>
+            <SheetDescription>
+              To: {emailUser?.display_name ? `${emailUser.display_name} (${emailUser.email})` : emailUser?.email}
+            </SheetDescription>
+          </SheetHeader>
+          <div className="px-4 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email-subject">Subject</Label>
+              <Input
+                id="email-subject"
+                placeholder="Email subject..."
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email-body">Message</Label>
+              <Textarea
+                id="email-body"
+                placeholder="Write your message..."
+                value={emailBody}
+                onChange={(e) => setEmailBody(e.target.value)}
+                rows={6}
+              />
+              <p className="text-xs text-muted-foreground">
+                Sent from: Atlantium &lt;team@notifications.atlantium.ai&gt;
+              </p>
+            </div>
+          </div>
+          <SheetFooter>
+            <Button variant="outline" onClick={() => setEmailUser(null)} disabled={isSendingEmail}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSendEmail}
+              disabled={isSendingEmail || !emailSubject.trim() || !emailBody.trim()}
+            >
+              {isSendingEmail ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send Email
+                </>
+              )}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
