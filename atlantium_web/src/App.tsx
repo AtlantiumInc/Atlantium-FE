@@ -39,6 +39,7 @@ import { JobsPage } from "@/pages/JobsPage";
 import { JobDetailPage } from "@/pages/JobDetailPage";
 import { TrainingPage } from "@/pages/TrainingPage";
 import { AIEngineerPage } from "@/pages/AIEngineerPage";
+import { DollarTestPage } from "@/pages/DollarTestPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient({
@@ -82,6 +83,7 @@ function AppRoutes() {
       <Route path="/training" element={<TrainingPage />} />
       <Route path="/index/:slug" element={<ArticleDetailPage />} />
       <Route path="/ai-engineer" element={<AIEngineerPage />} />
+      <Route path="/dollar-test" element={<DollarTestPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/policies" element={<TermsPage />} />
       <Route path="/services" element={<ServicesPage />} />

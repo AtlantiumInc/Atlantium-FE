@@ -840,6 +840,13 @@ class ApiClient {
     }, STRIPE_API_BASE_URL);
   }
 
+  async dollarTest(paymentMethodId: string): Promise<{ success: boolean; requires_action: boolean; client_secret: string | null }> {
+    return this.request<{ success: boolean; requires_action: boolean; client_secret: string | null }>("/stripe/dollar-test", {
+      method: "POST",
+      body: JSON.stringify({ payment_method_id: paymentMethodId }),
+    }, STRIPE_API_BASE_URL);
+  }
+
   // Google OAuth methods
   async getGoogleAuthUrl(redirectUri?: string): Promise<{ url: string }> {
     const params = redirectUri ? `?redirect_uri=${encodeURIComponent(redirectUri)}` : "";
