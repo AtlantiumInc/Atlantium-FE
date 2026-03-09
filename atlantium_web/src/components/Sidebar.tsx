@@ -4,6 +4,7 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  FlaskConical,
   GraduationCap,
   MessageCircle,
   Radio,
@@ -55,6 +56,11 @@ export function Sidebar({
       id: "training",
       icon: <GraduationCap size={20} />,
       label: "Training",
+    },
+    {
+      id: "playground",
+      icon: <FlaskConical size={20} />,
+      label: "Playground",
     },
   ];
 

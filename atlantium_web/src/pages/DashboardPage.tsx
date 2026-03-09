@@ -17,6 +17,7 @@ import { ConnectionsPage } from "@/components/pages/ConnectionsPage";
 import { ProjectsPage } from "@/components/pages/ProjectsPage";
 import { LobbyPage } from "@/components/pages/LobbyPage";
 import { TrainingPage } from "@/components/pages/TrainingPage";
+import { PlaygroundPage } from "@/components/pages/PlaygroundPage";
 
 export function DashboardPage() {
   const { user, logout, hasAccess } = useAuth();
@@ -58,6 +59,7 @@ export function DashboardPage() {
       projects: "Projects",
       leaderboard: "Leaderboard",
       training: "Training",
+      playground: "Playground",
     };
     return titles[activePage] || "HQ";
   };
@@ -84,6 +86,8 @@ export function DashboardPage() {
         return <LeaderboardPage hasGithubConnected={false} />;
       case "training":
         return <TrainingPage />;
+      case "playground":
+        return <PlaygroundPage />;
       default:
         return <HQPage user={user ?? undefined} onNavigateToThread={handleNavigateToThread} />;
     }
@@ -115,7 +119,7 @@ export function DashboardPage() {
         </header>
 
         {/* Page content */}
-        {activePage === "messages" || activePage === "lobby" ? (
+        {activePage === "messages" || activePage === "lobby" || activePage === "playground" ? (
           // Full-bleed pages with no padding
           <div className="w-full h-[calc(100vh-3.5rem)]">
             {renderPage()}
