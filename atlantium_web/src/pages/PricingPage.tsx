@@ -19,6 +19,12 @@ import {
   Code,
   Video,
   Handshake,
+  Rocket,
+  MessageSquare,
+  FolderOpen,
+  Lightbulb,
+  CalendarCheck,
+  Globe,
 } from "lucide-react";
 
 function FadeIn({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
@@ -90,14 +96,6 @@ const tiers = [
   },
 ];
 
-const highlights = [
-  { icon: Video, label: "Office Hours", desc: "Free members get weekly Friday sessions. Club members get two per day." },
-  { icon: Code, label: "AI Engineering", desc: "Club members access the full AI engineering curriculum and hands-on projects." },
-  { icon: Smartphone, label: "iOS App", desc: "All members get access to the Atlantium iOS app." },
-  { icon: Handshake, label: "Startup Advisor", desc: "Club members get direct access to startup advisory and mentorship." },
-  { icon: Users, label: "Focus Groups", desc: "Join topic-based groups with builders across Atlanta and beyond." },
-  { icon: Zap, label: "Perks & Discounts", desc: "Software discounts, event access, and partner deals for all members." },
-];
 
 export function PricingPage() {
   return (
@@ -149,7 +147,7 @@ export function PricingPage() {
 
       {/* Pricing cards */}
       <section className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
           {tiers.map((tier, i) => {
             const Icon = tier.icon;
             return (
@@ -216,34 +214,119 @@ export function PricingPage() {
         </div>
       </section>
 
-      {/* What's included */}
+      {/* Club Membership Benefits — deep dive */}
       <section className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
         <FadeIn>
           <div className="text-center mb-12">
-            <p className="text-xs font-bold text-cyan-400 uppercase tracking-widest mb-3">What's Included</p>
-            <h2 className="text-3xl sm:text-4xl font-bold">Built for Builders</h2>
-            <p className="text-muted-foreground mt-3 max-w-xl mx-auto">
-              Every plan includes access to the Atlantium community and tools.
+            <p className="text-xs font-bold text-violet-400 uppercase tracking-widest mb-3">Club Membership</p>
+            <h2 className="text-3xl sm:text-4xl font-bold">We Build With You</h2>
+            <p className="text-muted-foreground mt-3 max-w-2xl mx-auto">
+              Club membership isn't a course — it's hands-on collaboration. We work deeply alongside you on your projects, from architecture to deployment. Think of it as having a technical co-founder on call.
             </p>
           </div>
         </FadeIn>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {highlights.map((item, i) => {
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[
+            {
+              icon: Video,
+              title: "Two Office Hours Per Day",
+              desc: "Morning and afternoon sessions with engineers who actually review your code, debug with you, and help you ship. Not lectures — real working sessions on your project.",
+            },
+            {
+              icon: FolderOpen,
+              title: "Deep Project Support",
+              desc: "Bring your startup, side project, or portfolio piece. We help with architecture decisions, code reviews, deployment strategy, and getting unstuck on the hard problems.",
+            },
+            {
+              icon: Code,
+              title: "AI Engineering Curriculum",
+              desc: "A structured path from foundations to production-grade AI apps. TypeScript, React, system design, LLM integration — taught through building, not slides.",
+            },
+            {
+              icon: Lightbulb,
+              title: "Startup Advisory",
+              desc: "Get feedback on your idea, go-to-market strategy, and technical roadmap from founders who've been through it. We help you build something people actually want.",
+            },
+            {
+              icon: Rocket,
+              title: "Priority Event Access",
+              desc: "Skip the waitlist for high-demand events with founders, investors, and operators. Club members always get a seat at the table.",
+            },
+            {
+              icon: MessageSquare,
+              title: "Direct Access",
+              desc: "Message the team directly. Get async feedback on pull requests, architecture questions, or career decisions between office hours.",
+            },
+          ].map((item, i) => {
             const Icon = item.icon;
             return (
-              <FadeIn key={item.label} delay={i * 0.07}>
-                <SpotlightCard className="h-full p-5" spotlightColor="rgba(99, 102, 241, 0.1)">
-                  <div className="h-9 w-9 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-3">
-                    <Icon className="h-[18px] w-[18px] text-cyan-400" />
+              <FadeIn key={item.title} delay={i * 0.07}>
+                <SpotlightCard className="h-full p-6" spotlightColor="rgba(139, 92, 246, 0.1)">
+                  <div className="flex gap-4">
+                    <div className="h-10 w-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
+                      <Icon className="h-5 w-5 text-violet-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground mb-1">{item.title}</h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+                    </div>
                   </div>
-                  <h3 className="font-semibold text-foreground mb-1">{item.label}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
                 </SpotlightCard>
               </FadeIn>
             );
           })}
         </div>
+      </section>
+
+      {/* Annual Membership Perks */}
+      <section className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
+        <FadeIn>
+          <div className="relative overflow-hidden rounded-2xl">
+            <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-emerald-500 via-cyan-500 to-emerald-500 opacity-20" />
+            <SpotlightCard className="relative p-8 lg:p-12" spotlightColor="rgba(16, 185, 129, 0.1)">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-4">
+                    <Calendar className="h-3.5 w-3.5 text-emerald-400" />
+                    <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Annual Membership</span>
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-bold mb-4">Go Annual. Get More.</h2>
+                  <p className="text-muted-foreground leading-relaxed mb-6">
+                    Annual members save $1,137 and unlock exclusive monthly events with founders, investors, and industry leaders. Plus networking opportunities you won't find anywhere else.
+                  </p>
+                  <Link to="/signup">
+                    <Button className="gap-2 bg-white text-black hover:bg-gray-100 border-0">
+                      Join Annual
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                </div>
+                <div className="space-y-4">
+                  {[
+                    { icon: CalendarCheck, label: "Exclusive Monthly Events", desc: "Curated gatherings with founders, operators, and investors — only for annual members." },
+                    { icon: Globe, label: "Networking Opportunities", desc: "Private introductions and access to a network of builders, hiring managers, and advisors." },
+                    { icon: Handshake, label: "Quarterly Performance Review", desc: "One-on-one sessions to assess your progress, refine your goals, and plan next steps." },
+                    { icon: Zap, label: "Discounted Services", desc: "Preferred rates on consulting, design, and development services from the Atlantium team." },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <div key={item.label} className="flex gap-3">
+                        <div className="h-9 w-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                          <Icon className="h-[18px] w-[18px] text-emerald-400" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-foreground text-sm">{item.label}</p>
+                          <p className="text-sm text-muted-foreground">{item.desc}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </SpotlightCard>
+          </div>
+        </FadeIn>
       </section>
 
       {/* CTA */}
