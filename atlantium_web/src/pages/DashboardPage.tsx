@@ -16,7 +16,7 @@ import { GroupsPage } from "@/components/pages/GroupsPage";
 import { ConnectionsPage } from "@/components/pages/ConnectionsPage";
 import { ProjectsPage } from "@/components/pages/ProjectsPage";
 import { LobbyPage } from "@/components/pages/LobbyPage";
-import { TrainingPage } from "@/components/pages/TrainingPage";
+import { PricingPage } from "@/components/pages/PricingPage";
 import { PlaygroundPage } from "@/components/pages/PlaygroundPage";
 
 export function DashboardPage() {
@@ -58,7 +58,7 @@ export function DashboardPage() {
       connections: "Connections",
       projects: "Projects",
       leaderboard: "Leaderboard",
-      training: "Training",
+      pricing: "Pricing",
       playground: "Playground",
     };
     return titles[activePage] || "HQ";
@@ -84,8 +84,8 @@ export function DashboardPage() {
         return <ProjectsPage />;
       case "leaderboard":
         return <LeaderboardPage hasGithubConnected={false} />;
-      case "training":
-        return <TrainingPage />;
+      case "pricing":
+        return <PricingPage />;
       case "playground":
         return <PlaygroundPage />;
       default:
@@ -128,7 +128,7 @@ export function DashboardPage() {
           <div className="p-6 w-full">
             <div className={cn(
               "mx-auto",
-              ["connections", "leaderboard", "hq", "events", "projects", "groups", "training"].includes(activePage) ? "max-w-7xl" : "max-w-4xl"
+              ["connections", "leaderboard", "hq", "events", "projects", "groups", "pricing"].includes(activePage) ? "max-w-7xl" : "max-w-4xl"
             )}>
               {renderPage()}
             </div>

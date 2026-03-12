@@ -4,8 +4,8 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  CreditCard,
   FlaskConical,
-  GraduationCap,
   MessageCircle,
   Radio,
   UserPlus,
@@ -53,9 +53,9 @@ export function Sidebar({
       label: "Connections",
     },
     {
-      id: "training",
-      icon: <GraduationCap size={20} />,
-      label: "Training",
+      id: "pricing",
+      icon: <CreditCard size={20} />,
+      label: "Pricing",
     },
     {
       id: "playground",

@@ -46,8 +46,9 @@ const PRICING_PLANS: PricingPlan[] = [
     icon: Crown,
     features: [
       "Everything in Free",
+      "Two office hours sessions per day",
+      "AI engineering curriculum",
       "Exclusive member events",
-      "Daily office hours",
       "Priority event registration",
       "Startup advisor",
     ],
@@ -76,6 +77,8 @@ const PRICING_PLANS: PricingPlan[] = [
     description: "Get started with the basics",
     icon: Star,
     features: [
+      "iOS app access",
+      "Office hours once a week (Fridays)",
       "Frontier feed access",
       "Focus groups",
       "Public events",
