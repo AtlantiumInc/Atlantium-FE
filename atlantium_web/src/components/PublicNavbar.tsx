@@ -5,12 +5,16 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { AnimatePresence, motion } from "motion/react";
 import { X, Menu, ChevronRight } from "lucide-react";
 
-const navLinks = [
+const centerLinks = [
   { to: "/services",      label: "Services" },
   { to: "/jobs",          label: "Job Board" },
   { to: "/pricing",       label: "Pricing" },
-  { to: "/focus-groups",  label: "Groups" },
   { to: "/index",         label: "Blog" },
+];
+
+const navLinks = [
+  ...centerLinks,
+  { to: "/focus-groups",  label: "Groups" },
 ];
 
 const missionLink = { to: "/mission", label: "Mission" };
@@ -31,9 +35,9 @@ export function PublicNavbar() {
   return (
     <>
       <nav className="sticky top-0 z-50 bg-background/70 backdrop-blur-xl border-b border-border/30">
-        <div className="w-full px-6 h-16 flex items-center justify-between">
-          {/* Logo + Mission badge */}
-          <div className="flex items-center gap-3">
+        <div className="w-full px-6 h-16 flex items-center">
+          {/* Left — Logo + Mission badge */}
+          <div className="flex items-center gap-3 shrink-0">
             <Link to="/" className="flex items-center gap-2 sm:gap-3">
               <img src="/logo.png" alt="Atlantium" className="h-7 w-7 sm:h-8 sm:w-8" />
               <div>
@@ -52,9 +56,9 @@ export function PublicNavbar() {
             </Link>
           </div>
 
-          {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-1 md:gap-2">
-            {navLinks.map(({ to, label }) => {
+          {/* Center — Nav links */}
+          <div className="hidden md:flex items-center justify-center gap-1 flex-1">
+            {centerLinks.map(({ to, label }) => {
               const isActive = pathname === to;
               return (
                 <Link key={to} to={to}>
@@ -71,6 +75,10 @@ export function PublicNavbar() {
                 </Link>
               );
             })}
+          </div>
+
+          {/* Right — Auth + theme */}
+          <div className="hidden md:flex items-center gap-2 shrink-0">
             <Link to="/login">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                 Sign In
@@ -85,7 +93,7 @@ export function PublicNavbar() {
           </div>
 
           {/* Mobile right: Join Lab + hamburger */}
-          <div className="flex md:hidden items-center gap-2">
+          <div className="flex md:hidden items-center gap-2 ml-auto">
             <Link to="/signup">
               <Button size="sm" className="gap-1.5 bg-white text-black hover:bg-gray-100 border-0 text-xs h-8 px-3">
                 Join Lab
