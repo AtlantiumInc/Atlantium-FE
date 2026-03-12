@@ -930,12 +930,12 @@ export function CommunityPage() {
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1.5">
                       <Video className="h-4 w-4 text-blue-400" />
-                      <span>Video coming soon</span>
+                      <span>Live video</span>
                     </div>
                     <div className="hidden sm:block h-4 w-px bg-border/50" />
                     <div className="flex items-center gap-1.5">
                       <Mic className="h-4 w-4 text-emerald-400" />
-                      <span>Audio coming soon</span>
+                      <span>Live audio</span>
                     </div>
                   </div>
                   <Link to="/signup">
