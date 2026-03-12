@@ -32,8 +32,8 @@ export function PublicNavbar() {
     <>
       <nav className="sticky top-0 z-50 bg-background/70 backdrop-blur-xl border-b border-border/30">
         <div className="w-full px-6 h-16 flex items-center justify-between">
-          {/* Logo + Mission */}
-          <div className="flex items-center gap-4 sm:gap-6">
+          {/* Logo + Mission badge */}
+          <div className="flex items-center gap-3">
             <Link to="/" className="flex items-center gap-2 sm:gap-3">
               <img src="/logo.png" alt="Atlantium" className="h-7 w-7 sm:h-8 sm:w-8" />
               <div>
@@ -41,17 +41,14 @@ export function PublicNavbar() {
                 <p className="hidden sm:block text-[10px] text-muted-foreground tracking-wide">Citizen Technology Lab</p>
               </div>
             </Link>
-            <Link to={missionLink.to} className="hidden md:block">
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`relative text-muted-foreground hover:text-foreground ${pathname === missionLink.to ? "text-foreground" : ""}`}
-              >
-                {missionLink.label}
-                {pathname === missionLink.to && (
-                  <span className="absolute -bottom-1 left-2 right-2 h-[2px] rounded-full bg-foreground/60" />
-                )}
-              </Button>
+            <Link to={missionLink.to} className="hidden sm:inline-flex">
+              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider border transition-colors ${
+                pathname === missionLink.to
+                  ? "bg-primary/15 border-primary/30 text-primary"
+                  : "bg-muted/50 border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
+              }`}>
+                Our Mission
+              </span>
             </Link>
           </div>
 
