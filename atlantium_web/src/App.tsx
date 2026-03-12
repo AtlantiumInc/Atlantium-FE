@@ -41,6 +41,7 @@ import { TrainingPage } from "@/pages/TrainingPage";
 import { PricingPage as PublicPricingPage } from "@/pages/PricingPage";
 import { AIEngineerPage } from "@/pages/AIEngineerPage";
 import { DollarTestPage } from "@/pages/DollarTestPage";
+import { TemplatesPage } from "@/pages/TemplatesPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient({
@@ -85,6 +86,7 @@ function AppRoutes() {
       <Route path="/pricing" element={<PublicPricingPage />} />
       <Route path="/index/:slug" element={<ArticleDetailPage />} />
       <Route path="/ai-engineer" element={<AIEngineerPage />} />
+      <Route path="/templates" element={<TemplatesPage />} />
       <Route path="/dollar-test" element={<DollarTestPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/policies" element={<TermsPage />} />

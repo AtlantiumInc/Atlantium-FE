@@ -1,20 +1,67 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AnimatePresence, motion } from "motion/react";
-import { X, Menu, ChevronRight } from "lucide-react";
+import { X, Menu, ChevronRight, Cpu, Users, Wrench, BookOpen, Code2, Newspaper } from "lucide-react";
 
-const centerLinks = [
-  { to: "/services",      label: "Services" },
-  { to: "/jobs",          label: "Job Board" },
-  { to: "/pricing",       label: "Pricing" },
-  { to: "/index",         label: "Blog" },
+const solutionItems = [
+  {
+    to: "/services",
+    label: "Services",
+    description: "Custom AI solutions, integrations, and consulting for your business",
+    icon: Wrench,
+    image: "https://images.unsplash.com/photo-1551434678-e076c223a692?w=400&h=250&fit=crop&q=80",
+  },
+  {
+    to: "/training",
+    label: "AI Engineering",
+    description: "Hands-on curriculum and mentorship to master modern AI development",
+    icon: Cpu,
+    image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=250&fit=crop&q=80",
+  },
+  {
+    to: "/focus-groups",
+    label: "Focus Groups",
+    description: "Live video sessions with builders tackling real-world AI projects",
+    icon: Users,
+    image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400&h=250&fit=crop&q=80",
+  },
+];
+
+const resourceItems = [
+  {
+    to: "/docs",
+    label: "Docs",
+    description: "Guides, references, and tutorials for building with Atlantium",
+    icon: BookOpen,
+    image: "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=400&h=250&fit=crop&q=80",
+  },
+  {
+    to: "/templates",
+    label: "Open Source",
+    description: "Free portfolio templates and starter kits for AI engineers",
+    icon: Code2,
+    image: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=250&fit=crop&q=80",
+  },
+  {
+    to: "/index",
+    label: "Blog",
+    description: "Latest articles, insights, and updates from the Atlantium Index",
+    icon: Newspaper,
+    image: "https://images.unsplash.com/photo-1504711434969-e33886168d4c?w=400&h=250&fit=crop&q=80",
+  },
 ];
 
 const navLinks = [
-  ...centerLinks,
-  { to: "/focus-groups",  label: "Groups" },
+  { to: "/jobs",          label: "Job Board" },
+  { to: "/pricing",       label: "Pricing" },
+];
+
+const mobileLinks = [
+  ...solutionItems.map(s => ({ to: s.to, label: s.label })),
+  ...resourceItems.map(r => ({ to: r.to, label: r.label })),
+  ...navLinks,
 ];
 
 const missionLink = { to: "/mission", label: "Mission" };
@@ -22,15 +69,39 @@ const missionLink = { to: "/mission", label: "Mission" };
 export function PublicNavbar() {
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
+  const [solutionsOpen, setSolutionsOpen] = useState(false);
+  const [resourcesOpen, setResourcesOpen] = useState(false);
+  const solutionsTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resourcesTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const solutionsRef = useRef<HTMLDivElement>(null);
+  const resourcesRef = useRef<HTMLDivElement>(null);
+
+  const handleSolutionsEnter = () => {
+    if (solutionsTimeout.current) clearTimeout(solutionsTimeout.current);
+    setSolutionsOpen(true);
+  };
+  const handleSolutionsLeave = () => {
+    solutionsTimeout.current = setTimeout(() => setSolutionsOpen(false), 150);
+  };
+  const handleResourcesEnter = () => {
+    if (resourcesTimeout.current) clearTimeout(resourcesTimeout.current);
+    setResourcesOpen(true);
+  };
+  const handleResourcesLeave = () => {
+    resourcesTimeout.current = setTimeout(() => setResourcesOpen(false), 150);
+  };
 
   // Close on route change
-  useEffect(() => { setOpen(false); }, [pathname]);
+  useEffect(() => { setOpen(false); setSolutionsOpen(false); setResourcesOpen(false); }, [pathname]);
 
   // Prevent body scroll when open
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [open]);
+
+  const isSolutionsActive = solutionItems.some(s => pathname === s.to) || pathname === "/training";
+  const isResourcesActive = resourceItems.some(r => pathname === r.to);
 
   return (
     <>
@@ -58,7 +129,135 @@ export function PublicNavbar() {
 
           {/* Nav links — pushed right */}
           <div className="hidden md:flex items-center gap-1 ml-auto mr-3">
-            {centerLinks.map(({ to, label }) => {
+            {/* Solutions dropdown trigger */}
+            <div
+              ref={solutionsRef}
+              className="relative"
+              onMouseEnter={handleSolutionsEnter}
+              onMouseLeave={handleSolutionsLeave}
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`relative text-muted-foreground hover:text-foreground gap-1 ${isSolutionsActive ? "text-foreground" : ""}`}
+              >
+                Solutions
+                <ChevronRight className={`h-3 w-3 transition-transform duration-200 ${solutionsOpen ? "rotate-90" : ""}`} />
+                {isSolutionsActive && (
+                  <span className="absolute -bottom-1 left-2 right-2 h-[2px] rounded-full bg-foreground/60" />
+                )}
+              </Button>
+
+              {/* Mega menu dropdown */}
+              <AnimatePresence>
+                {solutionsOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="absolute top-full right-0 mt-2 w-[780px] rounded-2xl border border-border/50 bg-background shadow-2xl shadow-black/25 p-4 z-[60]"
+                  >
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">Solutions</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      {solutionItems.map(({ to, label, description, icon: Icon, image }) => (
+                        <Link
+                          key={to}
+                          to={to}
+                          className="group rounded-xl overflow-hidden border border-border/40 hover:border-primary/40 bg-muted/20 hover:bg-muted/40 transition-all duration-200"
+                        >
+                          <div className="relative h-36 overflow-hidden">
+                            <img
+                              src={image}
+                              alt={label}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                            <div className="absolute bottom-3 left-3 flex items-center gap-2">
+                              <div className="h-7 w-7 rounded-lg bg-white/15 backdrop-blur-sm flex items-center justify-center">
+                                <Icon className="h-4 w-4 text-white" />
+                              </div>
+                              <span className="text-base font-semibold text-white">{label}</span>
+                            </div>
+                          </div>
+                          <div className="p-3">
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                              {description}
+                            </p>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Resources dropdown trigger */}
+            <div
+              ref={resourcesRef}
+              className="relative"
+              onMouseEnter={handleResourcesEnter}
+              onMouseLeave={handleResourcesLeave}
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`relative text-muted-foreground hover:text-foreground gap-1 ${isResourcesActive ? "text-foreground" : ""}`}
+              >
+                Resources
+                <ChevronRight className={`h-3 w-3 transition-transform duration-200 ${resourcesOpen ? "rotate-90" : ""}`} />
+                {isResourcesActive && (
+                  <span className="absolute -bottom-1 left-2 right-2 h-[2px] rounded-full bg-foreground/60" />
+                )}
+              </Button>
+
+              <AnimatePresence>
+                {resourcesOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="absolute top-full right-0 mt-2 w-[780px] rounded-2xl border border-border/50 bg-background shadow-2xl shadow-black/25 p-4 z-[60]"
+                  >
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">Resources</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      {resourceItems.map(({ to, label, description, icon: Icon, image }) => (
+                        <Link
+                          key={to}
+                          to={to}
+                          className="group rounded-xl overflow-hidden border border-border/40 hover:border-primary/40 bg-muted/20 hover:bg-muted/40 transition-all duration-200"
+                        >
+                          <div className="relative h-36 overflow-hidden">
+                            <img
+                              src={image}
+                              alt={label}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                            <div className="absolute bottom-3 left-3 flex items-center gap-2">
+                              <div className="h-7 w-7 rounded-lg bg-white/15 backdrop-blur-sm flex items-center justify-center">
+                                <Icon className="h-4 w-4 text-white" />
+                              </div>
+                              <span className="text-base font-semibold text-white">{label}</span>
+                            </div>
+                          </div>
+                          <div className="p-3">
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                              {description}
+                            </p>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Regular nav links */}
+            {navLinks.map(({ to, label }) => {
               const isActive = pathname === to;
               return (
                 <Link key={to} to={to}>
@@ -143,7 +342,7 @@ export function PublicNavbar() {
 
             {/* Nav links */}
             <nav className="flex-1 overflow-y-auto px-6 py-4">
-              {[missionLink, ...navLinks].map(({ to, label }, i) => {
+              {[missionLink, ...mobileLinks].map(({ to, label }, i) => {
                 const isActive = pathname === to;
                 return (
                   <motion.div
