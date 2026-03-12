@@ -32,6 +32,11 @@ export function Sidebar({
       label: "Lobby",
     },
     {
+      id: "playground",
+      icon: <FlaskConical size={20} />,
+      label: "Playground",
+    },
+    {
       id: "events",
       icon: <Calendar size={20} />,
       label: "Events",
@@ -50,11 +55,6 @@ export function Sidebar({
       id: "connections",
       icon: <UserPlus size={20} />,
       label: "Connections",
-    },
-    {
-      id: "playground",
-      icon: <FlaskConical size={20} />,
-      label: "Playground",
     },
   ];
 
