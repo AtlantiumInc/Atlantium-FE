@@ -4,15 +4,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Loader2,
   Search,
   Crown,
   MapPin,
   ArrowRight,
   ContactRound,
+  ExternalLink,
+  Globe,
+  Linkedin,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { ConnectionActions } from "@/components/ConnectionActions";
 
 interface Member {
   user_id: string;
@@ -21,6 +31,21 @@ interface Member {
   avatar_url: string;
   bio: string;
   location: string;
+}
+
+interface MemberProfile {
+  id: string;
+  user_id: string;
+  username: string;
+  display_name: string;
+  first_name: string;
+  last_name: string;
+  bio: string;
+  avatar_url: string;
+  location: string;
+  website_url: string;
+  linkedin_url: string;
+  created_at: string;
 }
 
 export function MembersPage() {
@@ -32,6 +57,11 @@ export function MembersPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Modal state
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [memberProfile, setMemberProfile] = useState<MemberProfile | null>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
 
   const isAnnual = tier === "club_annual";
   const isClub = !isAnnual && hasClubAccess;
@@ -71,6 +101,27 @@ export function MembersPage() {
     return () => clearTimeout(timeout);
   }, [searchQuery, isClub, searchMembers]);
 
+  // Open member profile modal
+  const handleMemberClick = async (member: Member) => {
+    setSelectedMember(member);
+    setMemberProfile(null);
+    setIsProfileLoading(true);
+    try {
+      const res = await api.getPublicProfile(member.username);
+      setMemberProfile(res as unknown as MemberProfile);
+    } catch {
+      // Fall back to member data we already have
+      setMemberProfile(null);
+    } finally {
+      setIsProfileLoading(false);
+    }
+  };
+
+  const closeModal = () => {
+    setSelectedMember(null);
+    setMemberProfile(null);
+  };
+
   // Free tier: upgrade prompt
   if (isFree) {
     return (
@@ -95,6 +146,9 @@ export function MembersPage() {
     );
   }
 
+  // Profile data: prefer fetched profile, fall back to member card data
+  const profile = memberProfile || selectedMember;
+
   return (
     <div>
       {/* Header */}
@@ -117,7 +171,7 @@ export function MembersPage() {
         )}
       </div>
 
-      {/* Search bar for club members (always shown for annual as filter) */}
+      {/* Search bar */}
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -160,11 +214,10 @@ export function MembersPage() {
               )
             : members
           ).map((member) => (
-            <Link
+            <button
               key={member.user_id}
-              to={`/u/${member.username}`}
-              target="_blank"
-              className="group rounded-xl border border-border/40 hover:border-primary/40 bg-card/50 hover:bg-card/80 p-4 transition-all duration-200"
+              onClick={() => handleMemberClick(member)}
+              className="group rounded-xl border border-border/40 hover:border-primary/40 bg-card/50 hover:bg-card/80 p-4 transition-all duration-200 text-left w-full"
             >
               <div className="flex items-start gap-3">
                 <Avatar className="h-10 w-10 shrink-0">
@@ -193,10 +246,101 @@ export function MembersPage() {
                   <span className="truncate">{member.location}</span>
                 </div>
               )}
-            </Link>
+            </button>
           ))}
         </div>
       )}
+
+      {/* Member Profile Modal */}
+      <Dialog open={selectedMember !== null} onOpenChange={(open) => !open && closeModal()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="sr-only">Member Profile</DialogTitle>
+          </DialogHeader>
+
+          {isProfileLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : profile ? (
+            <div className="flex flex-col items-center text-center">
+              {/* Avatar */}
+              <Avatar className="h-20 w-20 mb-4">
+                <AvatarImage src={"avatar_url" in profile ? profile.avatar_url : ""} />
+                <AvatarFallback className="bg-muted text-lg">
+                  {("display_name" in profile ? profile.display_name : "")?.charAt(0)?.toUpperCase() || "?"}
+                </AvatarFallback>
+              </Avatar>
+
+              {/* Name & username */}
+              <h3 className="text-lg font-bold">
+                {"display_name" in profile ? profile.display_name : ""}
+              </h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                @{"username" in profile ? profile.username : ""}
+              </p>
+
+              {/* Bio */}
+              {(memberProfile?.bio || selectedMember?.bio) && (
+                <p className="text-sm text-muted-foreground leading-relaxed mb-4 max-w-sm">
+                  {memberProfile?.bio || selectedMember?.bio}
+                </p>
+              )}
+
+              {/* Details */}
+              <div className="flex flex-wrap items-center justify-center gap-3 mb-5 text-xs text-muted-foreground">
+                {(memberProfile?.location || selectedMember?.location) && (
+                  <span className="inline-flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    {memberProfile?.location || selectedMember?.location}
+                  </span>
+                )}
+                {memberProfile?.website_url && (
+                  <a
+                    href={memberProfile.website_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                  >
+                    <Globe className="h-3 w-3" />
+                    Website
+                    <ExternalLink className="h-2.5 w-2.5" />
+                  </a>
+                )}
+                {memberProfile?.linkedin_url && (
+                  <a
+                    href={memberProfile.linkedin_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                  >
+                    <Linkedin className="h-3 w-3" />
+                    LinkedIn
+                    <ExternalLink className="h-2.5 w-2.5" />
+                  </a>
+                )}
+              </div>
+
+              {/* Connection actions */}
+              {selectedMember && (
+                <ConnectionActions userId={selectedMember.user_id} />
+              )}
+
+              {/* View full profile link */}
+              {selectedMember && (
+                <Link
+                  to={`/u/${selectedMember.username}`}
+                  target="_blank"
+                  className="mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
+                >
+                  View full profile
+                  <ExternalLink className="h-3 w-3" />
+                </Link>
+              )}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
