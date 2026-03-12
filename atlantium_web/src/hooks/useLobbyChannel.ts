@@ -9,6 +9,7 @@ import type {
   PositionUpdatePayload,
   AdminMutePayload,
   AdminKickPayload,
+  AdminSpotlightPayload,
 } from "@/lib/realtime-types";
 import type { ThreadMessage } from "@/lib/types";
 import type { XanoClient } from "@xano/js-sdk";
@@ -23,6 +24,7 @@ interface UseLobbyChannelOptions {
   onNewMessage?: (message: ThreadMessage) => void;
   onAdminMute?: (payload: AdminMutePayload) => void;
   onAdminKick?: (payload: AdminKickPayload) => void;
+  onAdminSpotlight?: (payload: AdminSpotlightPayload) => void;
 }
 
 interface UseLobbyChannelReturn {
@@ -37,6 +39,7 @@ export function useLobbyChannel({
   onNewMessage,
   onAdminMute,
   onAdminKick,
+  onAdminSpotlight,
 }: UseLobbyChannelOptions): UseLobbyChannelReturn {
   const { client, isConnected } = useXanoRealtime();
 
@@ -46,6 +49,7 @@ export function useLobbyChannel({
   const onNewMessageRef = useRef(onNewMessage);
   const onAdminMuteRef = useRef(onAdminMute);
   const onAdminKickRef = useRef(onAdminKick);
+  const onAdminSpotlightRef = useRef(onAdminSpotlight);
 
   useEffect(() => {
     onMemberJoinRef.current = onMemberJoin;
@@ -54,7 +58,8 @@ export function useLobbyChannel({
     onNewMessageRef.current = onNewMessage;
     onAdminMuteRef.current = onAdminMute;
     onAdminKickRef.current = onAdminKick;
-  }, [onMemberJoin, onMemberLeave, onPositionUpdate, onNewMessage, onAdminMute, onAdminKick]);
+    onAdminSpotlightRef.current = onAdminSpotlight;
+  }, [onMemberJoin, onMemberLeave, onPositionUpdate, onNewMessage, onAdminMute, onAdminKick, onAdminSpotlight]);
 
   const channelRef = useRef<XanoChannel | null>(null);
 
@@ -158,6 +163,14 @@ export function useLobbyChannel({
             const kickPayload = payload as AdminKickPayload;
             if (kickPayload.target_user_id) {
               onAdminKickRef.current?.(kickPayload);
+            }
+            break;
+          }
+
+          case "admin_spotlight": {
+            const spotlightPayload = payload as AdminSpotlightPayload;
+            if (spotlightPayload.target_user_id) {
+              onAdminSpotlightRef.current?.(spotlightPayload);
             }
             break;
           }

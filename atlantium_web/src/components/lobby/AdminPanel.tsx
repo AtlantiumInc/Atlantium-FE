@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { MicOff, VideoOff, UserX } from "lucide-react";
+import { MicOff, VideoOff, UserX, Star } from "lucide-react";
 import { toast } from "sonner";
 import type { LobbyMember } from "@/lib/types";
 
@@ -43,6 +43,18 @@ export function AdminPanel({ members, currentUserId }: AdminPanelProps) {
     }
   };
 
+  const handleSpotlight = async (userId: string, displayName: string) => {
+    setLoading(`${userId}-spotlight`);
+    try {
+      await api.lobbyAdminAction("spotlight", userId);
+      toast.success(`Spotlighted ${displayName}`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to spotlight user");
+    } finally {
+      setLoading(null);
+    }
+  };
+
   const otherMembers = members.filter((m) => m.user_id !== currentUserId);
 
   if (otherMembers.length === 0) {
@@ -78,6 +90,16 @@ export function AdminPanel({ members, currentUserId }: AdminPanelProps) {
                 </div>
               )}
               <span className="text-sm flex-1 truncate">{name}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-yellow-500 hover:bg-yellow-500/10"
+                disabled={loading === `${member.user_id}-spotlight`}
+                onClick={() => handleSpotlight(member.user_id, name)}
+                title="Spotlight user"
+              >
+                <Star size={14} />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"

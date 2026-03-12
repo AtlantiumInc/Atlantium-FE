@@ -24,7 +24,8 @@ export type RealtimeAction =
   | "lobby_leave"
   | "position_update"
   | "admin_mute"
-  | "admin_kick";
+  | "admin_kick"
+  | "admin_spotlight";
 
 // Generic realtime message from Xano
 export interface RealtimeMessage {
@@ -95,6 +96,11 @@ export interface AdminMutePayload {
 }
 
 export interface AdminKickPayload {
+  target_user_id: string;
+  admin_user_id: string;
+}
+
+export interface AdminSpotlightPayload {
   target_user_id: string;
   admin_user_id: string;
 }

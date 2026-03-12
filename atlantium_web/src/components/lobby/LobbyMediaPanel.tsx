@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   useTracks,
   VideoTrack,
@@ -45,8 +45,13 @@ function ParticipantTile({
   );
 }
 
-export function LobbyMediaPanel() {
-  const [featuredIndex, setFeaturedIndex] = useState(0);
+interface LobbyMediaPanelProps {
+  spotlightUserId?: string | null;
+  isAdmin?: boolean;
+}
+
+export function LobbyMediaPanel({ spotlightUserId, isAdmin }: LobbyMediaPanelProps) {
+  const [localFeaturedIndex, setLocalFeaturedIndex] = useState(0);
 
   const videoTracks = useTracks(
     [{ source: Track.Source.Camera, withPlaceholder: true }],
@@ -58,8 +63,22 @@ export function LobbyMediaPanel() {
     { onlySubscribed: false }
   );
 
-  // Clamp featured index
-  const safeIndex = videoTracks.length > 0 ? Math.min(featuredIndex, videoTracks.length - 1) : 0;
+  // If admin spotlighted someone, find their index
+  const spotlightIndex = spotlightUserId
+    ? videoTracks.findIndex((t) => t.participant?.identity === spotlightUserId)
+    : -1;
+
+  // Spotlight overrides local selection for non-admins
+  const effectiveIndex = spotlightIndex >= 0 && !isAdmin ? spotlightIndex : localFeaturedIndex;
+
+  // When spotlight changes, also update local for admins so they see it too
+  useEffect(() => {
+    if (spotlightIndex >= 0) {
+      setLocalFeaturedIndex(spotlightIndex);
+    }
+  }, [spotlightIndex]);
+
+  const safeIndex = videoTracks.length > 0 ? Math.min(effectiveIndex, videoTracks.length - 1) : 0;
   const featured = videoTracks[safeIndex];
   const others = videoTracks.filter((_, i) => i !== safeIndex);
 
@@ -86,8 +105,9 @@ export function LobbyMediaPanel() {
           {others.length > 0 && (
             <div className="w-44 shrink-0 flex flex-col gap-2 overflow-y-auto">
               {others.map((trackRef, i) => {
-                // Calculate original index for setting featured
                 const origIndex = videoTracks.indexOf(trackRef);
+                // Only admins can click to change featured
+                const handleClick = isAdmin ? () => setLocalFeaturedIndex(origIndex) : undefined;
                 return (
                   <ParticipantTile
                     key={
@@ -96,8 +116,10 @@ export function LobbyMediaPanel() {
                       i
                     }
                     trackRef={trackRef}
-                    onClick={() => setFeaturedIndex(origIndex)}
-                    className="aspect-video cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all shrink-0"
+                    onClick={handleClick}
+                    className={`aspect-video shrink-0 transition-all ${
+                      isAdmin ? "cursor-pointer hover:ring-2 hover:ring-primary/50" : ""
+                    }`}
                   />
                 );
               })}

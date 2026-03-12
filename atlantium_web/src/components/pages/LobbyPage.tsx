@@ -17,6 +17,7 @@ import type {
   PositionUpdatePayload,
   AdminMutePayload,
   AdminKickPayload,
+  AdminSpotlightPayload,
 } from "@/lib/realtime-types";
 
 export function LobbyPage() {
@@ -33,6 +34,7 @@ export function LobbyPage() {
   const [error, setError] = useState<string | null>(null);
   const [livekitToken, setLivekitToken] = useState<string | null>(null);
   const [livekitUrl, setLivekitUrl] = useState<string | null>(null);
+  const [spotlightUserId, setSpotlightUserId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const threadIdRef = useRef<string | null>(null);
 
@@ -112,6 +114,14 @@ export function LobbyPage() {
     [userId]
   );
 
+  const handleAdminSpotlight = useCallback(
+    (payload: AdminSpotlightPayload) => {
+      setSpotlightUserId(payload.target_user_id);
+      toast.info("An admin has spotlighted a participant.");
+    },
+    []
+  );
+
   const { broadcastMessage: _broadcastMessage } = useLobbyChannel({
     threadId,
     onMemberJoin: handleMemberJoin,
@@ -120,6 +130,7 @@ export function LobbyPage() {
     onNewMessage: handleNewMessage,
     onAdminMute: handleAdminMute,
     onAdminKick: handleAdminKick,
+    onAdminSpotlight: handleAdminSpotlight,
   });
 
   useEffect(() => {
@@ -146,7 +157,7 @@ export function LobbyPage() {
         setThreadId(lobbyData.thread_id);
         threadIdRef.current = lobbyData.thread_id;
 
-        const joinData = await api.joinLobby();
+        await api.joinLobby();
         if (cancelled) return;
 
         const freshData = await api.getLobby();
@@ -288,7 +299,7 @@ export function LobbyPage() {
         <div className="flex-1 min-w-0 min-h-0 p-3">
           {livekitToken ? (
             <div className="h-full">
-              <LobbyMediaPanel />
+              <LobbyMediaPanel spotlightUserId={spotlightUserId} isAdmin={isAdmin} />
             </div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-3">

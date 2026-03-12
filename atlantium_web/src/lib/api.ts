@@ -776,7 +776,7 @@ class ApiClient {
     }, APP_API_BASE_URL);
   }
 
-  async lobbyAdminAction(action: "mute" | "kick", targetUserId: string, trackType?: "audio" | "video"): Promise<{ success: boolean }> {
+  async lobbyAdminAction(action: "mute" | "kick" | "spotlight", targetUserId: string, trackType?: "audio" | "video"): Promise<{ success: boolean }> {
     const payload: Record<string, string> = {
       action,
       target_user_id: targetUserId,
