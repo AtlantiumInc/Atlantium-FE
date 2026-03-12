@@ -147,17 +147,14 @@ export function PricingPage() {
 
       {/* Pricing cards */}
       <section className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {tiers.map((tier, i) => {
             const Icon = tier.icon;
             return (
               <FadeIn key={tier.name} delay={i * 0.1}>
-                <SpotlightCard
-                  className={`h-full p-6 flex flex-col ${tier.popular ? "ring-2 ring-violet-500/40" : ""}`}
-                  spotlightColor={tier.popular ? "rgba(139, 92, 246, 0.12)" : "rgba(14, 165, 233, 0.08)"}
-                >
+                <div className="relative pt-4 h-full">
                   {tier.popular && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <div className="absolute top-1 left-1/2 -translate-x-1/2 z-10">
                       <span className="bg-violet-500 text-white text-xs font-medium px-3 py-1 rounded-full">
                         Most Popular
                       </span>
@@ -165,49 +162,54 @@ export function PricingPage() {
                   )}
 
                   {tier.savings && (
-                    <div className="absolute -top-3 right-4">
+                    <div className="absolute top-1 right-4 z-10">
                       <span className="bg-emerald-500 text-white text-xs font-medium px-2 py-1 rounded-full">
                         {tier.savings}
                       </span>
                     </div>
                   )}
 
-                  <div className="mb-4">
-                    <h3 className="font-semibold text-lg flex items-center gap-2">
-                      {tier.name !== "Free" && <Icon className="h-4 w-4 text-yellow-500" />}
-                      {tier.name}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">{tier.description}</p>
-                  </div>
+                  <SpotlightCard
+                    className={`h-full p-6 flex flex-col ${tier.popular ? "ring-2 ring-violet-500/40" : ""}`}
+                    spotlightColor={tier.popular ? "rgba(139, 92, 246, 0.12)" : "rgba(14, 165, 233, 0.08)"}
+                  >
+                    <div className="mb-4">
+                      <h3 className="font-semibold text-lg flex items-center gap-2">
+                        {tier.name !== "Free" && <Icon className="h-4 w-4 text-yellow-500" />}
+                        {tier.name}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">{tier.description}</p>
+                    </div>
 
-                  <div className="mb-6">
-                    <span className="text-4xl font-bold">{tier.price}</span>
-                    <span className="text-muted-foreground"> {tier.period}</span>
-                  </div>
+                    <div className="mb-6">
+                      <span className="text-4xl font-bold">{tier.price}</span>
+                      <span className="text-muted-foreground"> {tier.period}</span>
+                    </div>
 
-                  <ul className="space-y-3 flex-1 mb-6">
-                    {tier.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-2 text-sm">
-                        <Check className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
+                    <ul className="space-y-3 flex-1 mb-6">
+                      {tier.features.map((feature) => (
+                        <li key={feature} className="flex items-start gap-2 text-sm">
+                          <Check className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
 
-                  <Link to="/signup" className="block">
-                    <Button
-                      className={`w-full gap-2 ${
-                        tier.popular
-                          ? "bg-white text-black hover:bg-gray-100 border-0"
-                          : ""
-                      }`}
-                      variant={tier.popular ? "default" : "outline"}
-                    >
-                      {tier.name === "Free" ? "Get Started" : "Join Now"}
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                </SpotlightCard>
+                    <Link to="/signup" className="block">
+                      <Button
+                        className={`w-full gap-2 ${
+                          tier.popular
+                            ? "bg-white text-black hover:bg-gray-100 border-0"
+                            : ""
+                        }`}
+                        variant={tier.popular ? "default" : "outline"}
+                      >
+                        {tier.name === "Free" ? "Get Started" : "Join Now"}
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </SpotlightCard>
+                </div>
               </FadeIn>
             );
           })}
