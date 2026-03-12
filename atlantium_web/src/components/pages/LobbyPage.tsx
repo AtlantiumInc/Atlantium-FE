@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLobbyChannel } from "@/hooks/useLobbyChannel";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Send, Users } from "lucide-react";
@@ -11,7 +10,7 @@ import { LobbyMediaPanel } from "@/components/lobby/LobbyMediaPanel";
 import { LobbyControls } from "@/components/lobby/LobbyControls";
 import { AdminPanel } from "@/components/lobby/AdminPanel";
 import { toast } from "sonner";
-import type { LobbyMember, LobbyPosition, ThreadMessage } from "@/lib/types";
+import type { LobbyMember, ThreadMessage } from "@/lib/types";
 import type {
   LobbyJoinPayload,
   LobbyLeavePayload,
@@ -20,9 +19,6 @@ import type {
   AdminKickPayload,
 } from "@/lib/realtime-types";
 
-const GRID_COLS = 10;
-const GRID_ROWS = 6;
-
 export function LobbyPage() {
   const { user } = useAuth();
   const userId = user?.id || "";
@@ -30,7 +26,6 @@ export function LobbyPage() {
 
   const [threadId, setThreadId] = useState<string | null>(null);
   const [members, setMembers] = useState<Map<string, LobbyMember>>(new Map());
-  const [myPosition, setMyPosition] = useState<LobbyPosition | null>(null);
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [messageInput, setMessageInput] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -38,11 +33,9 @@ export function LobbyPage() {
   const [error, setError] = useState<string | null>(null);
   const [livekitToken, setLivekitToken] = useState<string | null>(null);
   const [livekitUrl, setLivekitUrl] = useState<string | null>(null);
-  const isMovingRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const threadIdRef = useRef<string | null>(null);
 
-  // Scroll to bottom of messages
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
@@ -114,7 +107,6 @@ export function LobbyPage() {
         toast.error("You have been kicked from the lobby by an admin.");
         setLivekitToken(null);
         setMembers(new Map());
-        setMyPosition(null);
       }
     },
     [userId]
@@ -130,7 +122,6 @@ export function LobbyPage() {
     onAdminKick: handleAdminKick,
   });
 
-  // Listen for admin mute events
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
@@ -149,19 +140,15 @@ export function LobbyPage() {
         setIsLoading(true);
         setError(null);
 
-        // Get or create lobby
         const lobbyData = await api.getLobby();
         if (cancelled) return;
 
         setThreadId(lobbyData.thread_id);
         threadIdRef.current = lobbyData.thread_id;
 
-        // Join lobby
         const joinData = await api.joinLobby();
         if (cancelled) return;
-        setMyPosition(joinData.position);
 
-        // Re-fetch lobby to get accurate members list
         const freshData = await api.getLobby();
         if (cancelled) return;
         const membersMap = new Map<string, LobbyMember>();
@@ -170,7 +157,6 @@ export function LobbyPage() {
         }
         setMembers(membersMap);
 
-        // Load recent messages
         try {
           const msgData = await api.getThreadMessages(lobbyData.thread_id, 1, 50);
           if (cancelled) return;
@@ -179,7 +165,6 @@ export function LobbyPage() {
           // Messages may fail if thread is brand new
         }
 
-        // Get LiveKit token
         try {
           const lkResponse = await api.getLobbyLivekitToken();
           if (cancelled) return;
@@ -200,7 +185,6 @@ export function LobbyPage() {
 
     init();
 
-    // Leave lobby on unmount
     return () => {
       cancelled = true;
       if (threadIdRef.current) {
@@ -209,7 +193,6 @@ export function LobbyPage() {
     };
   }, []);
 
-  // beforeunload handler for tab close
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (threadIdRef.current) {
@@ -231,126 +214,6 @@ export function LobbyPage() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);
 
-  // Arrow key movement
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
-      if (!myPosition || !threadId || isMovingRef.current) return;
-
-      let newCol = myPosition.col;
-      let newRow = myPosition.row;
-
-      switch (e.key) {
-        case "ArrowUp":
-          newRow = Math.max(0, myPosition.row - 1);
-          break;
-        case "ArrowDown":
-          newRow = Math.min(GRID_ROWS - 1, myPosition.row + 1);
-          break;
-        case "ArrowLeft":
-          newCol = Math.max(0, myPosition.col - 1);
-          break;
-        case "ArrowRight":
-          newCol = Math.min(GRID_COLS - 1, myPosition.col + 1);
-          break;
-        default:
-          return;
-      }
-
-      e.preventDefault();
-
-      if (newCol === myPosition.col && newRow === myPosition.row) return;
-
-      // Check if occupied locally
-      for (const member of members.values()) {
-        if (
-          member.position &&
-          member.position.col === newCol &&
-          member.position.row === newRow &&
-          member.user_id !== user?.id
-        ) {
-          return;
-        }
-      }
-
-      // Optimistic update
-      const prevPosition = { ...myPosition };
-      setMyPosition({ col: newCol, row: newRow });
-      setMembers((prev) => {
-        const me = prev.get(user?.id || "");
-        if (!me) return prev;
-        const next = new Map(prev);
-        next.set(user!.id, { ...me, position: { col: newCol, row: newRow } });
-        return next;
-      });
-
-      isMovingRef.current = true;
-      api.moveLobby(newCol, newRow)
-        .catch(() => {
-          setMyPosition(prevPosition);
-          setMembers((prev) => {
-            const me = prev.get(user?.id || "");
-            if (!me) return prev;
-            const next = new Map(prev);
-            next.set(user!.id, { ...me, position: prevPosition });
-            return next;
-          });
-        })
-        .finally(() => {
-          isMovingRef.current = false;
-        });
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [myPosition, members, threadId, user?.id]);
-
-  // Click to move
-  const handleCellClick = (col: number, row: number) => {
-    if (!myPosition || !threadId || !user || isMovingRef.current) return;
-    if (col === myPosition.col && row === myPosition.row) return;
-
-    // Check if occupied
-    for (const member of members.values()) {
-      if (
-        member.position &&
-        member.position.col === col &&
-        member.position.row === row &&
-        member.user_id !== user.id
-      ) {
-        return;
-      }
-    }
-
-    const prevPosition = { ...myPosition };
-    setMyPosition({ col, row });
-    setMembers((prev) => {
-      const me = prev.get(user.id);
-      if (!me) return prev;
-      const next = new Map(prev);
-      next.set(user.id, { ...me, position: { col, row } });
-      return next;
-    });
-
-    isMovingRef.current = true;
-    api.moveLobby(col, row)
-      .catch(() => {
-        setMyPosition(prevPosition);
-        setMembers((prev) => {
-          const me = prev.get(user.id);
-          if (!me) return prev;
-          const next = new Map(prev);
-          next.set(user.id, { ...me, position: prevPosition });
-          return next;
-        });
-      })
-      .finally(() => {
-        isMovingRef.current = false;
-      });
-  };
-
-  // Send message
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !threadId || isSending) return;
 
@@ -394,26 +257,9 @@ export function LobbyPage() {
       threadIdRef.current = null;
       setLivekitToken(null);
       setMembers(new Map());
-      setMyPosition(null);
     } catch (err: any) {
       toast.error(err.message || "Failed to leave lobby");
     }
-  };
-
-  // Get member at a specific cell
-  const getMemberAtCell = (col: number, row: number): LobbyMember | undefined => {
-    for (const member of members.values()) {
-      if (member.position && member.position.col === col && member.position.row === row) {
-        return member;
-      }
-    }
-    return undefined;
-  };
-
-  const getInitials = (member: LobbyMember) => {
-    if (member.display_name) return member.display_name.charAt(0).toUpperCase();
-    if (member.username) return member.username.charAt(0).toUpperCase();
-    return "?";
   };
 
   if (isLoading) {
@@ -432,160 +278,126 @@ export function LobbyPage() {
     );
   }
 
-  // Convert members map to array for AdminPanel
   const membersArray: LobbyMember[] = Array.from(members.values());
 
   const lobbyContent = (
-    <div className="flex h-full">
-      {/* Grid panel */}
-      <div className="flex-1 flex flex-col p-4 overflow-auto">
-        <div className="flex items-center gap-2 mb-4">
-          <Users size={18} className="text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">
-            {members.size} online
-          </span>
-        </div>
-
-        <div className="grid grid-cols-10 gap-1.5 max-w-2xl">
-          {Array.from({ length: GRID_ROWS }, (_, row) =>
-            Array.from({ length: GRID_COLS }, (_, col) => {
-              const member = getMemberAtCell(col, row);
-              const isMe = member?.user_id === user?.id;
-
-              return (
-                <button
-                  key={`${col}-${row}`}
-                  className={`aspect-square rounded-lg border flex items-center justify-center transition-colors ${
-                    isMe
-                      ? "border-primary bg-primary/10"
-                      : member
-                      ? "border-border bg-muted/50"
-                      : "border-border/50 bg-background hover:bg-muted/30 cursor-pointer"
-                  }`}
-                  onClick={() => !member && handleCellClick(col, row)}
-                  title={
-                    member
-                      ? member.display_name || member.username || "Unknown"
-                      : `Move to (${col}, ${row})`
-                  }
-                >
-                  {member && (
-                    <Avatar className="h-7 w-7">
-                      <AvatarImage src={member.avatar_url || undefined} />
-                      <AvatarFallback className={`text-xs ${isMe ? "bg-primary text-primary-foreground" : ""}`}>
-                        {getInitials(member)}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                </button>
-              );
-            })
-          )}
-        </div>
-
-        <p className="text-xs text-muted-foreground mt-3">
-          Use arrow keys or click an empty cell to move
-        </p>
-      </div>
-
-      {/* Right sidebar: Media + Admin + Chat */}
-      <div className="w-80 border-l border-border flex flex-col">
-        {/* Media panel (only when LiveKit connected) */}
-        {livekitToken && (
-          <div className="p-3 border-b border-border overflow-y-auto max-h-64">
-            <LobbyMediaPanel />
-          </div>
-        )}
-
-        {/* Admin panel (only for admins) */}
-        {isAdmin && (
-          <div className="p-3 border-b border-border">
-            <AdminPanel members={membersArray} currentUserId={userId} />
-          </div>
-        )}
-
-        {/* Chat */}
-        <div className="p-3 border-b border-border">
-          <h3 className="text-sm font-medium">Chat</h3>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
-          {messages.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center mt-4">
-              No messages yet
-            </p>
+    <div className="absolute inset-0 flex flex-col">
+      {/* Main area: media + chat sidebar */}
+      <div className="flex-1 flex min-h-0">
+        {/* Video / media area */}
+        <div className="flex-1 min-w-0 min-h-0 p-3">
+          {livekitToken ? (
+            <div className="h-full">
+              <LobbyMediaPanel />
+            </div>
           ) : (
-            messages.map((msg) => {
-              const isOwn = msg.sender_id === user?.id;
-              return (
-                <div key={msg.message_id} className="text-sm">
-                  <span className={`font-medium ${isOwn ? "text-primary" : "text-foreground"}`}>
-                    {msg.sender_username}
-                  </span>
-                  <span className="text-muted-foreground ml-1.5 text-xs">
-                    {new Date(msg.created_at).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                  <p className="text-foreground/90 break-words">{msg.content}</p>
-                </div>
-              );
-            })
+            <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-3">
+              <Users size={32} />
+              <p className="text-sm">Connecting to lobby...</p>
+            </div>
           )}
-          <div ref={messagesEndRef} />
         </div>
 
-        {/* Message input */}
-        <div className="p-3 border-t border-border">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSendMessage();
-            }}
-            className="flex gap-2"
-          >
-            <Input
-              value={messageInput}
-              onChange={(e) => setMessageInput(e.target.value)}
-              placeholder="Send a message..."
-              className="text-sm"
-            />
-            <Button
-              type="submit"
-              size="icon"
-              variant="ghost"
-              disabled={!messageInput.trim() || isSending}
+        {/* Right sidebar: Chat */}
+        <div className="w-72 shrink-0 border-l border-border flex flex-col min-h-0">
+          <div className="px-3 py-2 border-b border-border shrink-0 flex items-center justify-between">
+            <h3 className="text-sm font-medium">Chat</h3>
+            <div className="flex items-center gap-1.5">
+              <Users size={14} className="text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">{members.size}</span>
+            </div>
+          </div>
+
+          {isAdmin && (
+            <div className="p-2 border-b border-border shrink-0">
+              <AdminPanel members={membersArray} currentUserId={userId} />
+            </div>
+          )}
+
+          <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2 min-h-0">
+            {messages.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center mt-4">
+                No messages yet
+              </p>
+            ) : (
+              messages.map((msg) => {
+                const isOwn = msg.sender_id === user?.id;
+                return (
+                  <div key={msg.message_id} className="text-sm">
+                    <span className={`font-medium ${isOwn ? "text-primary" : "text-foreground"}`}>
+                      {msg.sender_username}
+                    </span>
+                    <span className="text-muted-foreground ml-1.5 text-xs">
+                      {new Date(msg.created_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                    <p className="text-foreground/90 break-words">{msg.content}</p>
+                  </div>
+                );
+              })
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <div className="shrink-0 border-t border-border p-2">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendMessage();
+              }}
+              className="flex gap-1.5"
             >
-              <Send size={16} />
-            </Button>
-          </form>
+              <Input
+                value={messageInput}
+                onChange={(e) => setMessageInput(e.target.value)}
+                placeholder="Message..."
+                className="text-sm h-8"
+              />
+              <Button
+                type="submit"
+                size="sm"
+                variant="ghost"
+                disabled={!messageInput.trim() || isSending}
+                className="h-8 w-8 p-0 shrink-0"
+              >
+                <Send size={14} />
+              </Button>
+            </form>
+          </div>
         </div>
       </div>
+
+      {/* Controls bar — pinned to bottom */}
+      {livekitToken && (
+        <div className="shrink-0 border-t border-border">
+          <LobbyControls onLeave={handleLeave} />
+        </div>
+      )}
     </div>
   );
 
-  // Wrap with LiveKitRoom if we have a token
   if (livekitToken && livekitUrl) {
     return (
-      <LiveKitRoom
-        token={livekitToken}
-        serverUrl={livekitUrl}
-        connect={true}
-        audio={false}
-        video={false}
-        onDisconnected={() => {
-          console.log("[Lobby] LiveKit disconnected");
-        }}
-      >
-        <RoomAudioRenderer />
-        <div className="flex flex-col h-full">
-          <div className="flex-1 min-h-0">{lobbyContent}</div>
-          <LobbyControls onLeave={handleLeave} />
-        </div>
-      </LiveKitRoom>
+      <div className="relative h-full">
+        <LiveKitRoom
+          token={livekitToken}
+          serverUrl={livekitUrl}
+          connect={true}
+          audio={false}
+          video={false}
+          style={{ height: "100%", position: "relative" }}
+          onDisconnected={() => {
+            console.log("[Lobby] LiveKit disconnected");
+          }}
+        >
+          <RoomAudioRenderer />
+          {lobbyContent}
+        </LiveKitRoom>
+      </div>
     );
   }
 
-  return lobbyContent;
+  return <div className="relative h-full">{lobbyContent}</div>;
 }

@@ -21,14 +21,15 @@ export function LobbyControls({ onLeave }: LobbyControlsProps) {
   };
 
   return (
-    <div className="flex items-center justify-center gap-3 py-3 border-t border-border bg-background">
+    <div className="flex items-center justify-center gap-3 py-2 bg-background">
       <Button
         variant={micEnabled ? "secondary" : "destructive"}
         size="icon"
         onClick={toggleMic}
         title={micEnabled ? "Mute microphone" : "Unmute microphone"}
+        className="h-9 w-9"
       >
-        {micEnabled ? <Mic size={18} /> : <MicOff size={18} />}
+        {micEnabled ? <Mic size={16} /> : <MicOff size={16} />}
       </Button>
 
       <Button
@@ -36,8 +37,9 @@ export function LobbyControls({ onLeave }: LobbyControlsProps) {
         size="icon"
         onClick={toggleCam}
         title={camEnabled ? "Turn off camera" : "Turn on camera"}
+        className="h-9 w-9"
       >
-        {camEnabled ? <Video size={18} /> : <VideoOff size={18} />}
+        {camEnabled ? <Video size={16} /> : <VideoOff size={16} />}
       </Button>
 
       <Button
@@ -45,9 +47,9 @@ export function LobbyControls({ onLeave }: LobbyControlsProps) {
         size="icon"
         onClick={onLeave}
         title="Leave lobby"
-        className="text-destructive hover:bg-destructive/10"
+        className="h-9 w-9 text-destructive hover:bg-destructive/10"
       >
-        <LogOut size={18} />
+        <LogOut size={16} />
       </Button>
     </div>
   );
