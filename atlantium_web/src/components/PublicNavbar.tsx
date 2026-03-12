@@ -56,8 +56,8 @@ export function PublicNavbar() {
             </Link>
           </div>
 
-          {/* Center — Nav links */}
-          <div className="hidden md:flex items-center justify-center gap-1 flex-1">
+          {/* Nav links — pushed right */}
+          <div className="hidden md:flex items-center gap-1 ml-auto mr-3">
             {centerLinks.map(({ to, label }) => {
               const isActive = pathname === to;
               return (
@@ -80,8 +80,8 @@ export function PublicNavbar() {
           {/* Right — Auth stacked + theme */}
           <div className="hidden md:flex items-center gap-3 shrink-0">
             <div className="flex flex-col items-center">
-              <Link to="/signup">
-                <Button size="sm" className="gap-1.5 bg-white text-black hover:bg-gray-100 border-0 h-7 text-xs px-3">
+              <Link to="/signup" className="cursor-pointer">
+                <Button size="sm" className="gap-1.5 bg-white text-black hover:bg-gray-100 border-0 h-7 text-xs px-3 cursor-pointer">
                   Join Lab
                 </Button>
               </Link>
