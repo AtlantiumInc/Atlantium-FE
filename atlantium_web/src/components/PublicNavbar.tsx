@@ -77,18 +77,18 @@ export function PublicNavbar() {
             })}
           </div>
 
-          {/* Right — Auth + theme */}
-          <div className="hidden md:flex items-center gap-2 shrink-0">
-            <Link to="/login">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+          {/* Right — Auth stacked + theme */}
+          <div className="hidden md:flex items-center gap-3 shrink-0">
+            <div className="flex flex-col items-center">
+              <Link to="/signup">
+                <Button size="sm" className="gap-1.5 bg-white text-black hover:bg-gray-100 border-0 h-7 text-xs px-3">
+                  Join Lab
+                </Button>
+              </Link>
+              <Link to="/login" className="text-[10px] text-muted-foreground hover:text-foreground transition-colors mt-0.5">
                 Sign In
-              </Button>
-            </Link>
-            <Link to="/signup">
-              <Button size="sm" className="gap-1.5 bg-white text-black hover:bg-gray-100 border-0">
-                Join Lab
-              </Button>
-            </Link>
+              </Link>
+            </div>
             <ThemeToggle />
           </div>
 
