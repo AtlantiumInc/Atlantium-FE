@@ -1,0 +1,289 @@
+import { useRef } from "react";
+import { Link } from "react-router-dom";
+import { motion, useInView } from "motion/react";
+import { Button } from "@/components/ui/button";
+import { PublicNavbar } from "@/components/PublicNavbar";
+import SpotlightCard from "@/components/ui/SpotlightCard";
+import ShinyText from "@/components/ui/ShinyText";
+import Aurora from "@/components/Aurora";
+import {
+  ArrowRight,
+  Check,
+  Crown,
+  Calendar,
+  Star,
+  Smartphone,
+  Clock,
+  Users,
+  Zap,
+  Code,
+  Video,
+  Handshake,
+} from "lucide-react";
+
+function FadeIn({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-60px" });
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 32 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.55, delay, ease: [0.25, 0.1, 0.25, 1] }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+const tiers = [
+  {
+    name: "Free",
+    price: "$0",
+    period: "forever",
+    description: "Get started with the basics",
+    icon: Star,
+    color: "cyan",
+    features: [
+      "iOS app access",
+      "Office hours once a week (Fridays)",
+      "Frontier feed access",
+      "Focus groups",
+      "Public events",
+      "Templates & source code",
+      "Software perks & discounts",
+    ],
+  },
+  {
+    name: "Club Membership",
+    price: "$128",
+    period: "/month",
+    description: "For serious builders",
+    popular: true,
+    icon: Crown,
+    color: "violet",
+    features: [
+      "Everything in Free",
+      "Two office hours sessions per day",
+      "AI engineering curriculum",
+      "Exclusive member events",
+      "Priority event registration",
+      "Startup advisor",
+    ],
+  },
+  {
+    name: "Annual Membership",
+    price: "$399",
+    period: "/year",
+    description: "Committed to the frontier",
+    savings: "Save $1,137",
+    icon: Calendar,
+    color: "emerald",
+    features: [
+      "Everything in Club",
+      "9 months free",
+      "Quarterly performance review",
+      "Discounted services",
+      "Project support",
+    ],
+  },
+];
+
+const highlights = [
+  { icon: Video, label: "Office Hours", desc: "Free members get weekly Friday sessions. Club members get two per day." },
+  { icon: Code, label: "AI Engineering", desc: "Club members access the full AI engineering curriculum and hands-on projects." },
+  { icon: Smartphone, label: "iOS App", desc: "All members get access to the Atlantium iOS app." },
+  { icon: Handshake, label: "Startup Advisor", desc: "Club members get direct access to startup advisory and mentorship." },
+  { icon: Users, label: "Focus Groups", desc: "Join topic-based groups with builders across Atlanta and beyond." },
+  { icon: Zap, label: "Perks & Discounts", desc: "Software discounts, event access, and partner deals for all members." },
+];
+
+export function PricingPage() {
+  return (
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Background */}
+      <div className="fixed inset-0 z-0 opacity-25 dark:opacity-40">
+        <Aurora colorStops={["#0ea5e9", "#6366f1", "#334155"]} amplitude={0.9} blend={0.6} speed={0.35} />
+      </div>
+      <div
+        className="fixed inset-0 z-[1] pointer-events-none opacity-[0.02] dark:opacity-[0.04]"
+        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")` }}
+      />
+
+      <PublicNavbar />
+
+      {/* Hero */}
+      <section className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-20 text-center">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 mb-6">
+            <Crown className="h-3.5 w-3.5 text-violet-400" />
+            <span className="text-xs font-semibold text-violet-400 uppercase tracking-wider">Membership Plans</span>
+          </div>
+
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] mb-6">
+            <ShinyText text="Choose Your" className="text-5xl sm:text-6xl lg:text-7xl font-bold" color="#e2e8f0" shineColor="#22d3ee" speed={3} />
+            <br />
+            <ShinyText text="Membership" className="text-5xl sm:text-6xl lg:text-7xl font-bold" color="#22d3ee" shineColor="#ffffff" speed={2} />
+          </h1>
+
+          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-4 leading-relaxed">
+            Whether you're exploring or building full-time, there's a plan for you. Upgrade or downgrade anytime.
+          </p>
+
+          <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-sm text-muted-foreground mb-10">
+            {[
+              { icon: Clock, label: "Cancel Anytime" },
+              { icon: Smartphone, label: "iOS App Included" },
+              { icon: Video, label: "Office Hours" },
+              { icon: Users, label: "Builder Community" },
+            ].map(({ icon: Icon, label }) => (
+              <div key={label} className="flex items-center gap-1.5">
+                <Icon className="h-3.5 w-3.5 text-cyan-500" />
+                <span>{label}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </section>
+
+      {/* Pricing cards */}
+      <section className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {tiers.map((tier, i) => {
+            const Icon = tier.icon;
+            return (
+              <FadeIn key={tier.name} delay={i * 0.1}>
+                <SpotlightCard
+                  className={`h-full p-6 flex flex-col ${tier.popular ? "ring-2 ring-violet-500/40" : ""}`}
+                  spotlightColor={tier.popular ? "rgba(139, 92, 246, 0.12)" : "rgba(14, 165, 233, 0.08)"}
+                >
+                  {tier.popular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <span className="bg-violet-500 text-white text-xs font-medium px-3 py-1 rounded-full">
+                        Most Popular
+                      </span>
+                    </div>
+                  )}
+
+                  {tier.savings && (
+                    <div className="absolute -top-3 right-4">
+                      <span className="bg-emerald-500 text-white text-xs font-medium px-2 py-1 rounded-full">
+                        {tier.savings}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="mb-4">
+                    <h3 className="font-semibold text-lg flex items-center gap-2">
+                      {tier.name !== "Free" && <Icon className="h-4 w-4 text-yellow-500" />}
+                      {tier.name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">{tier.description}</p>
+                  </div>
+
+                  <div className="mb-6">
+                    <span className="text-4xl font-bold">{tier.price}</span>
+                    <span className="text-muted-foreground"> {tier.period}</span>
+                  </div>
+
+                  <ul className="space-y-3 flex-1 mb-6">
+                    {tier.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-2 text-sm">
+                        <Check className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Link to="/signup" className="block">
+                    <Button
+                      className={`w-full gap-2 ${
+                        tier.popular
+                          ? "bg-white text-black hover:bg-gray-100 border-0"
+                          : ""
+                      }`}
+                      variant={tier.popular ? "default" : "outline"}
+                    >
+                      {tier.name === "Free" ? "Get Started" : "Join Now"}
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                </SpotlightCard>
+              </FadeIn>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* What's included */}
+      <section className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
+        <FadeIn>
+          <div className="text-center mb-12">
+            <p className="text-xs font-bold text-cyan-400 uppercase tracking-widest mb-3">What's Included</p>
+            <h2 className="text-3xl sm:text-4xl font-bold">Built for Builders</h2>
+            <p className="text-muted-foreground mt-3 max-w-xl mx-auto">
+              Every plan includes access to the Atlantium community and tools.
+            </p>
+          </div>
+        </FadeIn>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {highlights.map((item, i) => {
+            const Icon = item.icon;
+            return (
+              <FadeIn key={item.label} delay={i * 0.07}>
+                <SpotlightCard className="h-full p-5" spotlightColor="rgba(99, 102, 241, 0.1)">
+                  <div className="h-9 w-9 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-3">
+                    <Icon className="h-[18px] w-[18px] text-cyan-400" />
+                  </div>
+                  <h3 className="font-semibold text-foreground mb-1">{item.label}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+                </SpotlightCard>
+              </FadeIn>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
+        <FadeIn>
+          <div className="relative overflow-hidden rounded-2xl">
+            <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-cyan-500 via-violet-500 to-cyan-500 opacity-30" />
+            <SpotlightCard className="relative p-10 lg:p-14 text-center" spotlightColor="rgba(14, 165, 233, 0.15)">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 mb-6">
+                <Zap className="h-3.5 w-3.5 text-cyan-400" />
+                <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">Join Atlantium</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
+                Ready to Build?
+              </h2>
+              <p className="text-muted-foreground text-lg max-w-xl mx-auto mb-8">
+                Start free or go all-in with Club. Either way, you're joining a community of builders.
+              </p>
+              <Link to="/signup">
+                <Button size="lg" className="gap-2 bg-white text-black hover:bg-gray-100 shadow-xl shadow-black/20 border-0 text-base px-8">
+                  Join Lab
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </SpotlightCard>
+          </div>
+        </FadeIn>
+      </section>
+
+      {/* Footer */}
+      <footer className="relative z-10 py-8 px-6 border-t border-border/30">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <span className="text-sm text-muted-foreground">&copy; {new Date().getFullYear()} Atlantium. All rights reserved.</span>
+          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+            <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+            <Link to="/policies" className="hover:text-foreground transition-colors">Terms</Link>
+            <a href="mailto:team@atlantium.ai" className="hover:text-foreground transition-colors">Contact</a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}

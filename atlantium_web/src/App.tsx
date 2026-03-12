@@ -38,6 +38,7 @@ import { IndexPage } from "@/pages/IndexPage";
 import { JobsPage } from "@/pages/JobsPage";
 import { JobDetailPage } from "@/pages/JobDetailPage";
 import { TrainingPage } from "@/pages/TrainingPage";
+import { PricingPage as PublicPricingPage } from "@/pages/PricingPage";
 import { AIEngineerPage } from "@/pages/AIEngineerPage";
 import { DollarTestPage } from "@/pages/DollarTestPage";
 import { Loader2 } from "lucide-react";
@@ -81,6 +82,7 @@ function AppRoutes() {
       <Route path="/jobs" element={<JobsPage />} />
       <Route path="/jobs/:slug" element={<JobDetailPage />} />
       <Route path="/training" element={<TrainingPage />} />
+      <Route path="/pricing" element={<PublicPricingPage />} />
       <Route path="/index/:slug" element={<ArticleDetailPage />} />
       <Route path="/ai-engineer" element={<AIEngineerPage />} />
       <Route path="/dollar-test" element={<DollarTestPage />} />
