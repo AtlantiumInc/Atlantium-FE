@@ -14,6 +14,7 @@ import {
 interface ProfilePreviewProps {
   formData: Partial<OnboardingFormData>;
   email?: string;
+  currentStep?: number;
 }
 
 const MEMBERSHIP_CONFIG = {
@@ -34,7 +35,7 @@ const MEMBERSHIP_CONFIG = {
   },
 };
 
-export function ProfilePreview({ formData, email }: ProfilePreviewProps) {
+export function ProfilePreview({ formData, email, currentStep }: ProfilePreviewProps) {
   const hasName = formData.first_name || formData.last_name;
   const fullName =
     [formData.first_name, formData.last_name].filter(Boolean).join(" ") ||
@@ -93,9 +94,9 @@ export function ProfilePreview({ formData, email }: ProfilePreviewProps) {
             <p className="text-sm text-muted-foreground mt-1">{email}</p>
           )}
 
-          {/* Membership Badge */}
+          {/* Membership Badge - only show after pricing step is completed */}
           <AnimatePresence>
-            {formData.membership_tier && (
+            {formData.membership_tier && currentStep !== undefined && currentStep > 5 && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}

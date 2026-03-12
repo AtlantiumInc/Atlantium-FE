@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence } from "motion/react";
-import { ArrowLeft, ArrowRight, Loader2, Check, Mail } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAuth } from "../contexts/AuthContext";
@@ -26,6 +26,7 @@ import { StepCommunityHopes } from "../components/onboarding/steps/StepCommunity
 import { StepTimeCommitment } from "../components/onboarding/steps/StepTimeCommitment";
 import { StepSuccessDefinition } from "../components/onboarding/steps/StepSuccessDefinition";
 import { StepAvatar } from "../components/onboarding/steps/StepAvatar";
+import { StepPricing } from "../components/onboarding/steps/StepPricing";
 
 export function OnboardingPage() {
   const navigate = useNavigate();
@@ -39,26 +40,32 @@ export function OnboardingPage() {
   // Check onboarding status
   const registrationDetails = profile?.registration_details as Record<string, unknown> | undefined;
   const isOnboardingCompleted = registrationDetails?.is_completed === true;
-  const isPendingApproval = registrationDetails?.pending_approval === true;
-  const isApproved = isOnboardingCompleted && !isPendingApproval;
 
-  // Redirect to dashboard only if onboarding is completed AND approved by admin
+  // Redirect to dashboard if onboarding is already completed
   useEffect(() => {
-    if (isApproved) {
+    if (isOnboardingCompleted) {
       navigate("/dashboard", { replace: true });
     }
-  }, [isApproved, navigate]);
+  }, [isOnboardingCompleted, navigate]);
 
   const handleComplete = useCallback(
     async (data: OnboardingFormData) => {
       // Separate profile fields from registration_details
-      const { first_name, last_name, avatar_url, ...registrationFields } = data;
+      const { first_name, last_name, avatar_url, membership_tier, ...registrationFields } = data;
+
+      // Map onboarding tier names to users table enum values
+      const tierMap: Record<string, string> = {
+        free: "free",
+        club: "monthly",
+        club_annual: "annual",
+      };
+      const dbTier = tierMap[membership_tier || "free"] || "free";
 
       const registrationDetails = {
         ...registrationFields,
+        membership_tier, // keep original in registration_details
         is_completed: true,
         onboarding_completed_at: new Date().toISOString(),
-        pending_approval: true, // Mark as pending admin approval
       };
 
       // Build display_name from first and last name
@@ -74,15 +81,16 @@ export function OnboardingPage() {
         website_url: profile?.website_url || null,
         linkedin_url: profile?.linkedin_url || null,
         registration_details: registrationDetails,
+        membership_tier: dbTier, // saved to users table by backend
       });
 
       // Refresh auth context to get updated profile
       await checkAuth();
 
-      toast.success("Onboarding submitted! You'll be contacted shortly.");
-      // Stay on onboarding page to show pending approval message
+      toast.success("Welcome to Atlantium!");
+      navigate("/dashboard", { replace: true });
     },
-    [googleAvatarUrl, checkAuth]
+    [googleAvatarUrl, checkAuth, navigate]
   );
 
   const {
@@ -143,42 +151,6 @@ export function OnboardingPage() {
   };
 
 
-  const renderPendingApprovalScreen = () => {
-    return (
-      <div className="space-y-8 text-center max-w-md mx-auto py-12">
-        <div className="flex justify-center">
-          <div className="relative">
-            {/* Pulsing background circle */}
-            <div className="absolute inset-0 bg-primary/20 rounded-full blur-lg animate-pulse" />
-            {/* Icon */}
-            <div className="relative bg-primary/10 rounded-full p-4 border border-primary/30">
-              <Mail className="h-8 w-8 text-primary" />
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">
-            Application Submitted
-          </h1>
-          <p className="text-muted-foreground leading-relaxed">
-            Thank you for your submission. We will reach out to you within 1 business day to discuss next steps.
-          </p>
-        </div>
-
-        <div className="bg-background/50 border border-border/30 rounded-lg p-4 text-sm text-muted-foreground">
-          <p>
-            In the meantime, check your email for updates from <span className="font-medium text-foreground">team@atlantium.ai</span>
-          </p>
-        </div>
-
-        <Button onClick={logout} variant="outline" className="w-full">
-          Sign out
-        </Button>
-      </div>
-    );
-  };
-
   const renderStep = () => {
     const stepProps = {
       formData,
@@ -195,6 +167,14 @@ export function OnboardingPage() {
         return <StepPrimaryGoal {...stepProps} />;
       case 4:
         return <StepInterests {...stepProps} />;
+      case 5:
+        return (
+          <StepPricing
+            {...stepProps}
+            onPlanSelected={() => nextStep()}
+            onBack={prevStep}
+          />
+        );
       case 6:
         return <StepProjectStatus {...stepProps} />;
       case 7:
@@ -214,19 +194,6 @@ export function OnboardingPage() {
     }
   };
 
-  // If pending approval, show the approval screen
-  if (isPendingApproval) {
-    return (
-      <OnboardingLayout
-        progress={null}
-        preview={null}
-        onLogout={logout}
-      >
-        {renderPendingApprovalScreen()}
-      </OnboardingLayout>
-    );
-  }
-
   return (
     <OnboardingLayout
       wide={currentStep === 5}
@@ -236,15 +203,15 @@ export function OnboardingPage() {
           totalSteps={totalVisibleSteps}
         />
       }
-      preview={<ProfilePreview formData={formData} email={user?.email} />}
+      preview={<ProfilePreview formData={formData} email={user?.email} currentStep={currentStep} />}
       onLogout={logout}
     >
       <div className="space-y-8">
         {/* Step content with animation */}
         <AnimatePresence mode="wait">{renderStep()}</AnimatePresence>
 
-        {/* Navigation buttons */}
-        {(
+        {/* Navigation buttons (hidden on pricing step — it has its own) */}
+        {currentStep !== 5 && (
           <div className="flex items-center justify-between pt-4">
             <Button
               type="button"
