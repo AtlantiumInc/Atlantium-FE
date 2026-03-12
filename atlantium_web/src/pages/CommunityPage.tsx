@@ -555,7 +555,6 @@ export function CommunityPage() {
                     className="gap-2 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-shadow px-8"
                   >
                     Get Started
-                    <span className="text-primary-foreground/70 font-normal">(it's free)</span>
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
