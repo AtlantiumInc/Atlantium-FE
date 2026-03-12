@@ -19,11 +19,11 @@ interface UpgradeModalProps {
 }
 
 const benefits = [
-  "RSVP to exclusive events with founders, investors & operators",
-  "Join weekly group office hours with the Atlantium team",
-  "Access the member directory — connect with 500+ builders",
-  "Get priority registration for high-demand events",
-  "Unlock member-only content and founder resources",
+  "Two office hours sessions per day",
+  "AI engineering curriculum",
+  "Exclusive member events",
+  "Priority event registration",
+  "Startup advisor",
 ];
 
 export function UpgradeModal({ open, onOpenChange, onSuccess }: UpgradeModalProps) {
@@ -66,7 +66,7 @@ export function UpgradeModal({ open, onOpenChange, onSuccess }: UpgradeModalProp
             <DialogTitle>Upgrade to Club</DialogTitle>
           </div>
           <DialogDescription>
-            Join the Atlantium Club for $49/month and unlock exclusive features.
+            Join the Atlantium Club for $128/month and unlock exclusive features.
           </DialogDescription>
         </DialogHeader>
 

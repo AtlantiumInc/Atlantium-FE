@@ -210,19 +210,19 @@ export function MembershipCard({ onAvatarClick, bio, createdAt }: MembershipCard
                 </div>
               )}
               <div className="rounded-lg border p-4 space-y-2">
-                <p className="font-medium">Club Membership - $49/month</p>
+                <p className="font-medium">Club Membership - $128/month</p>
                 <ul className="text-sm text-muted-foreground space-y-1">
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-green-500" />
-                    RSVP to exclusive tech events
+                    Two office hours sessions per day
                   </li>
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-green-500" />
-                    Network with local builders
+                    AI engineering curriculum
                   </li>
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-green-500" />
-                    Access to member-only meetups
+                    Exclusive member events
                   </li>
                 </ul>
               </div>
@@ -255,7 +255,7 @@ export function MembershipCard({ onAvatarClick, bio, createdAt }: MembershipCard
         <div className="mt-3">
           <Button className="w-full" onClick={() => setShowUpgradeModal(true)}>
             <Crown className="h-4 w-4" />
-            Upgrade to Club - $49/mo
+            Upgrade to Club - $128/mo
           </Button>
         </div>
       )}
