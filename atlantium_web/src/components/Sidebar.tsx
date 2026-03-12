@@ -4,7 +4,6 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
-  CreditCard,
   FlaskConical,
   MessageCircle,
   Radio,
@@ -51,11 +50,6 @@ export function Sidebar({
       id: "connections",
       icon: <UserPlus size={20} />,
       label: "Connections",
-    },
-    {
-      id: "pricing",
-      icon: <CreditCard size={20} />,
-      label: "Pricing",
     },
     {
       id: "playground",
