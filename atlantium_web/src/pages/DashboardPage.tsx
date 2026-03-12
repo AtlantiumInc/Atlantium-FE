@@ -18,6 +18,7 @@ import { ProjectsPage } from "@/components/pages/ProjectsPage";
 import { LobbyPage } from "@/components/pages/LobbyPage";
 import { PricingPage } from "@/components/pages/PricingPage";
 import { PlaygroundPage } from "@/components/pages/PlaygroundPage";
+import { MembersPage } from "@/components/pages/MembersPage";
 
 export function DashboardPage() {
   const { user, logout, hasAccess } = useAuth();
@@ -56,6 +57,7 @@ export function DashboardPage() {
       messages: "Inbox",
       groups: "Groups",
       connections: "Connections",
+      members: "Members",
       projects: "Projects",
       leaderboard: "Leaderboard",
       pricing: "Pricing",
@@ -80,6 +82,8 @@ export function DashboardPage() {
         return <GroupsPage onNavigateToThread={handleNavigateToThread} />;
       case "connections":
         return <ConnectionsPage />;
+      case "members":
+        return <MembersPage />;
       case "projects":
         return <ProjectsPage />;
       case "leaderboard":
@@ -128,7 +132,7 @@ export function DashboardPage() {
           <div className="p-6 w-full">
             <div className={cn(
               "mx-auto",
-              ["connections", "leaderboard", "hq", "events", "projects", "groups", "pricing"].includes(activePage) ? "max-w-7xl" : "max-w-4xl"
+              ["connections", "members", "leaderboard", "hq", "events", "projects", "groups", "pricing"].includes(activePage) ? "max-w-7xl" : "max-w-4xl"
             )}>
               {renderPage()}
             </div>

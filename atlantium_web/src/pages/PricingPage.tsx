@@ -89,6 +89,7 @@ const tiers = [
     features: [
       "Everything in Club",
       "9 months free",
+      "Member directory access",
       "Quarterly performance review",
       "Discounted services",
       "Project support",

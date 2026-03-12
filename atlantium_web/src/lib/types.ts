@@ -168,7 +168,7 @@ export interface MessagesResponse {
 }
 
 // Subscription types
-export type MembershipTier = "free" | "club";
+export type MembershipTier = "free" | "club" | "club_annual";
 export type SubscriptionStatus = "active" | "trialing" | "past_due" | "canceled" | "unpaid" | "incomplete" | null;
 export type ChatConfig = "connection_required" | "anyone" | "off";
 

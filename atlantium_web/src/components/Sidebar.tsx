@@ -4,6 +4,7 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  ContactRound,
   FlaskConical,
   MessageCircle,
   Radio,
@@ -55,6 +56,11 @@ export function Sidebar({
       id: "connections",
       icon: <UserPlus size={20} />,
       label: "Connections",
+    },
+    {
+      id: "members",
+      icon: <ContactRound size={20} />,
+      label: "Members",
     },
   ];
 

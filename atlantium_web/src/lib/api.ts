@@ -640,6 +640,14 @@ class ApiClient {
     }, APP_API_BASE_URL);
   }
 
+  // Member directory methods
+  async getMemberDirectory(query?: string): Promise<{ success: boolean; members: Array<{ user_id: string; username: string; display_name: string; avatar_url: string; bio: string; location: string }>; tier: string }> {
+    const params = query ? `?q=${encodeURIComponent(query)}` : "";
+    return this.request(`/members/directory${params}`, {
+      method: "GET",
+    }, APP_API_BASE_URL);
+  }
+
   // Thread and messaging methods
   async getThreads(): Promise<ThreadsListResponse> {
     return this.request<ThreadsListResponse>("/threads/list", {
