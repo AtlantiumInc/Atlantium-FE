@@ -439,12 +439,11 @@ export function PublicNavbar() {
                 <Link
                   to={missionLink.to}
                   onClick={() => setOpen(false)}
-                  className={`flex items-center justify-between py-4 border-b border-white/10 group ${pathname === missionLink.to ? "text-white" : "text-white/60"}`}
+                  className={`flex items-center py-4 border-b border-white/10 group ${pathname === missionLink.to ? "text-white" : "text-white/60"}`}
                 >
                   <span className="text-2xl font-semibold tracking-tight group-hover:text-white transition-colors">
                     {missionLink.label}
                   </span>
-                  <ChevronRight className="h-5 w-5 text-white/30 group-hover:text-white/60 transition-colors" />
                 </Link>
               </motion.div>
 
@@ -573,12 +572,11 @@ export function PublicNavbar() {
                   <Link
                     to={to}
                     onClick={() => setOpen(false)}
-                    className={`flex items-center justify-between py-4 border-b border-white/10 group ${pathname === to ? "text-white" : "text-white/60"}`}
+                    className={`flex items-center py-4 border-b border-white/10 group ${pathname === to ? "text-white" : "text-white/60"}`}
                   >
                     <span className="text-2xl font-semibold tracking-tight group-hover:text-white transition-colors">
                       {label}
                     </span>
-                    <ChevronRight className="h-5 w-5 text-white/30 group-hover:text-white/60 transition-colors" />
                   </Link>
                 </motion.div>
               ))}
