@@ -233,13 +233,15 @@ export function Sidebar({
         </div>
 
         {/* Close button — flush to bottom edge */}
-        <button
-          onClick={onAIToggle}
-          className="w-full shrink-0 flex items-center justify-center gap-1.5 py-2.5 border-t border-border/50 rounded-b-2xl bg-white/5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
-        >
-          <X className="h-3.5 w-3.5" />
-          Close
-        </button>
+        <div className="shrink-0 flex justify-center pb-3 pt-1">
+          <button
+            onClick={onAIToggle}
+            className="flex items-center justify-center gap-1.5 px-5 py-2 rounded-t-[1.25rem] rounded-b-xl bg-white/5 border border-border/40 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+          >
+            <X className="h-3.5 w-3.5" />
+            Close
+          </button>
+        </div>
       </div>
 
       {/* ─── AI toggle (bottom, visible when collapsed) ─── */}
