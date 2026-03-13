@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AnimatePresence, motion } from "motion/react";
-import { X, Menu, ChevronRight, Cpu, Users, Wrench, BookOpen, Code2, Newspaper, Briefcase, GraduationCap, Route } from "lucide-react";
+import { X, Menu, ChevronRight, Users, Wrench, BookOpen, Code2, Newspaper, Briefcase, GraduationCap, Route } from "lucide-react";
 
 const solutionItems = [
   {
@@ -12,13 +12,6 @@ const solutionItems = [
     description: "Custom AI solutions, integrations, and consulting for your business",
     icon: Wrench,
     image: "https://images.unsplash.com/photo-1551434678-e076c223a692?w=400&h=250&fit=crop&q=80",
-  },
-  {
-    to: "/training",
-    label: "AI Engineering",
-    description: "Hands-on curriculum and mentorship to master modern AI development",
-    icon: Cpu,
-    image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=250&fit=crop&q=80",
   },
   {
     to: "/focus-groups",
@@ -134,7 +127,7 @@ export function PublicNavbar() {
     return () => { document.body.style.overflow = ""; };
   }, [open]);
 
-  const isSolutionsActive = solutionItems.some(s => pathname === s.to) || pathname === "/training";
+  const isSolutionsActive = solutionItems.some(s => pathname === s.to);
   const isEducationActive = educationItems.some(e => pathname === e.to);
   const isResourcesActive = resourceItems.some(r => pathname === r.to);
 
@@ -191,10 +184,10 @@ export function PublicNavbar() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.96 }}
                     transition={{ duration: 0.2, ease: "easeOut" }}
-                    className="absolute top-full right-0 mt-2 w-[820px] rounded-2xl border border-border/50 bg-background shadow-2xl shadow-black/25 p-4 z-[60]"
+                    className="absolute top-full right-0 mt-2 w-[780px] rounded-2xl border border-border/50 bg-background shadow-2xl shadow-black/25 p-4 z-[60]"
                   >
                     <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">Solutions</p>
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                       {solutionItems.map(({ to, label, description, icon: Icon, image }) => (
                         <Link
                           key={to}
