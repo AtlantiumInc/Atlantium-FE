@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import { AnimatePresence, motion } from "motion/react";
-import { Route, ArrowRight, Bot, Database, Eye, Shield, Cpu, Globe, X, Sparkles } from "lucide-react";
+import { Route, ArrowRight, Bot, FlaskConical, BookOpen, Calculator, Palette, Globe, X, Sparkles } from "lucide-react";
 
 interface Path {
   icon: typeof Bot;
@@ -15,11 +15,11 @@ interface Path {
 
 const paths: Path[] = [
   { icon: Bot, label: "AI Engineering", description: "Build and deploy production AI systems, from LLM integrations to autonomous agents", color: "cyan", available: true },
-  { icon: Database, label: "Data Engineering", description: "Design data pipelines, warehouses, and real-time streaming architectures", color: "violet", available: false },
-  { icon: Eye, label: "Computer Vision", description: "Image recognition, object detection, and video analysis with deep learning", color: "amber", available: false },
-  { icon: Shield, label: "AI Safety & Alignment", description: "Responsible AI development, red-teaming, and alignment research", color: "rose", available: false },
-  { icon: Cpu, label: "ML Infrastructure", description: "Model serving, training pipelines, and MLOps at scale", color: "emerald", available: false },
-  { icon: Globe, label: "Full-Stack AI Apps", description: "End-to-end applications with AI-powered backends and modern frontends", color: "blue", available: false },
+  { icon: Calculator, label: "Mathematics", description: "From foundational arithmetic to calculus, statistics, and discrete math", color: "violet", available: false },
+  { icon: FlaskConical, label: "Sciences", description: "Biology, chemistry, physics, and environmental science with lab work", color: "amber", available: false },
+  { icon: BookOpen, label: "Language Arts", description: "Literature, composition, rhetoric, and critical reading skills", color: "rose", available: false },
+  { icon: Globe, label: "Social Studies", description: "World history, geography, economics, and government", color: "emerald", available: false },
+  { icon: Palette, label: "Creative Arts", description: "Visual arts, music theory, digital media, and creative expression", color: "blue", available: false },
 ];
 
 const colorMap: Record<string, { bg: string; border: string; text: string; badge: string }> = {
@@ -62,8 +62,8 @@ export function PathsPage() {
               <span className="text-cyan-400"> Paths</span>
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8 leading-relaxed">
-              Guided fields of study for AI engineers. Each path is a curated sequence of projects,
-              resources, and milestones designed to take you from fundamentals to mastery.
+              Structured fields of study across every subject. Each path is a curated sequence of
+              lessons, projects, and milestones designed to guide your education from start to finish.
             </p>
           </motion.div>
         </div>

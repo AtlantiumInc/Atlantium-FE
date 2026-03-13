@@ -33,14 +33,14 @@ const educationItems = [
   {
     to: "/homeschool",
     label: "Homeschool",
-    description: "Structured AI & computer science curriculum for homeschool families",
+    description: "A complete K-12 curriculum platform built for homeschool families",
     icon: GraduationCap,
     image: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400&h=250&fit=crop&q=80",
   },
   {
     to: "/paths",
     label: "Learning Paths",
-    description: "Guided fields of study to deepen your expertise in AI specializations",
+    description: "Structured study tracks across subjects to guide your education journey",
     icon: Route,
     image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop&q=80",
   },

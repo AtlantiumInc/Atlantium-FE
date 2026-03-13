@@ -2,13 +2,15 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import { motion } from "motion/react";
-import { GraduationCap, ArrowRight, BookOpen, Code, Brain, Sparkles } from "lucide-react";
+import { GraduationCap, ArrowRight, BookOpen, Calculator, FlaskConical, Pen, Globe, Palette } from "lucide-react";
 
 const subjects = [
-  { icon: Code, label: "Computer Science", description: "Fundamentals of programming, algorithms, and systems design" },
-  { icon: Brain, label: "AI & Machine Learning", description: "Neural networks, LLMs, and hands-on model building" },
-  { icon: BookOpen, label: "Mathematics", description: "Linear algebra, calculus, and statistics for AI" },
-  { icon: Sparkles, label: "Applied Projects", description: "Real-world capstones that build a portfolio from day one" },
+  { icon: BookOpen, label: "Language Arts", description: "Reading, writing, grammar, and literature across all grade levels" },
+  { icon: Calculator, label: "Mathematics", description: "From arithmetic fundamentals through algebra, geometry, and beyond" },
+  { icon: FlaskConical, label: "Science", description: "Biology, chemistry, physics, and earth science with hands-on labs" },
+  { icon: Globe, label: "Social Studies", description: "History, geography, civics, and world cultures" },
+  { icon: Pen, label: "Writing & Composition", description: "Creative writing, essays, research papers, and critical thinking" },
+  { icon: Palette, label: "Electives", description: "Art, music, foreign languages, computer science, and more" },
 ];
 
 export function HomeschoolPage() {
@@ -30,13 +32,13 @@ export function HomeschoolPage() {
               Coming Soon
             </div>
             <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">
-              AI-Native Homeschool
+              Homeschool
               <br />
               <span className="text-emerald-400">Curriculum</span>
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8 leading-relaxed">
-              A structured computer science and AI engineering curriculum designed for homeschool families.
-              Project-based learning that prepares students to build real technology.
+              A complete K-12 curriculum platform built for homeschool families.
+              Structured lessons, progress tracking, and flexible scheduling across every core subject.
             </p>
             <Link to="/signup">
               <Button className="gap-2 bg-white text-black hover:bg-gray-100 border-0 h-11 px-6">
@@ -50,7 +52,7 @@ export function HomeschoolPage() {
 
       {/* Subject cards */}
       <section className="max-w-4xl mx-auto px-6 pb-24">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {subjects.map(({ icon: Icon, label, description }, i) => (
             <motion.div
               key={label}
