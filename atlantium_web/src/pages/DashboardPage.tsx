@@ -2,7 +2,6 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Sidebar } from "@/components/Sidebar";
-import { AIChatPanel } from "@/components/AIChatPanel";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
 import { AccessPendingOverlay } from "@/components/AccessPendingOverlay";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,14 +26,12 @@ export function DashboardPage() {
   const [initialThreadId, setInitialThreadId] = useState<string | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
 
-  // If user doesn't have access, show pending approval overlay
   if (!hasAccess) {
     return <AccessPendingOverlay onLogout={logout} />;
   }
 
   const handleNavigate = (page: string) => {
     setActivePage(page);
-    setAiOpen(false);
     if (page !== "messages") {
       setInitialThreadId(null);
     }
@@ -98,29 +95,18 @@ export function DashboardPage() {
 
   return (
     <div className="h-screen w-screen bg-background p-3 flex gap-3 overflow-hidden">
-      {/* Sidebar — floating, rendered inline in the flex layout */}
+      {/* Sidebar — in flex flow, expands into chat */}
       <Sidebar
         activePage={activePage}
         onNavigate={handleNavigate}
-        onAIClick={() => setAiOpen(!aiOpen)}
         aiOpen={aiOpen}
+        onAIToggle={() => setAiOpen(!aiOpen)}
       />
 
-      {/* AI Chat Panel */}
-      <AIChatPanel open={aiOpen} onClose={() => setAiOpen(false)} />
-
-      {/* Click-away overlay when AI panel is open */}
-      {aiOpen && (
-        <div
-          className="fixed inset-0 z-30"
-          onClick={() => setAiOpen(false)}
-        />
-      )}
-
-      {/* Main content — takes remaining space, offset for the fixed sidebar */}
-      <main className="flex-1 ml-[4.5rem] flex flex-col min-h-0 bg-card/40 border border-border/50 rounded-2xl overflow-hidden">
+      {/* Main content — flexes to fill remaining space */}
+      <main className="flex-1 min-w-0 flex flex-col min-h-0 bg-card/40 border border-border/50 rounded-2xl overflow-hidden">
         {/* Top bar */}
-        <header className="h-14 bg-card/60 backdrop-blur-sm border-b border-border/50 flex items-center justify-between px-6 shrink-0 rounded-t-2xl">
+        <header className="h-14 bg-card/60 backdrop-blur-sm border-b border-border/50 flex items-center justify-between px-6 shrink-0">
           <h1 className="text-lg font-semibold">{getPageTitle()}</h1>
           <div className="flex items-center gap-3">
             <ThemeToggle />
