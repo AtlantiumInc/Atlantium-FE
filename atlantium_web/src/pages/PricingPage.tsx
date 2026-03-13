@@ -70,7 +70,7 @@ const tiers = [
     color: "violet",
     features: [
       "Everything in Free",
-      "Two office hours sessions per day",
+      "Office hours Mon\u2013Fri",
       "AI engineering curriculum",
       "Focus groups",
       "Exclusive member events",
@@ -233,8 +233,8 @@ export function PricingPage() {
           {[
             {
               icon: Video,
-              title: "Two Office Hours Per Day",
-              desc: "Morning and afternoon sessions with engineers who actually review your code, debug with you, and help you ship. Not lectures — real working sessions on your project.",
+              title: "Office Hours Mon\u2013Fri",
+              desc: "Daily sessions with engineers who actually review your code, debug with you, and help you ship. Not lectures \u2014 real working sessions on your project.",
             },
             {
               icon: FolderOpen,
