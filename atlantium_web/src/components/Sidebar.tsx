@@ -12,7 +12,6 @@ import {
   Sparkles,
   UserPlus,
   Users,
-  X,
 } from "lucide-react";
 
 interface Message {
