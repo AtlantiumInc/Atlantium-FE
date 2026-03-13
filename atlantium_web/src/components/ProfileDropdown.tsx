@@ -169,15 +169,19 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
 
       {/* Profile Sheet */}
       <Sheet open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader className="pb-4 border-b pr-8">
-            <div className="flex items-center justify-between">
+        <SheetContent
+          side="right"
+          overlayClassName="bg-black/10 backdrop-blur-[2px]"
+          className="w-full sm:max-w-lg overflow-y-auto data-[state=open]:slide-in-from-top-2 data-[state=closed]:slide-out-to-top-2 data-[state=open]:duration-300 data-[state=closed]:duration-200 inset-y-auto top-0 right-0 h-auto max-h-[calc(100vh-1.5rem)] mt-3 mr-3 rounded-2xl border"
+        >
+          <SheetHeader className="pb-4 border-b">
+            <div className="flex items-center justify-between pr-8">
               <SheetTitle>Profile</SheetTitle>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onLogout}
-                className="text-muted-foreground hover:text-destructive h-8 -mr-2"
+                className="text-muted-foreground hover:text-destructive h-7 text-xs"
               >
                 Logout
               </Button>

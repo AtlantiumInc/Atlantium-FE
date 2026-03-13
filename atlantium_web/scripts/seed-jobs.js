@@ -1,5 +1,8 @@
 /**
- * seed-jobs.js — One-time script to seed job_postings table from jobs.json
+ * seed-jobs.js — Upsert job_postings from jobs.json into Xano.
+ *
+ * Skips jobs whose apply_url already exists in Xano.
+ * Only creates net-new listings.
  *
  * Run from project root:
  *   node scripts/seed-jobs.js
@@ -12,15 +15,39 @@ import { dirname, join } from "path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const JOBS_FILE = join(__dirname, "../src/data/jobs.json");
 const API_BASE = "https://cloud.atlantium.ai/api:_c66cUCc";
-const ENDPOINT = `${API_BASE}/job_postings/create`;
 
-// Admin bearer token (user auth token with is_admin = true)
 const AUTH_TOKEN =
   "eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwiemlwIjoiREVGIn0.To3iiFihCdN_FcuhOIi5XGOv9XJDSbFY49xm59gZ92tQsPhRjFQ9Rse1miA-nJBOB6IFLESndUmjaJARNiZ4zvwRLJCUSWdg.j4w_2NjG9RYQhGn6W9ajyA.R07U7t9KqZXe55sgPmDpFUVstdFXYG5CFoJrwfyA2fumymGZx5U1Dh_DO3OjNPueUgmW-5rgWiHnAVs1hbOZpaAlEs6qIWI9_QsS4U-tc-X-aIYlyIZ7esUsaPNWhO7Vze4unauuzwnvf0Bynvcc8RaB4947bYOzHOpa-T_fzGNR_aOw_UMPATxjcdZRhCSy.qS_KhQGH8tOk8_jf6XTMXEnFiMRycRLtKuGXZNOSTxA";
 
-const jobs = JSON.parse(readFileSync(JOBS_FILE, "utf-8"));
+const scrapedJobs = JSON.parse(readFileSync(JOBS_FILE, "utf-8"));
+console.log(`Read ${scrapedJobs.length} jobs from jobs.json\n`);
 
-async function seedJob(job, index) {
+// 1. Fetch all existing apply_urls from Xano
+console.log("Fetching existing jobs from Xano...");
+const existingRes = await fetch(`${API_BASE}/job_postings`);
+if (!existingRes.ok) {
+  console.error("Failed to fetch existing jobs:", existingRes.status);
+  process.exit(1);
+}
+const existingJobs = await existingRes.json();
+const existingUrls = new Set(existingJobs.map((j) => j.apply_url));
+console.log(`${existingJobs.length} jobs already in Xano\n`);
+
+// 2. Filter to only new jobs
+const newJobs = scrapedJobs.filter((j) => !existingUrls.has(j.apply_url));
+console.log(`${newJobs.length} new jobs to create\n`);
+
+if (newJobs.length === 0) {
+  console.log("Nothing to do.");
+  process.exit(0);
+}
+
+// 3. Create each new job
+let success = 0;
+let failed = 0;
+
+for (let i = 0; i < newJobs.length; i++) {
+  const job = newJobs[i];
   const body = {
     title: job.title,
     company: job.company,
@@ -45,7 +72,7 @@ async function seedJob(job, index) {
   };
 
   try {
-    const res = await fetch(ENDPOINT, {
+    const res = await fetch(`${API_BASE}/job_postings/create`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -53,43 +80,20 @@ async function seedJob(job, index) {
       },
       body: JSON.stringify(body),
     });
-
     const data = await res.json();
-
     if (!res.ok) {
-      console.error(`[${index + 1}/${jobs.length}] FAIL: ${job.company} — ${job.title}`);
-      console.error("  Error:", data.message || JSON.stringify(data));
-      return false;
+      console.error(`[${i + 1}/${newJobs.length}] FAIL: ${job.company} — ${job.title}: ${data.message ?? JSON.stringify(data)}`);
+      failed++;
+    } else {
+      console.log(`[${i + 1}/${newJobs.length}] OK: ${job.company} — ${job.title} (slug: ${data.slug})`);
+      success++;
     }
-
-    console.log(`[${index + 1}/${jobs.length}] OK: ${job.company} — ${job.title} (slug: ${data.slug})`);
-    return true;
   } catch (err) {
-    console.error(`[${index + 1}/${jobs.length}] ERROR: ${job.company} — ${job.title}:`, err.message);
-    return false;
-  }
-}
-
-async function main() {
-  console.log(`Seeding ${jobs.length} jobs to ${ENDPOINT}...\n`);
-  let success = 0;
-  let failed = 0;
-
-  for (let i = 0; i < jobs.length; i++) {
-    const ok = await seedJob(jobs[i], i);
-    if (ok) success++;
-    else failed++;
-
-    // Small delay to avoid rate limiting
-    if (i < jobs.length - 1) {
-      await new Promise((r) => setTimeout(r, 100));
-    }
+    console.error(`[${i + 1}/${newJobs.length}] ERROR: ${job.company} — ${job.title}: ${err.message}`);
+    failed++;
   }
 
-  console.log(`\nDone. ${success} succeeded, ${failed} failed.`);
+  if (i < newJobs.length - 1) await new Promise((r) => setTimeout(r, 100));
 }
 
-main().catch((err) => {
-  console.error("Fatal error:", err);
-  process.exit(1);
-});
+console.log(`\nDone. ${success} created, ${failed} failed.`);

@@ -94,8 +94,8 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "h-full bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl flex flex-col shrink-0 shadow-lg transition-all duration-300 ease-out overflow-hidden",
-        aiOpen ? "w-[26rem]" : "w-14"
+        "h-full z-10 bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl flex flex-col shrink-0 shadow-lg transition-all duration-300 ease-out",
+        aiOpen ? "w-[26rem] overflow-hidden" : "w-14"
       )}
     >
       {/* ─── Icon bar (top section, always visible) ─── */}
@@ -233,12 +233,11 @@ export function Sidebar({
         </div>
 
         {/* Close button — flush to bottom edge */}
-        <div className="shrink-0 flex justify-center pb-3 pt-1">
+        <div className="shrink-0 flex justify-center">
           <button
             onClick={onAIToggle}
-            className="flex items-center justify-center gap-1.5 px-5 py-2 rounded-t-[1.25rem] rounded-b-xl bg-white/5 border border-border/40 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+            className="flex items-center justify-center px-4 py-1.5 rounded-t-[1.25rem] bg-white/5 border border-b-0 border-border/40 text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
           >
-            <X className="h-3.5 w-3.5" />
             Close
           </button>
         </div>

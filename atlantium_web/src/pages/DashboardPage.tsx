@@ -42,22 +42,19 @@ export function DashboardPage() {
     setActivePage("messages");
   };
 
-  const getPageTitle = () => {
-    const titles: Record<string, string> = {
-      hq: "HQ",
-      lobby: "Lobby",
-      frontier: "Frontier",
-      events: "Events",
-      messages: "Inbox",
-      groups: "Groups",
-      connections: "Connections",
-      members: "Members",
-      projects: "Projects",
-      leaderboard: "Leaderboard",
-      pricing: "Pricing",
-      playground: "Playground",
-    };
-    return titles[activePage] || "HQ";
+  const pageTitles: Record<string, string> = {
+    hq: "HQ",
+    lobby: "Lobby",
+    frontier: "Frontier",
+    events: "Events",
+    messages: "Inbox",
+    groups: "Groups",
+    connections: "Connections",
+    members: "Members",
+    projects: "Projects",
+    leaderboard: "Leaderboard",
+    pricing: "Pricing",
+    playground: "Playground",
   };
 
   const renderPage = () => {
@@ -104,32 +101,36 @@ export function DashboardPage() {
       />
 
       {/* Main content — flexes to fill remaining space */}
-      <main className="flex-1 min-w-0 flex flex-col min-h-0 bg-card/40 border border-border/50 rounded-2xl overflow-hidden">
-        {/* Top bar */}
-        <header className="h-14 bg-card/60 backdrop-blur-sm border-b border-border/50 flex items-center justify-between px-6 shrink-0">
-          <h1 className="text-lg font-semibold">{getPageTitle()}</h1>
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-            <ProfileDropdown user={user} onLogout={logout} />
-          </div>
-        </header>
+      <div className="flex-1 min-w-0 flex flex-col min-h-0">
+        {/* Top bar — outside the card */}
+        <div className="flex items-center justify-end gap-3 px-2 pb-2 shrink-0">
+          <ThemeToggle />
+          <ProfileDropdown user={user} onLogout={logout} />
+        </div>
 
-        {/* Page content */}
-        {isFullBleed ? (
-          <div className="flex-1 min-h-0">
-            {renderPage()}
-          </div>
-        ) : (
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className={cn(
-              "mx-auto",
-              ["connections", "members", "leaderboard", "hq", "events", "projects", "groups", "pricing"].includes(activePage) ? "max-w-7xl" : "max-w-4xl"
-            )}>
+        {/* Page card */}
+        <main className="flex-1 min-h-0 bg-card/40 border border-border/50 rounded-2xl overflow-hidden flex flex-col">
+          {/* Header */}
+          <header className="h-12 border-b border-border/50 flex items-center px-5 shrink-0">
+            <h1 className="text-sm font-semibold">{pageTitles[activePage] || "HQ"}</h1>
+          </header>
+
+          {isFullBleed ? (
+            <div className="flex-1 min-h-0">
               {renderPage()}
             </div>
-          </div>
-        )}
-      </main>
+          ) : (
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className={cn(
+                "mx-auto",
+                ["connections", "members", "leaderboard", "hq", "events", "projects", "groups", "pricing"].includes(activePage) ? "max-w-7xl" : "max-w-4xl"
+              )}>
+                {renderPage()}
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

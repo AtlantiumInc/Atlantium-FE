@@ -53,14 +53,6 @@ export function OnboardingPage() {
       // Separate profile fields from registration_details
       const { first_name, last_name, avatar_url, membership_tier, ...registrationFields } = data;
 
-      // Map onboarding tier names to users table enum values
-      const tierMap: Record<string, string> = {
-        free: "free",
-        club: "monthly",
-        club_annual: "annual",
-      };
-      const dbTier = tierMap[membership_tier || "free"] || "free";
-
       const registrationDetails = {
         ...registrationFields,
         membership_tier, // keep original in registration_details
@@ -81,7 +73,6 @@ export function OnboardingPage() {
         website_url: profile?.website_url || null,
         linkedin_url: profile?.linkedin_url || null,
         registration_details: registrationDetails,
-        membership_tier: dbTier, // saved to users table by backend
       });
 
       // Refresh auth context to get updated profile
