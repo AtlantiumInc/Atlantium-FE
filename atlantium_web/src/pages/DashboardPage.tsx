@@ -12,13 +12,11 @@ import { FrontierPage } from "@/components/pages/FrontierPage";
 import { EventsPage } from "@/components/pages/EventsPage";
 import { LeaderboardPage } from "@/components/pages/LeaderboardPage";
 import { MessagesPage } from "@/components/pages/MessagesPage";
-import { GroupsPage } from "@/components/pages/GroupsPage";
-import { ConnectionsPage } from "@/components/pages/ConnectionsPage";
+import { ConnectPage } from "@/components/pages/ConnectPage";
 import { ProjectsPage } from "@/components/pages/ProjectsPage";
 import { LobbyPage } from "@/components/pages/LobbyPage";
 import { PricingPage } from "@/components/pages/PricingPage";
 import { PlaygroundPage } from "@/components/pages/PlaygroundPage";
-import { MembersPage } from "@/components/pages/MembersPage";
 
 export function DashboardPage() {
   const { user, logout, hasAccess } = useAuth();
@@ -48,9 +46,7 @@ export function DashboardPage() {
     frontier: "Frontier",
     events: "Events",
     messages: "Inbox",
-    groups: "Groups",
-    connections: "Connections",
-    members: "Members",
+    connect: "Connect",
     projects: "Projects",
     leaderboard: "Leaderboard",
     pricing: "Pricing",
@@ -69,12 +65,8 @@ export function DashboardPage() {
         return <EventsPage />;
       case "messages":
         return <MessagesPage initialThreadId={initialThreadId} onThreadSelected={() => setInitialThreadId(null)} />;
-      case "groups":
-        return <GroupsPage onNavigateToThread={handleNavigateToThread} />;
-      case "connections":
-        return <ConnectionsPage />;
-      case "members":
-        return <MembersPage />;
+      case "connect":
+        return <ConnectPage onNavigateToThread={handleNavigateToThread} />;
       case "projects":
         return <ProjectsPage />;
       case "leaderboard":
@@ -88,7 +80,7 @@ export function DashboardPage() {
     }
   };
 
-  const isFullBleed = activePage === "messages" || activePage === "lobby" || activePage === "playground";
+  const isFullBleed = activePage === "messages" || activePage === "lobby" || activePage === "playground" || activePage === "connect";
 
   return (
     <div className="h-screen w-screen bg-background p-3 flex gap-3 overflow-hidden">
@@ -123,7 +115,7 @@ export function DashboardPage() {
             <div className="flex-1 overflow-y-auto p-6">
               <div className={cn(
                 "mx-auto",
-                ["connections", "members", "leaderboard", "hq", "events", "projects", "groups", "pricing"].includes(activePage) ? "max-w-7xl" : "max-w-4xl"
+                ["leaderboard", "hq", "events", "projects", "pricing"].includes(activePage) ? "max-w-7xl" : "max-w-4xl"
               )}>
                 {renderPage()}
               </div>

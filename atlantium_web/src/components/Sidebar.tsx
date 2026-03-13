@@ -3,15 +3,13 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Calendar,
-  ContactRound,
   FlaskConical,
+  Handshake,
   Loader2,
   MessageCircle,
   Radio,
   Send,
   Sparkles,
-  UserPlus,
-  Users,
 } from "lucide-react";
 
 interface Message {
@@ -44,9 +42,7 @@ export function Sidebar({
     { id: "playground",  icon: <FlaskConical size={20} />,  label: "Playground" },
     { id: "events",      icon: <Calendar size={20} />,      label: "Events" },
     { id: "messages",    icon: <MessageCircle size={20} />, label: "Inbox" },
-    { id: "groups",      icon: <Users size={20} />,         label: "Groups" },
-    { id: "connections", icon: <UserPlus size={20} />,      label: "Connections" },
-    { id: "members",     icon: <ContactRound size={20} />,  label: "Members" },
+    { id: "connect",     icon: <Handshake size={20} />,     label: "Connect" },
   ];
 
   // Auto-scroll on new messages
