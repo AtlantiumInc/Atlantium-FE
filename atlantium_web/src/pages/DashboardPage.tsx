@@ -2,6 +2,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Sidebar } from "@/components/Sidebar";
+import { AIChatPanel } from "@/components/AIChatPanel";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
 import { AccessPendingOverlay } from "@/components/AccessPendingOverlay";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,8 +24,8 @@ import { MembersPage } from "@/components/pages/MembersPage";
 export function DashboardPage() {
   const { user, logout, hasAccess } = useAuth();
   const [activePage, setActivePage] = useState("hq");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [initialThreadId, setInitialThreadId] = useState<string | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
 
   // If user doesn't have access, show pending approval overlay
   if (!hasAccess) {
@@ -33,6 +34,7 @@ export function DashboardPage() {
 
   const handleNavigate = (page: string) => {
     setActivePage(page);
+    setAiOpen(false);
     // Clear initial thread when navigating away from messages
     if (page !== "messages") {
       setInitialThreadId(null);
@@ -42,10 +44,6 @@ export function DashboardPage() {
   const handleNavigateToThread = (threadId: string) => {
     setInitialThreadId(threadId);
     setActivePage("messages");
-  };
-
-  const handleToggleSidebar = () => {
-    setSidebarCollapsed(!sidebarCollapsed);
   };
 
   const getPageTitle = () => {
@@ -102,17 +100,24 @@ export function DashboardPage() {
       <Sidebar
         activePage={activePage}
         onNavigate={handleNavigate}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={handleToggleSidebar}
+        onAIClick={() => setAiOpen(!aiOpen)}
+        aiOpen={aiOpen}
       />
 
-      {/* Main content area */}
-      <main
-        className={cn(
-          "transition-all duration-300 min-h-screen",
-          sidebarCollapsed ? "pl-16" : "pl-56"
-        )}
-      >
+      {/* AI Chat Panel */}
+      <AIChatPanel open={aiOpen} onClose={() => setAiOpen(false)} />
+
+      {/* Click-away overlay when AI panel is open */}
+      {aiOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/20"
+          style={{ left: "calc(4rem + 50rem)" }}
+          onClick={() => setAiOpen(false)}
+        />
+      )}
+
+      {/* Main content area — always offset by icon sidebar width (4rem) */}
+      <main className="pl-16 transition-all duration-300 min-h-screen">
         {/* Top bar */}
         <header className="sticky top-0 z-30 h-14 bg-background/95 backdrop-blur border-b border-border flex items-center justify-between px-6">
           <h1 className="text-lg font-semibold">{getPageTitle()}</h1>
