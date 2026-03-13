@@ -95,7 +95,7 @@ export function Sidebar({
     <aside
       className={cn(
         "h-full bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl flex flex-col shrink-0 shadow-lg transition-all duration-300 ease-out overflow-hidden",
-        aiOpen ? "w-[26rem]" : "w-[4.5rem]"
+        aiOpen ? "w-[26rem]" : "w-14"
       )}
     >
       {/* ─── Icon bar (top section, always visible) ─── */}
@@ -104,7 +104,7 @@ export function Sidebar({
         <button
           onClick={() => { if (aiOpen) onAIToggle(); onNavigate?.("hq"); }}
           className={cn(
-            "h-14 w-[4.5rem] shrink-0 flex items-center justify-center transition-colors",
+            "h-14 w-14 shrink-0 flex items-center justify-center transition-colors",
             !aiOpen && activePage === "hq" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
           )}
         >
@@ -118,7 +118,7 @@ export function Sidebar({
         {/* AI header — slides in when open */}
         <div
           className={cn(
-            "flex items-center justify-between flex-1 pr-3 transition-all duration-300",
+            "flex items-center flex-1 pr-3 transition-all duration-300",
             aiOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           )}
         >
@@ -131,19 +131,13 @@ export function Sidebar({
               <p className="text-[10px] text-muted-foreground">Powered by Atlantium</p>
             </div>
           </div>
-          <button
-            onClick={onAIToggle}
-            className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
-          >
-            <X className="h-4 w-4" />
-          </button>
         </div>
       </div>
 
       {/* ─── Nav items (visible when collapsed) ─── */}
       <nav
         className={cn(
-          "flex-1 w-full flex flex-col items-center gap-1.5 px-3 py-2 transition-all duration-300",
+          "flex-1 w-full flex flex-col items-center gap-1 px-1.5 py-2 transition-all duration-300",
           aiOpen ? "opacity-0 scale-90 pointer-events-none absolute" : "opacity-100 scale-100"
         )}
       >
@@ -153,7 +147,7 @@ export function Sidebar({
             onClick={() => onNavigate?.(item.id)}
             style={{ transitionDelay: aiOpen ? "0ms" : `${i * 30}ms` }}
             className={cn(
-              "group relative h-11 w-11 rounded-xl flex items-center justify-center transition-all duration-200",
+              "group relative h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-200",
               activePage === item.id
                 ? "bg-white/10 text-foreground"
                 : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
@@ -236,19 +230,26 @@ export function Sidebar({
           <p className="text-[10px] text-muted-foreground text-center mt-2">
             AI responses are generated and may not always be accurate.
           </p>
+          <button
+            onClick={onAIToggle}
+            className="mx-auto mt-2 flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-border/40 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+          >
+            <X className="h-3 w-3" />
+            Close
+          </button>
         </div>
       </div>
 
       {/* ─── AI toggle (bottom, visible when collapsed) ─── */}
       <div
         className={cn(
-          "w-full px-3 pb-4 shrink-0 transition-all duration-300",
+          "w-full px-1.5 pb-3 shrink-0 transition-all duration-300",
           aiOpen ? "opacity-0 pointer-events-none h-0 pb-0" : "opacity-100"
         )}
       >
         <button
           onClick={onAIToggle}
-          className="group relative h-11 w-11 mx-auto rounded-xl flex items-center justify-center transition-all duration-150 text-muted-foreground hover:bg-white/5 hover:text-foreground"
+          className="group relative h-10 w-10 mx-auto rounded-xl flex items-center justify-center transition-all duration-150 text-muted-foreground hover:bg-white/5 hover:text-foreground"
         >
           <Sparkles size={20} />
           <span className="pointer-events-none absolute left-full ml-3 px-2.5 py-1 rounded-lg bg-popover border border-border text-xs font-medium text-foreground whitespace-nowrap opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150 z-50 shadow-xl">
