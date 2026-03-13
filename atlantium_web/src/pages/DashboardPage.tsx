@@ -35,7 +35,6 @@ export function DashboardPage() {
   const handleNavigate = (page: string) => {
     setActivePage(page);
     setAiOpen(false);
-    // Clear initial thread when navigating away from messages
     if (page !== "messages") {
       setInitialThreadId(null);
     }
@@ -95,8 +94,11 @@ export function DashboardPage() {
     }
   };
 
+  const isFullBleed = activePage === "messages" || activePage === "lobby" || activePage === "playground";
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen w-screen bg-background p-3 flex gap-3 overflow-hidden">
+      {/* Sidebar — floating, rendered inline in the flex layout */}
       <Sidebar
         activePage={activePage}
         onNavigate={handleNavigate}
@@ -110,16 +112,15 @@ export function DashboardPage() {
       {/* Click-away overlay when AI panel is open */}
       {aiOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/20"
-          style={{ left: "calc(4rem + 50rem)" }}
+          className="fixed inset-0 z-30"
           onClick={() => setAiOpen(false)}
         />
       )}
 
-      {/* Main content area — always offset by icon sidebar width (4rem) */}
-      <main className="pl-16 transition-all duration-300 min-h-screen">
+      {/* Main content — takes remaining space, offset for the fixed sidebar */}
+      <main className="flex-1 ml-[4.5rem] flex flex-col min-h-0 bg-card/40 border border-border/50 rounded-2xl overflow-hidden">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 h-14 bg-background/95 backdrop-blur border-b border-border flex items-center justify-between px-6">
+        <header className="h-14 bg-card/60 backdrop-blur-sm border-b border-border/50 flex items-center justify-between px-6 shrink-0 rounded-t-2xl">
           <h1 className="text-lg font-semibold">{getPageTitle()}</h1>
           <div className="flex items-center gap-3">
             <ThemeToggle />
@@ -128,13 +129,12 @@ export function DashboardPage() {
         </header>
 
         {/* Page content */}
-        {activePage === "messages" || activePage === "lobby" || activePage === "playground" ? (
-          // Full-bleed pages with no padding
-          <div className="w-full h-[calc(100vh-3.5rem)]">
+        {isFullBleed ? (
+          <div className="flex-1 min-h-0">
             {renderPage()}
           </div>
         ) : (
-          <div className="p-6 w-full">
+          <div className="flex-1 overflow-y-auto p-6">
             <div className={cn(
               "mx-auto",
               ["connections", "members", "leaderboard", "hq", "events", "projects", "groups", "pricing"].includes(activePage) ? "max-w-7xl" : "max-w-4xl"

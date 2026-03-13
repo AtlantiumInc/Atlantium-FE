@@ -74,12 +74,12 @@ export function AIChatPanel({ open, onClose }: AIChatPanelProps) {
   return (
     <div
       className={cn(
-        "fixed top-0 left-16 z-35 h-screen w-full max-w-[50rem] bg-background border-r border-border flex flex-col transition-transform duration-300 ease-out",
-        open ? "translate-x-0" : "-translate-x-full"
+        "fixed top-3 bottom-3 z-35 w-full max-w-[50rem] bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl flex flex-col transition-all duration-300 ease-out shadow-lg",
+        open ? "left-[5.25rem] opacity-100" : "left-[5.25rem] -translate-x-[calc(100%+6rem)] opacity-0"
       )}
     >
       {/* Header */}
-      <div className="h-14 border-b border-border px-5 flex items-center justify-between shrink-0">
+      <div className="h-14 border-b border-border/50 px-5 flex items-center justify-between shrink-0 rounded-t-2xl">
         <div className="flex items-center gap-2.5">
           <div className="h-7 w-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
             <Sparkles className="h-4 w-4 text-cyan-400" />
@@ -142,7 +142,7 @@ export function AIChatPanel({ open, onClose }: AIChatPanelProps) {
       </div>
 
       {/* Input */}
-      <div className="border-t border-border p-4 shrink-0">
+      <div className="border-t border-border/50 p-4 shrink-0 rounded-b-2xl">
         <div className="flex items-end gap-2 bg-muted/30 border border-border/50 rounded-xl px-3 py-2 focus-within:border-cyan-500/40 transition-colors">
           <textarea
             ref={inputRef}
