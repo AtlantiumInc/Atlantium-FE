@@ -230,14 +230,16 @@ export function Sidebar({
           <p className="text-[10px] text-muted-foreground text-center mt-2">
             AI responses are generated and may not always be accurate.
           </p>
-          <button
-            onClick={onAIToggle}
-            className="mx-auto mt-2 flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-border/40 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
-          >
-            <X className="h-3 w-3" />
-            Close
-          </button>
         </div>
+
+        {/* Close button — flush to bottom edge */}
+        <button
+          onClick={onAIToggle}
+          className="w-full shrink-0 flex items-center justify-center gap-1.5 py-2.5 border-t border-border/50 rounded-b-2xl bg-white/5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+        >
+          <X className="h-3.5 w-3.5" />
+          Close
+        </button>
       </div>
 
       {/* ─── AI toggle (bottom, visible when collapsed) ─── */}
