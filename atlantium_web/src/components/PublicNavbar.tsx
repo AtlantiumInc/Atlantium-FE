@@ -74,13 +74,6 @@ const navLinks = [
   { to: "/pricing",       label: "Pricing" },
 ];
 
-const mobileLinks = [
-  ...solutionItems.map(s => ({ to: s.to, label: s.label })),
-  ...educationItems.map(e => ({ to: e.to, label: e.label })),
-  ...resourceItems.map(r => ({ to: r.to, label: r.label })),
-  ...navLinks,
-];
-
 const missionLink = { to: "/mission", label: "Mission" };
 
 export function PublicNavbar() {
@@ -89,6 +82,10 @@ export function PublicNavbar() {
   const [solutionsOpen, setSolutionsOpen] = useState(false);
   const [educationOpen, setEducationOpen] = useState(false);
   const [resourcesOpen, setResourcesOpen] = useState(false);
+  // Mobile accordion state
+  const [mobileSolutions, setMobileSolutions] = useState(false);
+  const [mobileEducation, setMobileEducation] = useState(false);
+  const [mobileResources, setMobileResources] = useState(false);
   const solutionsTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const educationTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resourcesTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -433,28 +430,158 @@ export function PublicNavbar() {
 
             {/* Nav links */}
             <nav className="flex-1 overflow-y-auto px-6 py-4">
-              {[missionLink, ...mobileLinks].map(({ to, label }, i) => {
-                const isActive = pathname === to;
-                return (
-                  <motion.div
-                    key={to}
-                    initial={{ opacity: 0, x: -16 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.05 + i * 0.05, duration: 0.25 }}
-                  >
-                    <Link
-                      to={to}
-                      onClick={() => setOpen(false)}
-                      className={`flex items-center justify-between py-4 border-b border-white/10 group ${isActive ? "text-white" : "text-white/60"}`}
+              {/* Mission */}
+              <motion.div
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.05, duration: 0.25 }}
+              >
+                <Link
+                  to={missionLink.to}
+                  onClick={() => setOpen(false)}
+                  className={`flex items-center justify-between py-4 border-b border-white/10 group ${pathname === missionLink.to ? "text-white" : "text-white/60"}`}
+                >
+                  <span className="text-2xl font-semibold tracking-tight group-hover:text-white transition-colors">
+                    {missionLink.label}
+                  </span>
+                  <ChevronRight className="h-5 w-5 text-white/30 group-hover:text-white/60 transition-colors" />
+                </Link>
+              </motion.div>
+
+              {/* Solutions accordion */}
+              <motion.div
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1, duration: 0.25 }}
+              >
+                <button
+                  onClick={() => setMobileSolutions(!mobileSolutions)}
+                  className="flex items-center justify-between py-4 border-b border-white/10 w-full text-white/60"
+                >
+                  <span className="text-2xl font-semibold tracking-tight">Solutions</span>
+                  <ChevronRight className={`h-5 w-5 text-white/30 transition-transform duration-200 ${mobileSolutions ? "rotate-90" : ""}`} />
+                </button>
+                <AnimatePresence>
+                  {mobileSolutions && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
                     >
-                      <span className="text-2xl font-semibold tracking-tight group-hover:text-white transition-colors">
-                        {label}
-                      </span>
-                      <ChevronRight className="h-5 w-5 text-white/30 group-hover:text-white/60 transition-colors" />
-                    </Link>
-                  </motion.div>
-                );
-              })}
+                      {solutionItems.map(({ to, label, icon: Icon }) => (
+                        <Link
+                          key={to}
+                          to={to}
+                          onClick={() => setOpen(false)}
+                          className={`flex items-center gap-3 py-3 pl-4 border-b border-white/5 group ${pathname === to ? "text-white" : "text-white/50"}`}
+                        >
+                          <Icon className="h-4 w-4 text-white/40 group-hover:text-white/70 transition-colors" />
+                          <span className="text-lg font-medium group-hover:text-white transition-colors">{label}</span>
+                        </Link>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+
+              {/* Education accordion */}
+              <motion.div
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.15, duration: 0.25 }}
+              >
+                <button
+                  onClick={() => setMobileEducation(!mobileEducation)}
+                  className="flex items-center justify-between py-4 border-b border-white/10 w-full text-white/60"
+                >
+                  <span className="text-2xl font-semibold tracking-tight">Education</span>
+                  <ChevronRight className={`h-5 w-5 text-white/30 transition-transform duration-200 ${mobileEducation ? "rotate-90" : ""}`} />
+                </button>
+                <AnimatePresence>
+                  {mobileEducation && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      {educationItems.map(({ to, label, icon: Icon }) => (
+                        <Link
+                          key={to}
+                          to={to}
+                          onClick={() => setOpen(false)}
+                          className={`flex items-center gap-3 py-3 pl-4 border-b border-white/5 group ${pathname === to ? "text-white" : "text-white/50"}`}
+                        >
+                          <Icon className="h-4 w-4 text-white/40 group-hover:text-white/70 transition-colors" />
+                          <span className="text-lg font-medium group-hover:text-white transition-colors">{label}</span>
+                        </Link>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+
+              {/* Resources accordion */}
+              <motion.div
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2, duration: 0.25 }}
+              >
+                <button
+                  onClick={() => setMobileResources(!mobileResources)}
+                  className="flex items-center justify-between py-4 border-b border-white/10 w-full text-white/60"
+                >
+                  <span className="text-2xl font-semibold tracking-tight">Resources</span>
+                  <ChevronRight className={`h-5 w-5 text-white/30 transition-transform duration-200 ${mobileResources ? "rotate-90" : ""}`} />
+                </button>
+                <AnimatePresence>
+                  {mobileResources && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      {resourceItems.map(({ to, label, icon: Icon }) => (
+                        <Link
+                          key={to}
+                          to={to}
+                          onClick={() => setOpen(false)}
+                          className={`flex items-center gap-3 py-3 pl-4 border-b border-white/5 group ${pathname === to ? "text-white" : "text-white/50"}`}
+                        >
+                          <Icon className="h-4 w-4 text-white/40 group-hover:text-white/70 transition-colors" />
+                          <span className="text-lg font-medium group-hover:text-white transition-colors">{label}</span>
+                        </Link>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+
+              {/* Standalone nav links (Pricing) */}
+              {navLinks.map(({ to, label }, i) => (
+                <motion.div
+                  key={to}
+                  initial={{ opacity: 0, x: -16 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.25 + i * 0.05, duration: 0.25 }}
+                >
+                  <Link
+                    to={to}
+                    onClick={() => setOpen(false)}
+                    className={`flex items-center justify-between py-4 border-b border-white/10 group ${pathname === to ? "text-white" : "text-white/60"}`}
+                  >
+                    <span className="text-2xl font-semibold tracking-tight group-hover:text-white transition-colors">
+                      {label}
+                    </span>
+                    <ChevronRight className="h-5 w-5 text-white/30 group-hover:text-white/60 transition-colors" />
+                  </Link>
+                </motion.div>
+              ))}
             </nav>
 
             {/* Bottom CTA */}
