@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AnimatePresence, motion } from "motion/react";
-import { X, Menu, ChevronRight, Cpu, Users, Wrench, BookOpen, Code2, Newspaper } from "lucide-react";
+import { X, Menu, ChevronRight, Cpu, Users, Wrench, BookOpen, Code2, Newspaper, Briefcase, GraduationCap, Route } from "lucide-react";
 
 const solutionItems = [
   {
@@ -26,6 +26,30 @@ const solutionItems = [
     description: "Live video sessions with builders tackling real-world AI projects",
     icon: Users,
     image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400&h=250&fit=crop&q=80",
+  },
+  {
+    to: "/jobs",
+    label: "Job Board",
+    description: "Curated AI engineering roles from top companies in your area",
+    icon: Briefcase,
+    image: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=250&fit=crop&q=80",
+  },
+];
+
+const educationItems = [
+  {
+    to: "/homeschool",
+    label: "Homeschool",
+    description: "Structured AI & computer science curriculum for homeschool families",
+    icon: GraduationCap,
+    image: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400&h=250&fit=crop&q=80",
+  },
+  {
+    to: "/paths",
+    label: "Learning Paths",
+    description: "Guided fields of study to deepen your expertise in AI specializations",
+    icon: Route,
+    image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop&q=80",
   },
 ];
 
@@ -54,12 +78,12 @@ const resourceItems = [
 ];
 
 const navLinks = [
-  { to: "/jobs",          label: "Job Board" },
   { to: "/pricing",       label: "Pricing" },
 ];
 
 const mobileLinks = [
   ...solutionItems.map(s => ({ to: s.to, label: s.label })),
+  ...educationItems.map(e => ({ to: e.to, label: e.label })),
   ...resourceItems.map(r => ({ to: r.to, label: r.label })),
   ...navLinks,
 ];
@@ -70,10 +94,13 @@ export function PublicNavbar() {
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const [solutionsOpen, setSolutionsOpen] = useState(false);
+  const [educationOpen, setEducationOpen] = useState(false);
   const [resourcesOpen, setResourcesOpen] = useState(false);
   const solutionsTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const educationTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resourcesTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const solutionsRef = useRef<HTMLDivElement>(null);
+  const educationRef = useRef<HTMLDivElement>(null);
   const resourcesRef = useRef<HTMLDivElement>(null);
 
   const handleSolutionsEnter = () => {
@@ -82,6 +109,13 @@ export function PublicNavbar() {
   };
   const handleSolutionsLeave = () => {
     solutionsTimeout.current = setTimeout(() => setSolutionsOpen(false), 150);
+  };
+  const handleEducationEnter = () => {
+    if (educationTimeout.current) clearTimeout(educationTimeout.current);
+    setEducationOpen(true);
+  };
+  const handleEducationLeave = () => {
+    educationTimeout.current = setTimeout(() => setEducationOpen(false), 150);
   };
   const handleResourcesEnter = () => {
     if (resourcesTimeout.current) clearTimeout(resourcesTimeout.current);
@@ -92,7 +126,7 @@ export function PublicNavbar() {
   };
 
   // Close on route change
-  useEffect(() => { setOpen(false); setSolutionsOpen(false); setResourcesOpen(false); }, [pathname]);
+  useEffect(() => { setOpen(false); setSolutionsOpen(false); setEducationOpen(false); setResourcesOpen(false); }, [pathname]);
 
   // Prevent body scroll when open
   useEffect(() => {
@@ -101,6 +135,7 @@ export function PublicNavbar() {
   }, [open]);
 
   const isSolutionsActive = solutionItems.some(s => pathname === s.to) || pathname === "/training";
+  const isEducationActive = educationItems.some(e => pathname === e.to);
   const isResourcesActive = resourceItems.some(r => pathname === r.to);
 
   return (
@@ -156,11 +191,74 @@ export function PublicNavbar() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.96 }}
                     transition={{ duration: 0.2, ease: "easeOut" }}
-                    className="absolute top-full right-0 mt-2 w-[780px] rounded-2xl border border-border/50 bg-background shadow-2xl shadow-black/25 p-4 z-[60]"
+                    className="absolute top-full right-0 mt-2 w-[820px] rounded-2xl border border-border/50 bg-background shadow-2xl shadow-black/25 p-4 z-[60]"
                   >
                     <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">Solutions</p>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-4 gap-3">
                       {solutionItems.map(({ to, label, description, icon: Icon, image }) => (
+                        <Link
+                          key={to}
+                          to={to}
+                          className="group rounded-xl overflow-hidden border border-border/40 hover:border-primary/40 bg-muted/20 hover:bg-muted/40 transition-all duration-200"
+                        >
+                          <div className="relative h-36 overflow-hidden">
+                            <img
+                              src={image}
+                              alt={label}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                            <div className="absolute bottom-3 left-3 flex items-center gap-2">
+                              <div className="h-7 w-7 rounded-lg bg-white/15 backdrop-blur-sm flex items-center justify-center">
+                                <Icon className="h-4 w-4 text-white" />
+                              </div>
+                              <span className="text-base font-semibold text-white">{label}</span>
+                            </div>
+                          </div>
+                          <div className="p-3">
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                              {description}
+                            </p>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Education dropdown trigger */}
+            <div
+              ref={educationRef}
+              className="relative"
+              onMouseEnter={handleEducationEnter}
+              onMouseLeave={handleEducationLeave}
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`relative text-muted-foreground hover:text-foreground gap-1 ${isEducationActive ? "text-foreground" : ""}`}
+              >
+                Education
+                <ChevronRight className={`h-3 w-3 transition-transform duration-200 ${educationOpen ? "rotate-90" : ""}`} />
+                {isEducationActive && (
+                  <span className="absolute -bottom-1 left-2 right-2 h-[2px] rounded-full bg-foreground/60" />
+                )}
+              </Button>
+
+              <AnimatePresence>
+                {educationOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="absolute top-full right-0 mt-2 w-[520px] rounded-2xl border border-border/50 bg-background shadow-2xl shadow-black/25 p-4 z-[60]"
+                  >
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">Education</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {educationItems.map(({ to, label, description, icon: Icon, image }) => (
                         <Link
                           key={to}
                           to={to}
