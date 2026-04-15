@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>durag.js — multi-source pattern detection</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{--bg:#06060c;--surface:#0c0c14;--border:#1a1a2a;--text:#fff;--text-muted:#6b7280;--text-dim:#3a3a4a;--accent:#7c3aed;--accent-light:#a78bfa;--green:#4ade80;--red:#f87171;--amber:#fbbf24;}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;min-height:100vh;padding:0;}
+
+.header{text-align:center;padding:48px 24px 32px;}
+.header .logo{font-family:monospace;font-size:32px;color:#fff;text-shadow:0 0 20px rgba(124,58,237,0.5);}
+.header .tag{font-family:monospace;font-size:10px;color:var(--accent);letter-spacing:3px;text-transform:uppercase;margin-top:4px;}
+.header .subtitle{font-family:monospace;font-size:13px;color:var(--text-muted);margin-top:16px;max-width:500px;margin-left:auto;margin-right:auto;line-height:1.6;}
+
+/* Source cards */
+.sources{display:flex;justify-content:center;gap:12px;padding:0 24px 32px;flex-wrap:wrap;}
+.source-card{background:var(--surface);border:1px solid var(--border);padding:16px 20px;cursor:pointer;transition:all 0.25s;min-width:140px;text-align:center;position:relative;}
+.source-card:hover{border-color:var(--accent);background:#0e0e18;}
+.source-card.active{border-color:var(--accent);background:rgba(124,58,237,0.1);}
+.source-card.active::after{content:'✓';position:absolute;top:8px;right:10px;color:var(--green);font-size:14px;font-weight:bold;}
+.source-card .sc-icon{font-size:20px;margin-bottom:6px;}
+.source-card .sc-name{font-size:13px;font-weight:500;color:var(--text);margin-bottom:2px;}
+.source-card .sc-cols{font-size:10px;color:var(--text-dim);font-family:monospace;}
+
+/* Status bar */
+.status{text-align:center;padding:0 24px 24px;font-family:monospace;font-size:12px;color:var(--text-dim);}
+.status .highlight{color:var(--accent-light);}
+
+/* Results area */
+.results{max-width:900px;margin:0 auto;padding:0 24px 60px;}
+.results.empty{text-align:center;padding:80px 24px;color:var(--text-dim);font-family:monospace;font-size:14px;}
+
+/* Signal card */
+.signal-hero{background:var(--surface);border:1px solid var(--accent);padding:32px;margin-bottom:24px;transition:all 0.3s;}
+.signal-hero .sh-label{font-family:monospace;font-size:10px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;}
+.signal-hero .sh-count{font-size:48px;font-weight:700;color:var(--text);font-family:monospace;transition:all 0.3s;}
+.signal-hero .sh-message{font-size:13px;color:var(--text-muted);font-family:monospace;margin-top:8px;line-height:1.6;}
+
+/* Signal drivers */
+.drivers{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin-bottom:24px;}
+.driver{background:var(--surface);border:1px solid var(--border);padding:14px 16px;}
+.driver .d-source{font-size:9px;font-family:monospace;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;}
+.driver .d-col{font-size:12px;color:var(--text);font-family:monospace;margin-bottom:3px;}
+.driver .d-detail{font-size:10px;color:var(--text-muted);font-family:monospace;}
+.driver .d-bar{height:3px;background:var(--border);margin-top:8px;border-radius:2px;overflow:hidden;}
+.driver .d-bar-fill{height:100%;background:var(--accent);border-radius:2px;transition:width 0.5s;}
+
+/* Contact list */
+.contacts-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.contacts-header .ch-title{font-family:monospace;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;}
+.contacts-header .ch-count{font-family:monospace;font-size:11px;color:var(--text-dim);}
+
+.contact{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #0e0e18;transition:background 0.15s;}
+.contact:hover{background:#0e0e18;}
+.contact .c-score{font-family:monospace;font-size:14px;font-weight:600;color:var(--accent-light);min-width:40px;text-align:right;}
+.contact .c-info{flex:1;min-width:0;}
+.contact .c-email{font-family:monospace;font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.contact .c-reason{font-family:monospace;font-size:10px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.contact .c-badges{display:flex;gap:4px;flex-shrink:0;}
+.badge{font-family:monospace;font-size:8px;padding:2px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;}
+.badge.stripe{background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);}
+.badge.hubspot{background:rgba(248,113,113,0.15);color:#f87171;border:1px solid rgba(248,113,113,0.3);}
+.badge.product{background:rgba(96,165,250,0.15);color:#60a5fa;border:1px solid rgba(96,165,250,0.3);}
+.badge.support{background:rgba(192,132,252,0.15);color:#c084fc;border:1px solid rgba(192,132,252,0.3);}
+.badge.marketing{background:rgba(74,222,128,0.15);color:#4ade80;border:1px solid rgba(74,222,128,0.3);}
+.badge.inactive{opacity:0.25;}
+
+/* Progression tracker */
+.progression{display:flex;justify-content:center;gap:4px;padding:16px 24px;margin-bottom:16px;}
+.prog-step{font-family:monospace;font-size:11px;padding:4px 10px;background:var(--surface);border:1px solid var(--border);color:var(--text-dim);transition:all 0.3s;}
+.prog-step.current{border-color:var(--accent);color:var(--accent-light);background:rgba(124,58,237,0.1);}
+.prog-step .ps-count{font-weight:700;font-size:13px;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">durag.js</div>
+  <div class="tag">where patterns emerge</div>
+  <div class="subtitle">Add data sources one by one. Watch the patterns sharpen as signals from different systems confirm each other.</div>
+</div>
+
+<div class="sources" id="sources">
+  <div class="source-card" data-src="stripe" data-file="stripe-payments.csv">
+    <div class="sc-icon">⚡</div>
+    <div class="sc-name">Stripe</div>
+    <div class="sc-cols">payments, MRR, plans</div>
+  </div>
+  <div class="source-card" data-src="hubspot" data-file="hubspot-crm.csv">
+    <div class="sc-icon">★</div>
+    <div class="sc-name">HubSpot</div>
+    <div class="sc-cols">deals, activity, emails</div>
+  </div>
+  <div class="source-card" data-src="product" data-file="product-analytics.csv">
+    <div class="sc-icon">◧</div>
+    <div class="sc-name">Product</div>
+    <div class="sc-cols">logins, features, API</div>
+  </div>
+  <div class="source-card" data-src="support" data-file="support-tickets.csv">
+    <div class="sc-icon">◈</div>
+    <div class="sc-name">Support</div>
+    <div class="sc-cols">tickets, NPS, CSAT</div>
+  </div>
+  <div class="source-card" data-src="marketing" data-file="marketing-email.csv">
+    <div class="sc-icon">◆</div>
+    <div class="sc-name">Marketing</div>
+    <div class="sc-cols">opens, clicks, segments</div>
+  </div>
+</div>
+
+<div class="progression" id="progression"></div>
+<div class="status" id="status">Click a data source to begin</div>
+<div class="results empty" id="results">Each source adds a dimension. The more sources, the sharper the signal.</div>
+
+<script>
+// Inline durag engine — just the parts we need
+function parseCSV(text){const lines=text.trim().split(/\r?\n/);const parseRow=line=>{const row=[];let cell='',inQ=false;for(let i=0;i<line.length;i++){const ch=line[i];if(inQ){if(ch==='"'&&line[i+1]==='"'){cell+='"';i++;}else if(ch==='"')inQ=false;else cell+=ch;}else{if(ch==='"')inQ=true;else if(ch===','){row.push(cell.trim());cell='';}else cell+=ch;}}row.push(cell.trim());return row;};const headers=parseRow(lines[0]);const rows=[];for(let i=1;i<lines.length;i++){if(!lines[i].trim())continue;const vals=parseRow(lines[i]);const obj={};headers.forEach((h,j)=>{obj[h]=vals[j]!==undefined?vals[j]:'';});rows.push(obj);}return{headers,rows};}
+
+function merge(sources){if(sources.length===1){const p=typeof sources[0].csv==='string'?parseCSV(sources[0].csv):sources[0].csv;const prefix=sources[0].prefix;const headers=[sources[0].key];const rows=p.rows.map(r=>{const m={[sources[0].key]:r[sources[0].key]};for(const h of p.headers){if(h===sources[0].key)continue;m[prefix+'_'+h]=r[h];}return m;});for(const h of p.headers){if(h!==sources[0].key)headers.push(prefix+'_'+h);}return{rows,headers};}const parsed=sources.map(s=>({...s,...(typeof s.csv==='string'?parseCSV(s.csv):{rows:s.csv.rows,headers:s.csv.headers})}));const base=parsed[0],keyMap=new Map(),mergedRows=[];const norm=v=>String(v||'').trim().toLowerCase();for(const row of base.rows){const k=norm(row[base.key]);if(!k)continue;const m={[base.key]:row[base.key]};for(const h of base.headers){if(h===base.key)continue;m[base.prefix+'_'+h]=row[h];}keyMap.set(k,m);mergedRows.push(m);}for(let i=1;i<parsed.length;i++){const src=parsed[i];for(const row of src.rows){const k=norm(row[src.key]);const t=keyMap.get(k);if(t){for(const h of src.headers){if(h===src.key)continue;t[src.prefix+'_'+h]=row[h];}}}}const headers=[base.key];for(const src of parsed){for(const h of src.headers){if(h===src.key)continue;const p=src.prefix+'_'+h;if(!headers.includes(p))headers.push(p);}}for(const row of mergedRows)for(const h of headers)if(row[h]===undefined)row[h]='';return{rows:mergedRows,headers};}
+
+function findPattern(rows,numericCols,outcomeCol,badValue,threshold){threshold=threshold||0.7;const bad=rows.filter(r=>String(r[outcomeCol]||'').toLowerCase()===String(badValue).toLowerCase());const good=rows.filter(r=>String(r[outcomeCol]||'').toLowerCase()!==String(badValue).toLowerCase());if(bad.length===0||good.length===0)return{atRisk:[],atRiskCount:0,badCount:bad.length,goodCount:good.length,signals:[],message:'Insufficient data.'};const cs={};for(const col of numericCols){if(col===outcomeCol)continue;const bv=bad.map(r=>parseFloat(r[col])).filter(v=>!isNaN(v)),gv=good.map(r=>parseFloat(r[col])).filter(v=>!isNaN(v)),av=rows.map(r=>parseFloat(r[col])).filter(v=>!isNaN(v));if(bv.length<3||gv.length<3)continue;const ba=bv.reduce((a,b)=>a+b,0)/bv.length,ga=gv.reduce((a,b)=>a+b,0)/gv.length,aa=av.reduce((a,b)=>a+b,0)/av.length;const std=Math.sqrt(av.reduce((s,v)=>s+Math.pow(v-aa,2),0)/av.length)||1;const mn=Math.min(...av),mx=Math.max(...av),rng=mx-mn||1,sep=Math.abs(ba-ga)/std;if(sep>0.2)cs[col]={ba,ga,aa,std,mn,mx,rng,sep};}const ranked=Object.entries(cs).sort((a,b)=>b[1].sep-a[1].sep).slice(0,8);if(ranked.length===0)return{atRisk:[],atRiskCount:0,badCount:bad.length,goodCount:good.length,signals:[],message:'No distinguishing signals found.'};const scored=good.map(row=>{let sim=0,maxS=0;const reasons=[];for(const[col,s]of ranked){const val=parseFloat(row[col]);if(isNaN(val))continue;const dB=Math.abs(val-s.ba)/s.rng,dG=Math.abs(val-s.ga)/s.rng,colSim=dG/(dB+dG+0.001);sim+=colSim*s.sep;maxS+=s.sep;if(colSim>0.6){const cn=col.replace(/^[a-z]+_/,'').replace(/_/g,' ');const dir=s.ba>s.ga?'high':'low';reasons.push(`${dir} ${cn} (${Math.round(val)} vs good avg ${Math.round(s.ga)})`);}}return{row,score:maxS>0?sim/maxS:0,reasons:reasons.slice(0,3)};}).sort((a,b)=>b.score-a.score);let atRisk=scored.filter(s=>s.score>=threshold);if(atRisk.length===0&&scored[0]?.score>0.4){const soft=scored[0].score*0.9;atRisk=scored.filter(s=>s.score>=soft);if(atRisk.length>rows.length*0.1)atRisk=[];}const signals=ranked.map(([col,s])=>{const parts=col.split('_');const source=parts[0];const cn=parts.slice(1).join(' ');const dir=s.ba>s.ga?'higher':'lower';return{column:cn,rawColumn:col,source,separation:Math.round(s.sep*100)/100,badAvg:Math.round(s.ba*10)/10,goodAvg:Math.round(s.ga*10)/10,insight:`${cn} is ${dir} in bad outcomes (${Math.round(s.ba)} vs ${Math.round(s.ga)}) — ${s.sep.toFixed(1)}σ`};});return{atRisk:atRisk.map(s=>({...s.row,_score:Math.round(s.score*100),_reasons:s.reasons})),atRiskCount:atRisk.length,badCount:bad.length,goodCount:good.length,signals,message:atRisk.length>0?`${atRisk.length} customers match the profile of ${bad.length} known bad outcomes but haven't triggered yet.`:`No customers closely match the bad outcome profile.`};}
+
+// State
+const activeSources = {};
+const sourceCSVs = {};
+const sourceKeys = { stripe:'email', hubspot:'contact_email', product:'user_email', support:'requester_email', marketing:'subscriber_email' };
+const sourceColors = { stripe:'stripe', hubspot:'hubspot', product:'product', support:'support', marketing:'marketing' };
+const history = [];
+
+// Load source
+async function loadSource(name, file) {
+  if (sourceCSVs[name]) return sourceCSVs[name];
+  const resp = await fetch(file);
+  const text = await resp.text();
+  sourceCSVs[name] = text;
+  return text;
+}
+
+// Source card clicks
+document.querySelectorAll('.source-card').forEach(card => {
+  card.addEventListener('click', async () => {
+    const src = card.dataset.src;
+    const file = card.dataset.file;
+
+    if (activeSources[src]) {
+      delete activeSources[src];
+      card.classList.remove('active');
+    } else {
+      card.classList.add('active');
+      const csv = await loadSource(src, file);
+      activeSources[src] = { csv, prefix: src, key: sourceKeys[src] };
+    }
+
+    await recompute();
+  });
+});
+
+async function recompute() {
+  const sourceList = Object.values(activeSources);
+  const statusEl = document.getElementById('status');
+  const resultsEl = document.getElementById('results');
+  const progEl = document.getElementById('progression');
+
+  if (sourceList.length === 0) {
+    statusEl.textContent = 'Click a data source to begin';
+    resultsEl.className = 'results empty';
+    resultsEl.innerHTML = 'Each source adds a dimension. The more sources, the sharper the signal.';
+    progEl.innerHTML = '';
+    history.length = 0;
+    return;
+  }
+
+  statusEl.innerHTML = `<span class="highlight">${sourceList.length} source${sourceList.length>1?'s':''}</span> connected — computing patterns...`;
+
+  // Merge
+  const merged = merge(sourceList);
+  const numericCols = merged.headers.filter(h => {
+    const nums = merged.rows.map(r => parseFloat(r[h])).filter(v => !isNaN(v));
+    return nums.length > merged.rows.length * 0.3;
+  });
+
+  // Find the outcome column (stripe_delinquent)
+  const outcomeCol = merged.headers.find(h => h.includes('delinquent')) || null;
+  if (!outcomeCol) {
+    statusEl.textContent = 'Add Stripe data to enable pattern detection (contains outcome column)';
+    resultsEl.className = 'results empty';
+    resultsEl.innerHTML = 'Pattern detection requires an outcome column. Stripe has "delinquent".';
+    return;
+  }
+
+  const pattern = findPattern(merged.rows, numericCols, outcomeCol, 'true');
+
+  // Track history
+  history.push({ sources: sourceList.length, count: pattern.atRiskCount, signals: pattern.signals.length, cols: numericCols.length });
+
+  // Update status
+  statusEl.innerHTML = `<span class="highlight">${sourceList.length} source${sourceList.length>1?'s':''}</span> · ${numericCols.length} columns · ${merged.rows.length} customers · ${pattern.badCount} known bad`;
+
+  // Update progression
+  progEl.innerHTML = history.map((h, i) => `<div class="prog-step${i===history.length-1?' current':''}"><span class="ps-count">${h.count}</span><br>${h.sources}src/${h.cols}col</div>`).join('<div style="color:var(--text-dim);font-size:16px;line-height:30px;">→</div>');
+
+  // Determine which sources each contact has data from
+  const sourceNames = Object.keys(activeSources);
+
+  // Build results HTML
+  let html = '';
+
+  // Signal hero
+  html += `<div class="signal-hero">
+    <div class="sh-label">True Signal — findPattern()</div>
+    <div class="sh-count">${pattern.atRiskCount}</div>
+    <div class="sh-message">${pattern.message}</div>
+  </div>`;
+
+  // Drivers
+  if (pattern.signals.length > 0) {
+    html += '<div class="drivers">';
+    for (const s of pattern.signals.slice(0, 8)) {
+      const barW = Math.min(100, Math.round(s.separation * 20));
+      html += `<div class="driver">
+        <div class="d-source">${s.source}</div>
+        <div class="d-col">${s.column}</div>
+        <div class="d-detail">bad: ${s.badAvg} · good: ${s.goodAvg} · ${s.separation}σ</div>
+        <div class="d-bar"><div class="d-bar-fill" style="width:${barW}%"></div></div>
+      </div>`;
+    }
+    html += '</div>';
+  }
+
+  // Contact list
+  if (pattern.atRiskCount > 0) {
+    html += `<div class="contacts-header">
+      <span class="ch-title">Pre-signal customers</span>
+      <span class="ch-count">${pattern.atRiskCount} found</span>
+    </div>`;
+
+    const allSourceNames = ['stripe','hubspot','product','support','marketing'];
+    for (const r of pattern.atRisk.slice(0, 20)) {
+      const email = r[Object.keys(r).find(k => k.includes('email') && !k.startsWith('_'))] || '?';
+
+      // Determine which sources this contact has real data from
+      const badges = allSourceNames.map(src => {
+        const hasData = sourceNames.includes(src) && Object.keys(r).some(k => k.startsWith(src + '_') && r[k] !== '');
+        return `<span class="badge ${src}${hasData ? '' : ' inactive'}">${src.slice(0,3)}</span>`;
+      }).join('');
+
+      html += `<div class="contact">
+        <span class="c-score">${r._score}%</span>
+        <div class="c-info">
+          <div class="c-email">${email}</div>
+          <div class="c-reason">${r._reasons[0] || '—'}</div>
+        </div>
+        <div class="c-badges">${badges}</div>
+      </div>`;
+    }
+    if (pattern.atRiskCount > 20) {
+      html += `<div style="text-align:center;padding:12px;font-family:monospace;font-size:11px;color:var(--text-dim);">+ ${pattern.atRiskCount - 20} more</div>`;
+    }
+  }
+
+  resultsEl.className = 'results';
+  resultsEl.innerHTML = html;
+}
+</script>
+</body>
+</html>
