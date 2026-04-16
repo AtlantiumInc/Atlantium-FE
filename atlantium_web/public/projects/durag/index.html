@@ -241,6 +241,7 @@ a:hover{text-decoration:underline;}
 .honest{max-width:680px;margin:0 auto;padding:0 24px;}
 .honest-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 @media(max-width:600px){.honest-grid{grid-template-columns:1fr;}}
+@media(max-width:700px){.demo-layout{grid-template-columns:1fr !important;}.demo-sources{flex-direction:row !important;flex-wrap:wrap;}}
 .honest-card{
   background:var(--surface);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
   border:1px solid var(--border-subtle);padding:24px;border-radius:12px;
@@ -331,151 +332,59 @@ a:hover{text-decoration:underline;}
 </div>
 </div><!-- /hero-wrap -->
 
-<!-- ===== CODE EXAMPLES ===== -->
+<!-- ===== LIVE DEMO ===== -->
 <div class="section">
-  <div class="section-label" style="margin-top:48px;">Quick Start</div>
-</div>
-<div class="code-section">
-  <div class="code-tabs">
-    <div class="code-tab active" data-tab="minimal">Minimal</div>
-    <div class="code-tab" data-tab="multi">Multi-source</div>
-  </div>
-  <div class="code-block active" id="tab-minimal">
-    <span class="kw">import</span> { parseCSV, findPattern } <span class="kw">from</span> <span class="str">'durag'</span><br>
-    <br>
-    <span class="kw">const</span> { <span class="vr">rows</span>, <span class="vr">headers</span> } <span class="op">=</span> <span class="fn">parseCSV</span>(csv)<br>
-    <span class="kw">const</span> <span class="vr">pattern</span> <span class="op">=</span> <span class="fn">findPattern</span>(rows, numericCols, <span class="str">'outcome_col'</span>, <span class="str">'true'</span>)
-  </div>
-  <div class="code-block" id="tab-multi">
-    <span class="kw">import</span> { merge, findPattern } <span class="kw">from</span> <span class="str">'durag'</span><br>
-    <br>
-    <span class="kw">const</span> <span class="vr">unified</span> <span class="op">=</span> <span class="fn">merge</span>([<br>
-    &nbsp;&nbsp;{ csv: payments, key: <span class="str">'email'</span>, prefix: <span class="str">'stripe'</span> },<br>
-    &nbsp;&nbsp;{ csv: tickets, &nbsp;key: <span class="str">'email'</span>, prefix: <span class="str">'support'</span> },<br>
-    ])<br>
-    <span class="kw">const</span> <span class="vr">pattern</span> <span class="op">=</span> <span class="fn">findPattern</span>(<br>
-    &nbsp;&nbsp;unified.rows, numericCols,<br>
-    &nbsp;&nbsp;<span class="str">'stripe_delinquent'</span>, <span class="str">'true'</span><br>
-    )
-  </div>
+  <div class="section-label" style="margin-top:48px;">Live Demo &mdash; Churn Detection</div>
+  <div class="section-title">Toggle sources. Watch the code update.</div>
+  <div class="section-sub">500 sample customers across 5 data sources. Click sources to add them to the merge, then see the signal sharpen. The outcome: <strong style="color:var(--accent-light);">Stripe delinquent = true</strong>.</div>
 </div>
 
-<!-- ===== REAL DATA PROOF ===== -->
-<div class="section">
-  <div class="section-label">Real Data</div>
-  <div class="section-title">Tested on 7,043 real customers.</div>
-  <div class="section-sub">IBM Telco Customer Churn dataset. No synthetic data, no cherry-picked results. Just findPattern() on a public CSV.</div>
-</div>
-<div class="proof">
-  <div class="proof-card">
-    <div class="proof-header">
-      <div>
-        <div class="proof-dataset">IBM Telco Customer Churn</div>
-        <div class="proof-source"><a href="https://kaggle.com/datasets/blastchar/telco-customer-churn" target="_blank" rel="noopener">kaggle.com/datasets/blastchar/telco-customer-churn</a></div>
-      </div>
+<div style="max-width:960px;margin:0 auto;padding:0 24px;">
+  <div class="demo-layout" style="display:grid;grid-template-columns:1fr 200px;gap:16px;align-items:start;">
+    <!-- Left: live code block -->
+    <div class="code-block active" id="live-code" style="display:block;border-radius:12px;margin:0;font-size:11.5px;line-height:1.9;">
+      <span class="kw">import</span> { merge, findPattern } <span class="kw">from</span> <span class="str">'durag'</span><br>
+      <br>
+      <span class="cm">// click sources to add them &rarr;</span><br>
+      <span class="kw">const</span> <span class="vr">unified</span> <span class="op">=</span> <span class="fn">merge</span>([<span id="merge-lines" style="color:var(--text-dim);">])</span><br>
+      <br>
+      <span class="kw">const</span> <span class="vr">result</span> <span class="op">=</span> <span class="fn">findPattern</span>(<br>
+      &nbsp;&nbsp;unified.rows, numericCols,<br>
+      &nbsp;&nbsp;<span class="str">'stripe_delinquent'</span>, <span class="str">'true'</span>,<br>
+      &nbsp;&nbsp;{ threshold: <span class="vr">0.7</span> }&nbsp;&nbsp;<span class="cm">// tune sensitivity</span><br>
+      )<br>
+      <br>
+      <span id="result-line" class="cm">// result: click a source to run</span>
     </div>
-    <div class="proof-stats">
-      <div class="proof-stat">
-        <div class="ps-val">7,043</div>
-        <div class="ps-label">total records</div>
-      </div>
-      <div class="proof-stat">
-        <div class="ps-val">1,869</div>
-        <div class="ps-label">churned (27%)</div>
-      </div>
-      <div class="proof-stat">
-        <div class="ps-val accent">248</div>
-        <div class="ps-label">pre-signal matches</div>
-      </div>
-    </div>
-    <div class="proof-signals">
-      <div class="proof-signal">
-        <span class="ps-sep">0.8&sigma;</span>
-        <span class="ps-text"><strong>tenure</strong> is lower in target group (18 vs 38 months)</span>
-      </div>
-      <div class="proof-signal">
-        <span class="ps-sep">0.4&sigma;</span>
-        <span class="ps-text"><strong>MonthlyCharges</strong> is higher in target group ($74 vs $61)</span>
-      </div>
-    </div>
-    <div class="proof-match">
-      Top match: <strong>0439-IFYUN</strong> -- 88% score, 18 months tenure, $74.70/month. Currently retained, but profile matches churned group.
-    </div>
-  </div>
-</div>
 
-<!-- ===== MULTI-SOURCE PROGRESSION ===== -->
-<div class="section">
-  <div class="section-label">Multi-Source</div>
-  <div class="section-title">More sources. Sharper signal.</div>
-  <div class="section-sub">Same 500 records. Watch how adding data sources changes the output. More columns doesn't mean more matches -- it means better matches.</div>
-</div>
-<div class="prog-story">
-  <div class="prog-steps">
-    <div class="ps-row">
-      <div class="ps-dot"></div>
-      <div class="ps-content">
-        <div class="ps-label-text">1 source (Stripe)</div>
-        <div class="ps-detail">3 columns &rarr; <span class="num">43 matches</span></div>
+    <!-- Right: source cards stacked -->
+    <div id="sources" class="demo-sources" style="display:flex;flex-direction:column;gap:8px;">
+      <div class="source-card" data-src="stripe" data-file="stripe-payments.csv" style="min-width:0;border-radius:8px;padding:10px 14px;">
+        <div class="sc-icon" style="font-size:14px;margin-bottom:4px;">&#9889;</div>
+        <div class="sc-name" style="font-size:11px;">Stripe</div>
+        <div class="sc-cols" style="font-size:9px;">payments, MRR</div>
+      </div>
+      <div class="source-card" data-src="hubspot" data-file="hubspot-crm.csv" style="min-width:0;border-radius:8px;padding:10px 14px;">
+        <div class="sc-icon" style="font-size:14px;margin-bottom:4px;">&#9733;</div>
+        <div class="sc-name" style="font-size:11px;">HubSpot</div>
+        <div class="sc-cols" style="font-size:9px;">deals, activity</div>
+      </div>
+      <div class="source-card" data-src="product" data-file="product-analytics.csv" style="min-width:0;border-radius:8px;padding:10px 14px;">
+        <div class="sc-icon" style="font-size:14px;margin-bottom:4px;">&#9639;</div>
+        <div class="sc-name" style="font-size:11px;">Product</div>
+        <div class="sc-cols" style="font-size:9px;">logins, features</div>
+      </div>
+      <div class="source-card" data-src="support" data-file="support-tickets.csv" style="min-width:0;border-radius:8px;padding:10px 14px;">
+        <div class="sc-icon" style="font-size:14px;margin-bottom:4px;">&#9672;</div>
+        <div class="sc-name" style="font-size:11px;">Support</div>
+        <div class="sc-cols" style="font-size:9px;">tickets, NPS, CSAT</div>
+      </div>
+      <div class="source-card" data-src="marketing" data-file="marketing-email.csv" style="min-width:0;border-radius:8px;padding:10px 14px;">
+        <div class="sc-icon" style="font-size:14px;margin-bottom:4px;">&#9670;</div>
+        <div class="sc-name" style="font-size:11px;">Marketing</div>
+        <div class="sc-cols" style="font-size:9px;">opens, clicks</div>
       </div>
     </div>
-    <div class="ps-row">
-      <div class="ps-dot"></div>
-      <div class="ps-content">
-        <div class="ps-label-text">2 sources (+ HubSpot)</div>
-        <div class="ps-detail">7 columns &rarr; <span class="num">81 matches</span></div>
-      </div>
-    </div>
-    <div class="ps-row">
-      <div class="ps-dot"></div>
-      <div class="ps-content">
-        <div class="ps-label-text">3 sources (+ Product)</div>
-        <div class="ps-detail">14 columns &rarr; <span class="num">91 matches</span></div>
-      </div>
-    </div>
-    <div class="ps-row highlight">
-      <div class="ps-dot"></div>
-      <div class="ps-content">
-        <div class="ps-label-text">5 sources (all)</div>
-        <div class="ps-detail">25 columns &rarr; <span class="num">22 matches</span> &larr; fewer results, higher confidence</div>
-        <div class="ps-insight">Cross-source insight: support CSAT (2.1&sigma;) became the strongest signal, beating payment data alone.</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== INTERACTIVE DEMO ===== -->
-<div class="section">
-  <div class="section-label">Try It &mdash; Churn Detection</div>
-  <div class="section-title">Toggle sources. See it live.</div>
-  <div class="section-sub">This demo runs findPattern() in the browser on 500 sample customers across 5 data sources. The outcome: <strong style="color:var(--accent-light);">Stripe delinquent = true</strong>. Click sources to add or remove them and watch the signal sharpen.</div>
-</div>
-
-<div class="sources" id="sources">
-  <div class="source-card" data-src="stripe" data-file="stripe-payments.csv">
-    <div class="sc-icon">&#9889;</div>
-    <div class="sc-name">Stripe</div>
-    <div class="sc-cols">payments, MRR, plans</div>
-  </div>
-  <div class="source-card" data-src="hubspot" data-file="hubspot-crm.csv">
-    <div class="sc-icon">&#9733;</div>
-    <div class="sc-name">HubSpot</div>
-    <div class="sc-cols">deals, activity, emails</div>
-  </div>
-  <div class="source-card" data-src="product" data-file="product-analytics.csv">
-    <div class="sc-icon">&#9639;</div>
-    <div class="sc-name">Product</div>
-    <div class="sc-cols">logins, features, API</div>
-  </div>
-  <div class="source-card" data-src="support" data-file="support-tickets.csv">
-    <div class="sc-icon">&#9672;</div>
-    <div class="sc-name">Support</div>
-    <div class="sc-cols">tickets, NPS, CSAT</div>
-  </div>
-  <div class="source-card" data-src="marketing" data-file="marketing-email.csv">
-    <div class="sc-icon">&#9670;</div>
-    <div class="sc-name">Marketing</div>
-    <div class="sc-cols">opens, clicks, segments</div>
   </div>
 </div>
 
@@ -826,11 +735,32 @@ document.querySelectorAll('.source-card').forEach(card => {
   });
 });
 
+function updateLiveCode() {
+  const names = Object.keys(activeSources);
+  const mergeEl = document.getElementById('merge-lines');
+  const resultEl = document.getElementById('result-line');
+  const sourceFiles = { stripe: 'payments', hubspot: 'crm', product: 'analytics', support: 'tickets', marketing: 'emails' };
+  const sourceKeyNames = { stripe: 'email', hubspot: 'email', product: 'email', support: 'email', marketing: 'email' };
+
+  if (names.length === 0) {
+    mergeEl.innerHTML = '])';
+    resultEl.innerHTML = '// result: click a source to run';
+    return;
+  }
+
+  const lines = names.map(n =>
+    `<br>&nbsp;&nbsp;{ csv: <span class="vr">${n}</span>, key: <span class="str">'${sourceKeyNames[n]}'</span>, prefix: <span class="str">'${n}'</span> },`
+  ).join('');
+  mergeEl.innerHTML = lines + '<br>])';
+}
+
 async function recompute() {
   const sourceList = Object.values(activeSources);
   const statusEl = document.getElementById('status');
   const resultsEl = document.getElementById('results');
   const progEl = document.getElementById('progression');
+
+  updateLiveCode();
 
   if (sourceList.length === 0) {
     statusEl.textContent = 'Click a data source to begin';
@@ -859,6 +789,10 @@ async function recompute() {
 
   const pattern = findPattern(merged.rows, numericCols, outcomeCol, 'true');
   history.push({ sources: sourceList.length, count: pattern.atRiskCount, signals: pattern.signals.length, cols: numericCols.length });
+
+  // Update result line in live code
+  const resultEl = document.getElementById('result-line');
+  resultEl.innerHTML = `result.<span class="vr">matchCount</span>  <span class="cm">// <span style="color:var(--accent-light);font-weight:700;">${pattern.atRiskCount}</span> contacts</span><br>result.<span class="vr">signals</span>     <span class="cm">// ${pattern.signals.length} drivers ranked</span><br>result.<span class="vr">targetCount</span> <span class="cm">// ${pattern.badCount} already churned</span>`;
 
   statusEl.innerHTML = `<span class="highlight">${sourceList.length} source${sourceList.length>1?'s':''}</span> &middot; ${numericCols.length} columns &middot; ${merged.rows.length} records &middot; ${pattern.badCount} target`;
 
