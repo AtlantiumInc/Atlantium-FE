@@ -546,56 +546,59 @@ a:hover{text-decoration:underline;}
   <div class="code-block active" id="tab-api-churn">
     <span class="cm">// Which customers are about to leave?</span><br>
     <span class="kw">const</span> <span class="vr">result</span> <span class="op">=</span> <span class="fn">findPattern</span>(<br>
-    &nbsp;&nbsp;rows,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// array of data objects</span><br>
-    &nbsp;&nbsp;numericCols,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// columns to analyze as features</span><br>
+    &nbsp;&nbsp;rows,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// your data</span><br>
+    &nbsp;&nbsp;numericCols,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// features to analyze</span><br>
     &nbsp;&nbsp;<span class="str">'churned'</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// the outcome column</span><br>
-    &nbsp;&nbsp;<span class="str">'true'</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// the target value to match against</span><br>
+    &nbsp;&nbsp;<span class="str">'true'</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// what "bad" looks like</span><br>
     )<br>
     <br>
-    result.<span class="vr">atRiskCount</span>&nbsp;&nbsp;&nbsp;<span class="cm">// 43 -- contacts matching the churn pattern</span><br>
-    result.<span class="vr">atRisk</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// the actual records, scored 0-100</span><br>
-    result.<span class="vr">signals</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// ranked list of what drives churn</span><br>
-    result.<span class="vr">badCount</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// 56 -- how many already churned</span><br>
-    result.<span class="vr">message</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// human-readable summary</span>
+    result.<span class="vr">matchCount</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// 43 -- customers likely to churn</span><br>
+    result.<span class="vr">matches</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// those 43, each scored 0-100</span><br>
+    result.<span class="vr">signals</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// what drives churn: tenure, charges, etc.</span><br>
+    result.<span class="vr">targetCount</span>&nbsp;&nbsp;&nbsp;<span class="cm">// 56 -- how many already churned</span><br>
+    result.<span class="vr">message</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// "56 churned. 43 others look the same."</span>
   </div>
   <div class="code-block" id="tab-api-convert">
-    <span class="cm">// Which free users look like the ones who converted?</span><br>
+    <span class="cm">// Which free users look like the ones who paid?</span><br>
     <span class="kw">const</span> <span class="vr">result</span> <span class="op">=</span> <span class="fn">findPattern</span>(<br>
     &nbsp;&nbsp;rows,<br>
     &nbsp;&nbsp;[<span class="str">'logins_30d'</span>, <span class="str">'features_used'</span>, <span class="str">'api_calls'</span>, <span class="str">'session_mins'</span>],<br>
-    &nbsp;&nbsp;<span class="str">'converted'</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// outcome: did they upgrade?</span><br>
-    &nbsp;&nbsp;<span class="str">'true'</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// match against converted users</span><br>
+    &nbsp;&nbsp;<span class="str">'converted'</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// the outcome column</span><br>
+    &nbsp;&nbsp;<span class="str">'true'</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// what "converted" looks like</span><br>
     )<br>
     <br>
-    result.<span class="vr">atRiskCount</span>&nbsp;&nbsp;&nbsp;<span class="cm">// 112 -- free users ready to convert</span><br>
-    result.<span class="vr">signals</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// what converted users have in common</span><br>
-    result.<span class="vr">atRisk</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// ranked list -- send these to sales</span>
+    result.<span class="vr">matchCount</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// 112 -- free users likely to convert</span><br>
+    result.<span class="vr">matches</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// those 112, ranked -- send to sales</span><br>
+    result.<span class="vr">signals</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// what converters have in common</span><br>
+    result.<span class="vr">targetCount</span>&nbsp;&nbsp;&nbsp;<span class="cm">// 340 -- users who already converted</span>
   </div>
   <div class="code-block" id="tab-api-fraud">
     <span class="cm">// Which transactions look like known fraud?</span><br>
     <span class="kw">const</span> <span class="vr">result</span> <span class="op">=</span> <span class="fn">findPattern</span>(<br>
     &nbsp;&nbsp;transactions,<br>
     &nbsp;&nbsp;[<span class="str">'amount'</span>, <span class="str">'velocity_1h'</span>, <span class="str">'distance_mi'</span>, <span class="str">'attempts'</span>],<br>
-    &nbsp;&nbsp;<span class="str">'flagged'</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// outcome: was it flagged as fraud?</span><br>
-    &nbsp;&nbsp;<span class="str">'true'</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// match against flagged transactions</span><br>
+    &nbsp;&nbsp;<span class="str">'flagged'</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// the outcome column</span><br>
+    &nbsp;&nbsp;<span class="str">'true'</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// what "fraud" looks like</span><br>
     )<br>
     <br>
-    result.<span class="vr">atRiskCount</span>&nbsp;&nbsp;&nbsp;<span class="cm">// 8 -- suspicious transactions to review</span><br>
-    result.<span class="vr">signals</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// velocity and amount are top signals</span><br>
-    result.<span class="vr">atRisk</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// the 8 transactions, scored by similarity</span>
+    result.<span class="vr">matchCount</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// 8 -- suspicious transactions to review</span><br>
+    result.<span class="vr">matches</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// those 8, scored by fraud similarity</span><br>
+    result.<span class="vr">signals</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// velocity and amount are top red flags</span><br>
+    result.<span class="vr">targetCount</span>&nbsp;&nbsp;&nbsp;<span class="cm">// 23 -- confirmed fraud cases in dataset</span>
   </div>
   <div class="code-block" id="tab-api-upsell">
-    <span class="cm">// Which basic-tier users behave like enterprise customers?</span><br>
+    <span class="cm">// Which basic users behave like enterprise customers?</span><br>
     <span class="kw">const</span> <span class="vr">result</span> <span class="op">=</span> <span class="fn">findPattern</span>(<br>
     &nbsp;&nbsp;users,<br>
     &nbsp;&nbsp;[<span class="str">'seats'</span>, <span class="str">'api_volume'</span>, <span class="str">'integrations'</span>, <span class="str">'support_tickets'</span>],<br>
-    &nbsp;&nbsp;<span class="str">'plan'</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// outcome: what plan are they on?</span><br>
-    &nbsp;&nbsp;<span class="str">'enterprise'</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// match against enterprise behavior</span><br>
+    &nbsp;&nbsp;<span class="str">'plan'</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// the outcome column</span><br>
+    &nbsp;&nbsp;<span class="str">'enterprise'</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// what "enterprise" looks like</span><br>
     )<br>
     <br>
-    result.<span class="vr">atRiskCount</span>&nbsp;&nbsp;&nbsp;<span class="cm">// 29 -- basic users ready for enterprise</span><br>
+    result.<span class="vr">matchCount</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// 29 -- basic users acting enterprise</span><br>
+    result.<span class="vr">matches</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// those 29, ranked by fit</span><br>
     result.<span class="vr">signals</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// api_volume and seats are top drivers</span><br>
-    result.<span class="vr">atRisk</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// ranked upsell candidates</span>
+    result.<span class="vr">targetCount</span>&nbsp;&nbsp;&nbsp;<span class="cm">// 85 -- current enterprise customers</span>
   </div>
 </div>
 
