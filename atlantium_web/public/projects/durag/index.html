@@ -530,6 +530,63 @@ a:hover{text-decoration:underline;}
   </div>
 </div>
 
+<!-- ===== API REFERENCE ===== -->
+<div class="section">
+  <div class="section-label">API</div>
+  <div class="section-title">findPattern()</div>
+  <div class="section-sub">The core function. Takes your data and a target outcome, returns the contacts that match the pattern.</div>
+</div>
+<div class="code-section" style="margin-bottom:32px;">
+  <div class="code-block active" style="display:block;border-radius:12px;">
+    <span class="kw">const</span> <span class="vr">result</span> <span class="op">=</span> <span class="fn">findPattern</span>(<br>
+    &nbsp;&nbsp;rows,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// array of data objects</span><br>
+    &nbsp;&nbsp;numericCols,&nbsp;&nbsp;<span class="cm">// columns to analyze as features</span><br>
+    &nbsp;&nbsp;<span class="str">'churned'</span>,&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// the outcome column</span><br>
+    &nbsp;&nbsp;<span class="str">'true'</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// the target value to match against</span><br>
+    )<br>
+    <br>
+    <span class="cm">// result</span><br>
+    result.<span class="vr">atRiskCount</span>&nbsp;&nbsp;&nbsp;<span class="cm">// 43 -- contacts matching the pattern</span><br>
+    result.<span class="vr">atRisk</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// the actual records, scored 0-100</span><br>
+    result.<span class="vr">signals</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// ranked list of what drives the pattern</span><br>
+    result.<span class="vr">badCount</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// 56 -- how many already hit the outcome</span><br>
+    result.<span class="vr">message</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// human-readable summary</span>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Also in the box</div>
+</div>
+<div style="max-width:680px;margin:0 auto;padding:0 24px 0;">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+    <div class="driver">
+      <div class="d-source">Discovery</div>
+      <div class="d-col">durag(csv, options)</div>
+      <div class="d-detail">Find natural segments automatically -- no outcome column needed</div>
+    </div>
+    <div class="driver">
+      <div class="d-source">Merge</div>
+      <div class="d-col">merge(sources)</div>
+      <div class="d-detail">Combine multiple CSVs by a shared key into one dataset</div>
+    </div>
+    <div class="driver">
+      <div class="d-source">Ask</div>
+      <div class="d-col">ask(question, result)</div>
+      <div class="d-detail">Natural language Q&amp;A over any durag output</div>
+    </div>
+    <div class="driver">
+      <div class="d-source">Enrich</div>
+      <div class="d-col">enrich(result)</div>
+      <div class="d-detail">Auto-detect outcomes and compute feature correlation</div>
+    </div>
+    <div class="driver">
+      <div class="d-source">UI</div>
+      <div class="d-col">mount('#app')</div>
+      <div class="d-detail">Drop-in visualization widget -- one line to render results</div>
+    </div>
+  </div>
+</div>
+
 <!-- ===== ROADMAP ===== -->
 <div class="roadmap">
   <div class="section-label">Roadmap</div>
