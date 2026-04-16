@@ -769,10 +769,12 @@ async function recompute() {
     html += '<div class="drivers">';
     for (const s of pattern.signals.slice(0, 8)) {
       const barW = Math.min(100, Math.round(s.separation * 20));
+      const strength = s.separation >= 2 ? 'strong signal' : s.separation >= 1.5 ? 'clear signal' : 'moderate signal';
+      const dir = s.badAvg > s.goodAvg ? 'higher' : 'lower';
       html += `<div class="driver">
         <div class="d-source">${s.source}</div>
         <div class="d-col">${s.column}</div>
-        <div class="d-detail">target: ${s.badAvg} &middot; baseline: ${s.goodAvg} &middot; ${s.separation}&sigma;</div>
+        <div class="d-detail">${s.badAvg} in at-risk group vs ${s.goodAvg} in others &middot; ${strength}</div>
         <div class="d-bar"><div class="d-bar-fill" style="width:${barW}%"></div></div>
       </div>`;
     }
