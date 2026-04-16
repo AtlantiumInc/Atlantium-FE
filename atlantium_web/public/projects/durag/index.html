@@ -446,9 +446,9 @@ a:hover{text-decoration:underline;}
 
 <!-- ===== INTERACTIVE DEMO ===== -->
 <div class="section">
-  <div class="section-label">Try It</div>
+  <div class="section-label">Try It &mdash; Churn Detection</div>
   <div class="section-title">Toggle sources. See it live.</div>
-  <div class="section-sub">This demo runs durag in the browser on 5 sample CSV files. Click sources to add or remove them and watch the output change.</div>
+  <div class="section-sub">This demo runs findPattern() in the browser on 500 sample customers across 5 data sources. The outcome: <strong style="color:var(--accent-light);">Stripe delinquent = true</strong>. Click sources to add or remove them and watch the signal sharpen.</div>
 </div>
 
 <div class="sources" id="sources">
@@ -865,9 +865,9 @@ async function recompute() {
   let html = '';
 
   html += `<div class="signal-hero">
-    <div class="sh-label">findPattern() &rarr; signal</div>
+    <div class="sh-label">Churn Detection &middot; findPattern(<span style="color:var(--accent-light);">'delinquent'</span>, <span style="color:var(--accent-light);">'true'</span>)</div>
     <div class="sh-count">${pattern.atRiskCount} ${pattern.atRiskCount === 1 ? 'contact' : 'contacts'}</div>
-    <div class="sh-message">${pattern.message}</div>
+    <div class="sh-message">${pattern.atRiskCount > 0 ? `These contacts behave like the ${pattern.badCount} that already churned, but haven't yet.` : pattern.message}</div>
   </div>`;
 
   if (pattern.signals.length > 0) {
