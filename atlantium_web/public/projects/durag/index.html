@@ -537,20 +537,65 @@ a:hover{text-decoration:underline;}
   <div class="section-sub">The core function. Takes your data and a target outcome, returns the contacts that match the pattern.</div>
 </div>
 <div class="code-section" style="margin-bottom:32px;">
-  <div class="code-block active" style="display:block;border-radius:12px;">
+  <div class="code-tabs">
+    <div class="code-tab active" data-tab="api-churn">Churn</div>
+    <div class="code-tab" data-tab="api-convert">Conversion</div>
+    <div class="code-tab" data-tab="api-fraud">Fraud</div>
+    <div class="code-tab" data-tab="api-upsell">Upsell</div>
+  </div>
+  <div class="code-block active" id="tab-api-churn">
+    <span class="cm">// Which customers are about to leave?</span><br>
     <span class="kw">const</span> <span class="vr">result</span> <span class="op">=</span> <span class="fn">findPattern</span>(<br>
-    &nbsp;&nbsp;rows,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// array of data objects</span><br>
-    &nbsp;&nbsp;numericCols,&nbsp;&nbsp;<span class="cm">// columns to analyze as features</span><br>
-    &nbsp;&nbsp;<span class="str">'churned'</span>,&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// the outcome column</span><br>
-    &nbsp;&nbsp;<span class="str">'true'</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// the target value to match against</span><br>
+    &nbsp;&nbsp;rows,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// array of data objects</span><br>
+    &nbsp;&nbsp;numericCols,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// columns to analyze as features</span><br>
+    &nbsp;&nbsp;<span class="str">'churned'</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// the outcome column</span><br>
+    &nbsp;&nbsp;<span class="str">'true'</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// the target value to match against</span><br>
     )<br>
     <br>
-    <span class="cm">// result</span><br>
-    result.<span class="vr">atRiskCount</span>&nbsp;&nbsp;&nbsp;<span class="cm">// 43 -- contacts matching the pattern</span><br>
+    result.<span class="vr">atRiskCount</span>&nbsp;&nbsp;&nbsp;<span class="cm">// 43 -- contacts matching the churn pattern</span><br>
     result.<span class="vr">atRisk</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// the actual records, scored 0-100</span><br>
-    result.<span class="vr">signals</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// ranked list of what drives the pattern</span><br>
-    result.<span class="vr">badCount</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// 56 -- how many already hit the outcome</span><br>
+    result.<span class="vr">signals</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// ranked list of what drives churn</span><br>
+    result.<span class="vr">badCount</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// 56 -- how many already churned</span><br>
     result.<span class="vr">message</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// human-readable summary</span>
+  </div>
+  <div class="code-block" id="tab-api-convert">
+    <span class="cm">// Which free users look like the ones who converted?</span><br>
+    <span class="kw">const</span> <span class="vr">result</span> <span class="op">=</span> <span class="fn">findPattern</span>(<br>
+    &nbsp;&nbsp;rows,<br>
+    &nbsp;&nbsp;[<span class="str">'logins_30d'</span>, <span class="str">'features_used'</span>, <span class="str">'api_calls'</span>, <span class="str">'session_mins'</span>],<br>
+    &nbsp;&nbsp;<span class="str">'converted'</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// outcome: did they upgrade?</span><br>
+    &nbsp;&nbsp;<span class="str">'true'</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// match against converted users</span><br>
+    )<br>
+    <br>
+    result.<span class="vr">atRiskCount</span>&nbsp;&nbsp;&nbsp;<span class="cm">// 112 -- free users ready to convert</span><br>
+    result.<span class="vr">signals</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// what converted users have in common</span><br>
+    result.<span class="vr">atRisk</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// ranked list -- send these to sales</span>
+  </div>
+  <div class="code-block" id="tab-api-fraud">
+    <span class="cm">// Which transactions look like known fraud?</span><br>
+    <span class="kw">const</span> <span class="vr">result</span> <span class="op">=</span> <span class="fn">findPattern</span>(<br>
+    &nbsp;&nbsp;transactions,<br>
+    &nbsp;&nbsp;[<span class="str">'amount'</span>, <span class="str">'velocity_1h'</span>, <span class="str">'distance_mi'</span>, <span class="str">'attempts'</span>],<br>
+    &nbsp;&nbsp;<span class="str">'flagged'</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// outcome: was it flagged as fraud?</span><br>
+    &nbsp;&nbsp;<span class="str">'true'</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// match against flagged transactions</span><br>
+    )<br>
+    <br>
+    result.<span class="vr">atRiskCount</span>&nbsp;&nbsp;&nbsp;<span class="cm">// 8 -- suspicious transactions to review</span><br>
+    result.<span class="vr">signals</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// velocity and amount are top signals</span><br>
+    result.<span class="vr">atRisk</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// the 8 transactions, scored by similarity</span>
+  </div>
+  <div class="code-block" id="tab-api-upsell">
+    <span class="cm">// Which basic-tier users behave like enterprise customers?</span><br>
+    <span class="kw">const</span> <span class="vr">result</span> <span class="op">=</span> <span class="fn">findPattern</span>(<br>
+    &nbsp;&nbsp;users,<br>
+    &nbsp;&nbsp;[<span class="str">'seats'</span>, <span class="str">'api_volume'</span>, <span class="str">'integrations'</span>, <span class="str">'support_tickets'</span>],<br>
+    &nbsp;&nbsp;<span class="str">'plan'</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// outcome: what plan are they on?</span><br>
+    &nbsp;&nbsp;<span class="str">'enterprise'</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// match against enterprise behavior</span><br>
+    )<br>
+    <br>
+    result.<span class="vr">atRiskCount</span>&nbsp;&nbsp;&nbsp;<span class="cm">// 29 -- basic users ready for enterprise</span><br>
+    result.<span class="vr">signals</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// api_volume and seats are top drivers</span><br>
+    result.<span class="vr">atRisk</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// ranked upsell candidates</span>
   </div>
 </div>
 
@@ -727,12 +772,15 @@ a:hover{text-decoration:underline;}
 })();
 
 // Code tab switching
-document.querySelectorAll('.code-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.code-block').forEach(b => b.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+document.querySelectorAll('.code-tabs').forEach(tabGroup => {
+  const section = tabGroup.parentElement;
+  tabGroup.querySelectorAll('.code-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabGroup.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
+      section.querySelectorAll('.code-block').forEach(b => b.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    });
   });
 });
 
