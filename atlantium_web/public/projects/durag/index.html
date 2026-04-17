@@ -309,10 +309,10 @@ a:hover{text-decoration:underline;}
 <div class="hero">
   <div class="logo">durag.js</div>
   <div class="tagline">where patterns emerge</div>
-  <div style="display:inline-block;background:var(--accent-bg);border:1px solid var(--accent-border);color:var(--accent-light);padding:3px 12px;font-family:monospace;font-size:11px;margin-top:10px;margin-bottom:8px;letter-spacing:0.5px;">v0.3.1</div>
+  <div style="display:inline-block;background:var(--accent-bg);border:1px solid var(--accent-border);color:var(--accent-light);padding:3px 12px;font-family:monospace;font-size:11px;margin-top:10px;margin-bottom:8px;letter-spacing:0.5px;">v0.4.0</div>
   <div class="subtitle">Multi-source pattern detection for JavaScript. Feed it rows and columns from any source -- Stripe, HubSpot, Postgres, CSV -- and it finds the patterns you didn't know to look for.</div>
   <div class="stats-bar">
-    <span class="stat">6 exports</span><span class="dot">&middot;</span>
+    <span class="stat">7 exports</span><span class="dot">&middot;</span>
     <span class="stat">9.4KB bundled</span><span class="dot">&middot;</span>
     <span class="stat">0 dependencies</span><span class="dot">&middot;</span>
     <span class="stat">0 AI required</span>
@@ -423,7 +423,7 @@ a:hover{text-decoration:underline;}
 <div class="section">
   <div class="section-label">Developer Experience</div>
   <div class="section-title">Ships with a Claude Code skill.</div>
-  <div class="section-sub">Clone the repo, open Claude Code, and analyze data by asking. The skill teaches Claude how to use all 6 exports -- findPattern(), merge(), parseCSV(), and the AI tuning functions.</div>
+  <div class="section-sub">Clone the repo, open Claude Code, and analyze data by asking. The skill teaches Claude how to use all 7 exports -- findPattern(), merge(), parseCSV(), parseJSON(), and the AI tuning functions.</div>
 </div>
 <div class="skill-section">
   <div class="skill-card">
@@ -464,7 +464,7 @@ a:hover{text-decoration:underline;}
     result.<span class="vr">matches</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// those 43, each scored 0-100</span><br>
     result.<span class="vr">signals</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// what drives churn: tenure, charges, etc.</span><br>
     result.<span class="vr">targetCount</span>&nbsp;&nbsp;&nbsp;<span class="cm">// 56 -- how many already churned</span><br>
-    result.<span class="vr">message</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// "56 churned. 43 others look the same."</span>
+    result.<span class="vr">summary</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// "43 records (9%) match. Top signal: tenure"</span>
   </div>
   <div class="code-block" id="tab-api-convert">
     <span class="cm">// Which free users look like the ones who paid?</span><br>
@@ -511,7 +511,7 @@ a:hover{text-decoration:underline;}
 </div>
 
 <div class="section">
-  <div class="section-title">All 6 exports</div>
+  <div class="section-title">All 7 exports</div>
   <div class="section-sub">That's the whole API. No bloat, no unused code shipping to production.</div>
 </div>
 <div style="max-width:680px;margin:0 auto;padding:0 24px 0;">
@@ -530,6 +530,11 @@ a:hover{text-decoration:underline;}
       <div class="d-source">Core</div>
       <div class="d-col">parseCSV()</div>
       <div class="d-detail">Parse CSV strings into rows and headers</div>
+    </div>
+    <div class="driver">
+      <div class="d-source">Core</div>
+      <div class="d-col">parseJSON()</div>
+      <div class="d-detail">Parse JSON arrays or objects directly -- skip the CSV step</div>
     </div>
     <div class="driver">
       <div class="d-source">AI Tuning</div>
@@ -556,9 +561,9 @@ a:hover{text-decoration:underline;}
   <div class="section-sub">v0.3.1 ships the minimal signal API. Discovery mode and vector search are next.</div>
   <div class="roadmap-cards">
     <div class="roadmap-card current">
-      <div class="rc-version">v0.3.1 &mdash; signal</div>
+      <div class="rc-version">v0.4.0 &mdash; signal</div>
       <div class="rc-title">Pattern Detection + AI Tuning</div>
-      <div class="rc-desc">findPattern(), merge(), parseCSV(), and 3 AI tuning helpers. 9.4KB, 0 deps. Detect patterns across any tabular data source.</div>
+      <div class="rc-desc">findPattern() with summary field, merge(), parseCSV(), parseJSON(), and 3 AI tuning helpers. 0 deps. CSV or JSON input.</div>
       <span class="rc-tag live">Live</span>
     </div>
     <div class="roadmap-card">
