@@ -308,14 +308,13 @@ a:hover{text-decoration:underline;}
 <div class="hero-fade"></div>
 <div class="hero">
   <div class="logo">durag.js</div>
-  <div class="tagline">360&deg; data pattern recognition</div>
-  <div style="display:inline-block;background:var(--accent-bg);border:1px solid var(--accent-border);color:var(--accent-light);padding:3px 12px;font-family:monospace;font-size:11px;margin-top:10px;margin-bottom:8px;letter-spacing:0.5px;">v0.3.0</div>
-  <div class="subtitle">Multi-source pattern detection for JavaScript. Merge data from any source. Surface what matters. Ship insights your users can act on.</div>
+  <div class="tagline">where patterns emerge</div>
+  <div style="display:inline-block;background:var(--accent-bg);border:1px solid var(--accent-border);color:var(--accent-light);padding:3px 12px;font-family:monospace;font-size:11px;margin-top:10px;margin-bottom:8px;letter-spacing:0.5px;">v0.3.1</div>
+  <div class="subtitle">Multi-source pattern detection for JavaScript. Feed it rows and columns from any source -- Stripe, HubSpot, Postgres, CSV -- and it finds the patterns you didn't know to look for.</div>
   <div class="stats-bar">
-    <span class="stat">1,973 lines</span><span class="dot">&middot;</span>
-    <span class="stat">16 files</span><span class="dot">&middot;</span>
-    <span class="stat">37KB bundled</span><span class="dot">&middot;</span>
-    <span class="stat">1 dependency</span><span class="dot">&middot;</span>
+    <span class="stat">6 exports</span><span class="dot">&middot;</span>
+    <span class="stat">9.4KB bundled</span><span class="dot">&middot;</span>
+    <span class="stat">0 dependencies</span><span class="dot">&middot;</span>
     <span class="stat">0 AI required</span>
   </div>
   <div class="top-bar">
@@ -424,7 +423,7 @@ a:hover{text-decoration:underline;}
 <div class="section">
   <div class="section-label">Developer Experience</div>
   <div class="section-title">Ships with a Claude Code skill.</div>
-  <div class="section-sub">Clone the repo, open Claude Code, and analyze data by asking. The skill teaches Claude how to use findPattern(), merge(), and the tuning functions.</div>
+  <div class="section-sub">Clone the repo, open Claude Code, and analyze data by asking. The skill teaches Claude how to use all 6 exports -- findPattern(), merge(), parseCSV(), and the AI tuning functions.</div>
 </div>
 <div class="skill-section">
   <div class="skill-card">
@@ -512,34 +511,40 @@ a:hover{text-decoration:underline;}
 </div>
 
 <div class="section">
-  <div class="section-title">Also in the box</div>
+  <div class="section-title">All 6 exports</div>
+  <div class="section-sub">That's the whole API. No bloat, no unused code shipping to production.</div>
 </div>
 <div style="max-width:680px;margin:0 auto;padding:0 24px 0;">
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
     <div class="driver">
-      <div class="d-source">Discovery</div>
-      <div class="d-col">durag(csv, options)</div>
-      <div class="d-detail">Find natural segments automatically -- no outcome column needed</div>
+      <div class="d-source">Core</div>
+      <div class="d-col">findPattern()</div>
+      <div class="d-detail">Detect records matching a known outcome pattern</div>
     </div>
     <div class="driver">
-      <div class="d-source">Merge</div>
-      <div class="d-col">merge(sources)</div>
-      <div class="d-detail">Combine multiple CSVs by a shared key into one dataset</div>
+      <div class="d-source">Core</div>
+      <div class="d-col">merge()</div>
+      <div class="d-detail">Combine multiple CSVs by a shared key</div>
     </div>
     <div class="driver">
-      <div class="d-source">Ask</div>
-      <div class="d-col">ask(question, result)</div>
-      <div class="d-detail">Natural language Q&amp;A over any durag output</div>
+      <div class="d-source">Core</div>
+      <div class="d-col">parseCSV()</div>
+      <div class="d-detail">Parse CSV strings into rows and headers</div>
     </div>
     <div class="driver">
-      <div class="d-source">Enrich</div>
-      <div class="d-col">enrich(result)</div>
-      <div class="d-detail">Auto-detect outcomes and compute feature correlation</div>
+      <div class="d-source">AI Tuning</div>
+      <div class="d-col">profileForAI()</div>
+      <div class="d-detail">Extract column metadata for LLM configuration</div>
     </div>
     <div class="driver">
-      <div class="d-source">UI</div>
-      <div class="d-col">mount('#app')</div>
-      <div class="d-detail">Drop-in visualization widget -- one line to render results</div>
+      <div class="d-source">AI Tuning</div>
+      <div class="d-col">buildTunePrompt()</div>
+      <div class="d-detail">Generate a prompt to configure durag via any LLM</div>
+    </div>
+    <div class="driver">
+      <div class="d-source">AI Tuning</div>
+      <div class="d-col">parseAIConfig()</div>
+      <div class="d-detail">Parse LLM response into structured config</div>
     </div>
   </div>
 </div>
@@ -547,19 +552,19 @@ a:hover{text-decoration:underline;}
 <!-- ===== ROADMAP ===== -->
 <div class="roadmap">
   <div class="section-label">Roadmap</div>
-  <div class="section-title">Structured today. Vectors next.</div>
-  <div class="section-sub">durag starts with structured pattern detection and grows into a full retrieval-augmented generation layer.</div>
+  <div class="section-title">Signal today. Discovery next.</div>
+  <div class="section-sub">v0.3.1 ships the minimal signal API. Discovery mode and vector search are next.</div>
   <div class="roadmap-cards">
     <div class="roadmap-card current">
-      <div class="rc-version">durag/core</div>
-      <div class="rc-title">Structured Patterns</div>
-      <div class="rc-desc">Merge tabular data from any source. Detect statistical patterns across columns. Score records by similarity to target outcomes.</div>
+      <div class="rc-version">v0.3.1 &mdash; signal</div>
+      <div class="rc-title">Pattern Detection + AI Tuning</div>
+      <div class="rc-desc">findPattern(), merge(), parseCSV(), and 3 AI tuning helpers. 9.4KB, 0 deps. Detect patterns across any tabular data source.</div>
       <span class="rc-tag live">Live</span>
     </div>
     <div class="roadmap-card">
-      <div class="rc-version">durag/vector</div>
-      <div class="rc-title">Semantic Retrieval</div>
-      <div class="rc-desc">Embed unstructured fields -- ticket text, email threads, chat logs. Find patterns in meaning, not just numbers. Full RAG pipeline in JS.</div>
+      <div class="rc-version">next &mdash; discovery</div>
+      <div class="rc-title">Unsupervised Segments</div>
+      <div class="rc-desc">durag() returns -- automatic clustering via UMAP + K-means. Find natural segments when you don't have an outcome column to split on.</div>
       <span class="rc-tag soon">Coming soon</span>
     </div>
   </div>
