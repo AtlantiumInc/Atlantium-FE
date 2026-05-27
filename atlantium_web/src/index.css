@@ -4,7 +4,7 @@
 
 @font-face {
   font-family: "JetBrains Mono";
-  src: url("https://fonts.gstatic.com/s/jetbrainsmono/v18/tDbY2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKxjPw.woff2") format("woff2");
+  src: local("JetBrains Mono"), local("JetBrainsMono-Regular");
   font-weight: 100 800;
   font-style: normal;
 }
