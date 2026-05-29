@@ -154,7 +154,7 @@ export function PublicGroupPage() {
     }
   };
 
-  const handleAuthSuccess = async (authUser: User, authToken: string) => {
+  const handleAuthSuccess = async (authUser: User, authToken: string | null) => {
     login(authToken, authUser);
 
     // Set pending action for after potential onboarding

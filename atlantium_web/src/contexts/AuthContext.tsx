@@ -13,7 +13,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   hasClubAccess: boolean;
   hasAccess: boolean;
-  login: (token: string, user: User) => void;
+  login: (token: string | null, user: User) => void;
   logout: () => Promise<void>;
   checkAuth: () => Promise<User | null>;
 }
@@ -25,12 +25,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const checkAuth = async (): Promise<User | null> => {
-    const token = api.getAuthToken();
-    if (!token) {
-      setIsLoading(false);
-      return null;
-    }
-
     try {
       const userData = await api.getMe();
       setUser(userData);
@@ -53,8 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, []);
 
-  const login = (token: string, userData: User) => {
-    api.setAuthToken(token);
+  const login = (_token: string | null, userData: User) => {
     setUser(userData);
   };
 

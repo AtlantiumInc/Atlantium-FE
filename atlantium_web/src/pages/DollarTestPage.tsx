@@ -150,7 +150,7 @@ function CheckoutSection({ onSuccess }: { onSuccess: () => void }) {
     }
   }, [isAuthenticated, clientSecret]);
 
-  const handleAuthSuccess = (_user: User, token: string) => {
+  const handleAuthSuccess = (_user: User, token: string | null) => {
     api.setAuthToken(token);
     window.location.reload();
   };

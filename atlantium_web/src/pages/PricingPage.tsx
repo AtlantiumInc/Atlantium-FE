@@ -53,10 +53,9 @@ const tiers = [
     color: "cyan",
     features: [
       "iOS app access",
-      "Office hours once a week (Fridays)",
       "Frontier feed access",
       "Public events",
-      "Templates & source code",
+
       "Software perks & discounts",
     ],
   },
@@ -70,7 +69,7 @@ const tiers = [
     color: "violet",
     features: [
       "Everything in Free",
-      "Office hours Mon\u2013Fri",
+      "Office hours Mon\u2013Thu",
       "AI engineering curriculum",
       "Focus groups",
       "Exclusive member events",
@@ -233,8 +232,8 @@ export function PricingPage() {
           {[
             {
               icon: Video,
-              title: "Office Hours Mon\u2013Fri",
-              desc: "Daily sessions with engineers who actually review your code, debug with you, and help you ship. Not lectures \u2014 real working sessions on your project.",
+              title: "Office Hours Mon\u2013Thu",
+              desc: "Four sessions a week with engineers who actually review your code, debug with you, and help you ship. Not lectures \u2014 real working sessions on your project.",
             },
             {
               icon: FolderOpen,

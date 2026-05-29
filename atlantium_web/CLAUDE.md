@@ -2,7 +2,7 @@
 
 ## Deployments
 - **Xano backend**: Always deployed by the user manually. Do not attempt to push or deploy backend changes to Xano.
-- **Frontend**: Hosted on Railway, auto-deploys from `main` branch on GitHub. Push to `main` to deploy.
+- **Frontend**: Hosted on Cloudflare Pages project `atlantium-web`. Deploy built `dist/` output with `npx wrangler pages deploy dist --project-name=atlantium-web --branch=main`.
 - **Cloudflare Workers**: Deployed via `npx wrangler deploy --config workers/<config>.toml`
 
 ## Project Structure

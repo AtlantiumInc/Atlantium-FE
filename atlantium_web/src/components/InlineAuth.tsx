@@ -32,12 +32,12 @@ function maskEmail(email: string): string {
 }
 
 interface InlineAuthProps {
-  onSuccess: (user: User, token: string) => void;
+  onSuccess: (user: User, token: string | null) => void;
   ctaText?: string;
   hideGoogle?: boolean;
 }
 
-export function InlineAuth({ onSuccess, ctaText = "Continue", hideGoogle = false }: InlineAuthProps) {
+export function InlineAuth({ onSuccess, ctaText = "Continue", hideGoogle = true }: InlineAuthProps) {
   const [step, setStep] = useState<"email" | "otp">("email");
   const [email, setEmail] = useState("");
   const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));

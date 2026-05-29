@@ -1,0 +1,33 @@
+export type Env = {
+  DATABASE_URL: string;
+  BETTER_AUTH_SECRET: string;
+  HANDOFF_SIGNING_SECRET: string;
+  APP_BASE_URL?: string;
+  AUTH_BASE_URL?: string;
+  ALLOWED_ORIGINS?: string;
+  RESEND_API_KEY?: string;
+  RESEND_FROM?: string;
+  DEBUG_AUTH_CODES?: string;
+  BOOMIN_CONNECT_PUBLIC_KEY?: string;
+  BOOMIN_CONNECT_PROGRAM_ID?: string;
+  BOOMIN_CONNECT_API_BASE?: string;
+  BOOMIN_HANDOFF_REDIRECT_URI?: string;
+};
+
+export function allowedOrigins(env: Env) {
+  const raw = env.ALLOWED_ORIGINS || "https://atlantium.ai,http://localhost:5173,http://localhost:4173";
+  return raw
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+}
+
+export function requireEnv(env: Env, key: keyof Env) {
+  const value = env[key];
+  if (!value) throw new Error(`Missing required environment variable: ${key}`);
+  return value;
+}
+
+export function isDebugAuthCodes(env: Env) {
+  return env.DEBUG_AUTH_CODES === "true";
+}

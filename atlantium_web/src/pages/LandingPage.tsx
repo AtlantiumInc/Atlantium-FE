@@ -19,24 +19,54 @@ import {
   Radio,
 } from "lucide-react";
 import { motion, useAnimationFrame } from "motion/react";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import jobsData from "@/data/jobs.json";
 
-
-const EVENTS_API_URL =
-  "https://cloud.atlantium.ai/api:-ulnKZsX/events/public";
 
 interface Event {
   id: string;
   title: string;
   description: string;
   event_type: "virtual" | "in_person" | "hybrid";
-  start_time: number;
-  end_time: number;
+  start_time: number | string;
+  end_time?: number | string;
   location: string;
   featured_image: string;
   going_count: number;
 }
+
+const FEATURED_EVENTS: Event[] = [
+  {
+    id: "frontier-office-hours",
+    title: "Frontier Office Hours",
+    description: "Live Q&A for builders shipping with AI.",
+    event_type: "virtual",
+    start_time: Date.now() + 1000 * 60 * 60 * 24 * 2,
+    location: "Online",
+    featured_image: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&h=400&fit=crop&q=80",
+    going_count: 42,
+  },
+  {
+    id: "ai-builder-sprint",
+    title: "AI Builder Sprint",
+    description: "A focused session for shipping useful AI products.",
+    event_type: "hybrid",
+    start_time: Date.now() + 1000 * 60 * 60 * 24 * 6,
+    location: "Atlantium Lab",
+    featured_image: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=600&h=400&fit=crop&q=80",
+    going_count: 28,
+  },
+  {
+    id: "founder-signal-roundtable",
+    title: "Founder Signal Roundtable",
+    description: "A conversation on distribution, product, and taste.",
+    event_type: "in_person",
+    start_time: Date.now() + 1000 * 60 * 60 * 24 * 10,
+    location: "San Francisco",
+    featured_image: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=600&h=400&fit=crop&q=80",
+    going_count: 19,
+  },
+];
 
 
 
@@ -94,21 +124,11 @@ function AutoScrollingJobsFeed() {
 }
 
 function EventsMarquee() {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [events] = useState<Event[]>(FEATURED_EVENTS);
+  const [isLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollX, setScrollX] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-
-  useEffect(() => {
-    fetch(EVENTS_API_URL)
-      .then((res) => res.json())
-      .then((data) => {
-        setEvents(data);
-        setIsLoading(false);
-      })
-      .catch(() => setIsLoading(false));
-  }, []);
 
   useAnimationFrame(() => {
     if (isPaused || events.length === 0) return;
@@ -120,13 +140,18 @@ function EventsMarquee() {
     });
   });
 
-  const formatDate = (timestamp: number) => {
+  const parseEventDate = (timestamp: number | string) => {
     const date = new Date(timestamp);
+    return Number.isNaN(date.getTime()) ? new Date() : date;
+  };
+
+  const formatDate = (timestamp: number | string) => {
+    const date = parseEventDate(timestamp);
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp);
+  const formatTime = (timestamp: number | string) => {
+    const date = parseEventDate(timestamp);
     return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   };
 

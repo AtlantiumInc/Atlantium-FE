@@ -1,0 +1,32 @@
+{
+  "name": "@atlantium/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --config wrangler.toml",
+    "deploy": "wrangler deploy --config wrangler.toml",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "smoke:direct": "tsx scripts/direct-smoke.ts"
+  },
+  "dependencies": {
+    "@hono/zod-validator": "^0.7.5",
+    "@neondatabase/serverless": "^1.0.2",
+    "better-auth": "^1.6.2",
+    "drizzle-orm": "^0.45.1",
+    "hono": "^4.10.7",
+    "zod": "^4.2.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240725.0",
+    "@types/node": "^24.10.4",
+    "drizzle-kit": "^0.31.8",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16",
+    "wrangler": "^4.84.0"
+  }
+}

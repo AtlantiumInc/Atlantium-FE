@@ -1,0 +1,26 @@
+name = "atlantium-api"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+routes = [
+  { pattern = "api.atlantium.ai", custom_domain = true }
+]
+
+[vars]
+APP_BASE_URL = "https://atlantium.ai"
+AUTH_BASE_URL = "https://api.atlantium.ai"
+ALLOWED_ORIGINS = "https://atlantium.ai,https://www.atlantium.ai,http://localhost:5173,http://localhost:4173"
+RESEND_FROM = "Atlantium <team@notifications.atlantium.ai>"
+DEBUG_AUTH_CODES = "false"
+BOOMIN_CONNECT_PUBLIC_KEY = "pk_live_demo_brand_partner_program"
+BOOMIN_CONNECT_API_BASE = "https://api.boomin.ai/v1/connect"
+BOOMIN_HANDOFF_REDIRECT_URI = "https://atlantium.ai/creator-program"
+
+# Required secrets:
+#   wrangler secret put DATABASE_URL
+#   wrangler secret put BETTER_AUTH_SECRET
+#   wrangler secret put HANDOFF_SIGNING_SECRET
+# Optional:
+#   wrangler secret put RESEND_API_KEY

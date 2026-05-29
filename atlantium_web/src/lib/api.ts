@@ -23,7 +23,9 @@ import type {
   GroupLivekitTokenResponse,
 } from "./types";
 
-const AUTH_API_BASE_URL = "https://cloud.atlantium.ai/api:_c66cUCc";
+const ATLANTIUM_API_BASE_URL =
+  (import.meta.env.VITE_ATLANTIUM_API_BASE as string | undefined) || "https://api.atlantium.ai/v1";
+const AUTH_API_BASE_URL = ATLANTIUM_API_BASE_URL;
 const APP_API_BASE_URL = "https://cloud.atlantium.ai/api:_c66cUCc";
 const STRIPE_API_BASE_URL = "https://cloud.atlantium.ai/api:-ulnKZsX";
 const ADMIN_API_BASE_URL = "https://cloud.atlantium.ai/api:ud37c7Xg";
@@ -40,7 +42,7 @@ export interface OtpResponse {
 
 export interface VerifyResponse {
   success: boolean;
-  auth_token: string;
+  auth_token: string | null;
   user: User;
 }
 
@@ -69,6 +71,105 @@ export interface User {
   _subscription?: UserSubscription;
   _integrations?: UserIntegrations;
   _settings?: UserSettings;
+}
+
+export interface CreatorStandingPartner {
+  partner?: {
+    id: string;
+    email?: string | null;
+    name?: string | null;
+  } | null;
+  externalIdentity?: {
+    externalUserId?: string;
+    email?: string | null;
+    name?: string | null;
+  } | null;
+  member: {
+    id: string;
+    approvalStatus?: "pending" | "approved" | "rejected";
+    approval_status?: "pending" | "approved" | "rejected";
+    qualificationStatus?: "pending" | "qualified" | "not_qualified" | "grace";
+    qualification_status?: "pending" | "qualified" | "not_qualified" | "grace";
+    referralCode?: string;
+    referral_code?: string;
+    connectionStatus?: string;
+    connection_status?: string;
+    joinedAt?: string;
+    joined_at?: string;
+    lastEvaluatedAt?: string | null;
+    last_evaluated_at?: string | null;
+  };
+  status?: string;
+  referralCode?: string;
+  referralLink?: string;
+  referral?: {
+    code?: string;
+    url?: string;
+    active?: boolean;
+  };
+  metrics?: {
+    linkClicks?: number;
+    signups?: number;
+    sales?: number;
+    gmvCents?: number;
+    productUsage?: number;
+  };
+  approvalStatus?: string;
+  qualificationStatus?: string;
+  missingChannels?: string[];
+  channelStatus?: Record<string, unknown>;
+  instagram?: {
+    username?: string | null;
+    avatarUrl?: string | null;
+    avatar_url?: string | null;
+    followerCount?: number | null;
+    follower_count?: number | null;
+  } | null;
+  partnerConnection?: {
+    status?: string;
+    connectedAt?: string | null;
+    connected_at?: string | null;
+    lastSyncAt?: string | null;
+    last_sync_at?: string | null;
+  } | null;
+  tier?: {
+    name?: string;
+    rank?: number;
+  } | null;
+  qualification?: {
+    status?: string;
+    score?: number;
+    requirementsMet?: string[];
+    requirementsFailed?: string[];
+    requirements_met?: string[];
+    requirements_failed?: string[];
+    evaluatedAt?: string;
+    evaluated_at?: string;
+  } | null;
+  rollups?: Array<{
+    metricKey?: string;
+    metric_key?: string;
+    total?: number;
+    count?: number;
+  }>;
+}
+
+export interface CreatorDashboardResponse {
+  success: boolean;
+  programId?: string;
+  brandId?: string;
+  requiredChannels?: string[];
+  partners: CreatorStandingPartner[];
+  totals?: {
+    total: number;
+    pending: number;
+    approved: number;
+    rejected: number;
+    qualified: number;
+    grace: number;
+    notQualified: number;
+    connected: number;
+  };
 }
 
 export interface JobPostingContent {
@@ -136,17 +237,9 @@ export interface FrontierArticle {
 class ApiClient {
   private authToken: string | null = null;
 
-  constructor() {
-    this.authToken = localStorage.getItem("auth_token");
-  }
-
   setAuthToken(token: string | null) {
-    this.authToken = token;
-    if (token) {
-      localStorage.setItem("auth_token", token);
-    } else {
-      localStorage.removeItem("auth_token");
-    }
+    this.authToken = token && token !== "cookie" ? token : null;
+    localStorage.removeItem("auth_token");
   }
 
   getAuthToken() {
@@ -168,7 +261,8 @@ class ApiClient {
       ...options.headers,
     };
 
-    const token = useAdminToken ? this.getAdminToken() : this.authToken;
+    const usesCookieAuth = baseUrl === ATLANTIUM_API_BASE_URL;
+    const token = useAdminToken ? this.getAdminToken() : usesCookieAuth ? null : this.authToken;
     if (token) {
       (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
     }
@@ -176,9 +270,11 @@ class ApiClient {
     const response = await fetch(`${baseUrl}${endpoint}`, {
       ...options,
       headers,
+      credentials: usesCookieAuth ? "include" : options.credentials,
     });
 
-    const data = await response.json();
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : null;
 
     if (!response.ok) {
       const error = new Error(data.message || "An error occurred") as Error & { status?: number };
@@ -207,6 +303,18 @@ class ApiClient {
   async getMe(): Promise<User> {
     return this.request<User>("/auth/me", {
       method: "GET",
+    }, AUTH_API_BASE_URL);
+  }
+
+  async getCreatorDashboard(): Promise<CreatorDashboardResponse> {
+    return this.request<CreatorDashboardResponse>("/dashboard/creators", {
+      method: "GET",
+    }, AUTH_API_BASE_URL);
+  }
+
+  async recordCreatorDashboardTestClick(): Promise<CreatorDashboardResponse> {
+    return this.request<CreatorDashboardResponse>("/dashboard/creators/test-click", {
+      method: "POST",
     }, AUTH_API_BASE_URL);
   }
 

@@ -19,7 +19,7 @@ interface UpgradeModalProps {
 }
 
 const benefits = [
-  "Two office hours sessions per day",
+  "Office hours Mon\u2013Thu",
   "AI engineering curriculum",
   "Exclusive member events",
   "Priority event registration",
