@@ -4,19 +4,10 @@ import { ArrowRight, CheckCircle2, KeyRound, Loader2, Mail, Radio, Share2, Spark
 import { Button } from "@/components/ui/button";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import { useAuth } from "@/contexts/AuthContext";
+import Boomin from "@boomin/connect";
 import { captureReferralCode, getReferralCode } from "@/lib/referral";
 
 type ConnectState = "details" | "otp" | "instagram" | "pending" | "connected" | "error";
-
-type BoominGlobal = {
-  init: (options: Record<string, unknown>) => void;
-  requestOtp: (options: Record<string, unknown>) => Promise<unknown>;
-  verifyOtp: (options: Record<string, unknown>) => Promise<unknown>;
-  getCurrentCreator: () => Promise<Record<string, unknown>>;
-  connectInstagram: (options?: Record<string, unknown>) => Promise<{ sessionId?: string; state?: string; authUrl?: string }>;
-  getConnectStatus: (sessionId: string) => Promise<Record<string, unknown>>;
-  on: (eventName: string, handler: (payload: unknown) => void) => () => void;
-};
 
 type CurrentCreatorResult = {
   creator?: {
@@ -59,9 +50,7 @@ type BoominStatusResult = {
 };
 
 const BOOMIN_PUBLIC_KEY = import.meta.env.VITE_BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_demo_brand_partner_program";
-const BOOMIN_PROGRAM_ID = import.meta.env.VITE_BOOMIN_CONNECT_PROGRAM_ID || "25759e23-44bb-46d8-9865-aa7707b3154e";
 const BOOMIN_API_BASE = import.meta.env.VITE_BOOMIN_CONNECT_API_BASE || "https://api.boomin.ai/v1/connect";
-const BOOMIN_SCRIPT_SRC = import.meta.env.VITE_BOOMIN_CONNECT_SCRIPT_SRC || "https://cdn.boomin.ai/boomin-connect.js";
 const BOOMIN_REDIRECT_URI = import.meta.env.VITE_BOOMIN_CONNECT_REDIRECT_URI || "https://atlantium.ai/creator-program";
 const ATLANTIUM_API_BASE = (import.meta.env.VITE_ATLANTIUM_API_BASE || "https://api.atlantium.ai/v1").replace(/\/+$/, "");
 const CONNECT_RESULT_STORAGE_KEY = "atlantium_creator_connect_result";
@@ -94,27 +83,6 @@ function formatConnectError(error: string, detail?: string | null) {
   }
 
   return `Instagram connection did not finish (${error}). You can try again.${suffix}`;
-}
-
-function loadBoominScript() {
-  if (typeof window === "undefined") return Promise.reject(new Error("Browser unavailable"));
-  if ((window as unknown as { Boomin?: BoominGlobal }).Boomin) return Promise.resolve();
-
-  return new Promise<void>((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>(`script[src="${BOOMIN_SCRIPT_SRC}"]`);
-    if (existing) {
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener("error", () => reject(new Error("Could not load Boomin Connect.")), { once: true });
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = BOOMIN_SCRIPT_SRC;
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Could not load Boomin Connect."));
-    document.head.appendChild(script);
-  });
 }
 
 export function CreatorProgramPage() {
@@ -289,16 +257,12 @@ export function CreatorProgramPage() {
   }, [authLoading, isAuthenticated]);
 
   const getBoomin = async () => {
-    await loadBoominScript();
-    const boomin = (window as unknown as { Boomin?: BoominGlobal }).Boomin;
-    if (!boomin) throw new Error("Boomin Connect is still loading.");
-    boomin.init({
+    Boomin.init({
       publicKey: BOOMIN_PUBLIC_KEY,
-      programId: BOOMIN_PROGRAM_ID || undefined,
       apiBase: BOOMIN_API_BASE,
       redirectUri: BOOMIN_REDIRECT_URI,
     });
-    return boomin;
+    return Boomin;
   };
 
   const startSignedHandoff = () => {
