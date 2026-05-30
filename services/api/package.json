@@ -13,6 +13,7 @@
     "smoke:direct": "tsx scripts/direct-smoke.ts"
   },
   "dependencies": {
+    "@boomin/server": "^0.1.0",
     "@hono/zod-validator": "^0.7.5",
     "@neondatabase/serverless": "^1.0.2",
     "better-auth": "^1.6.2",

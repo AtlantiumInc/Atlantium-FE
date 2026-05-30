@@ -1,4 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
+import { getPartnerStanding, postHandoff, recordReferralClick } from "@boomin/server";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
@@ -8,7 +9,6 @@ import { profileMembers, profiles, verification } from "../db/schema";
 import type { Env } from "../env";
 import { isDebugAuthCodes, requireEnv } from "../env";
 import { createAuth, getAuthSession } from "../lib/auth";
-import { hmacSign, stableJson } from "../lib/crypto";
 import { HttpError } from "../lib/http";
 import {
   ensureDefaultProfile,
@@ -21,6 +21,16 @@ import {
 export const appRoutes = new Hono<{ Bindings: Env }>();
 
 const emailSchema = z.string().email().transform((value) => value.trim().toLowerCase());
+
+const BOOMIN_ISSUER = "atlantium.ai";
+const BOOMIN_AUDIENCE = "boomin.ai";
+const BOOMIN_HANDOFF_EXPIRES_IN = 5 * 60;
+
+type BoominSdkError = Error & {
+  status?: number;
+  code?: string;
+  response?: Record<string, unknown>;
+};
 
 appRoutes.post(
   "/auth/otp",
@@ -156,78 +166,110 @@ appRoutes.get("/handoff/current-user", async (c) => {
 });
 
 appRoutes.get("/handoff/boomin/join", async (c) => {
-  const { redirectUri, result, response } = await requestBoominHandoff(c);
   const mode = c.req.query("mode") || "redirect";
+  const { redirectUri, options } = await buildHandoffOptions(c);
+  const apiBase = boominConnectApiBase(c.env);
 
-  if (mode === "json") {
-    return jsonWithStatus({
-      success: response.ok,
-      targetUrl: `${boominConnectApiBase(c.env)}/handoff`,
-      boomin: result,
-    }, response.ok ? 200 : response.status);
-  }
-
-  if (!response.ok) {
+  try {
+    const result = await postHandoff(options);
+    if (mode === "json") {
+      return jsonWithStatus({ success: true, targetUrl: `${apiBase}/handoff`, boomin: result }, 200);
+    }
+    const authUrl = typeof result.authUrl === "string"
+      ? result.authUrl
+      : typeof result.auth_url === "string" ? result.auth_url : null;
+    if (authUrl) return c.redirect(authUrl);
+    return c.redirect(withBoominParams(redirectUri, {
+      boomin_status: String(result.status || "pending_approval"),
+      boomin_session_id: String(result.sessionId || result.session_id || ""),
+      boomin_username: getNestedString(result, ["instagram", "username"]) || "",
+    }));
+  } catch (error) {
+    const sdkError = error as BoominSdkError;
+    const status = sdkError.status || 502;
+    const body = sdkError.response || { code: sdkError.code, message: sdkError.message };
+    if (mode === "json") {
+      return jsonWithStatus({ success: false, targetUrl: `${apiBase}/handoff`, boomin: body }, status);
+    }
     return c.redirect(withBoominParams(redirectUri, {
       boomin_status: "failed",
-      boomin_error: String(result.code || "handoff_failed"),
-      boomin_error_detail: String(result.message || "Boomin could not start the partner handoff."),
+      boomin_error: String(sdkError.code || "handoff_failed"),
+      boomin_error_detail: String(sdkError.message || "Boomin could not start the partner handoff."),
     }));
   }
-
-  const authUrl = typeof result.authUrl === "string" ? result.authUrl : typeof result.auth_url === "string" ? result.auth_url : null;
-  if (authUrl) return c.redirect(authUrl);
-
-  return c.redirect(withBoominParams(redirectUri, {
-    boomin_status: String(result.status || "pending_approval"),
-    boomin_session_id: String(result.sessionId || result.session_id || ""),
-    boomin_username: getNestedString(result, ["instagram", "username"]) || "",
-  }));
 });
 
 appRoutes.get("/handoff/boomin/status", async (c) => {
-  const { result, response } = await requestBoominHandoff(c);
-  return jsonWithStatus({
-    success: response.ok,
-    boomin: result,
-  }, response.ok ? 200 : response.status);
+  const { options } = await buildHandoffOptions(c);
+  try {
+    const result = await postHandoff(options);
+    return jsonWithStatus({ success: true, boomin: result }, 200);
+  } catch (error) {
+    const sdkError = error as BoominSdkError;
+    const body = sdkError.response || { code: sdkError.code, message: sdkError.message };
+    return jsonWithStatus({ success: false, boomin: body }, sdkError.status || 502);
+  }
 });
 
 appRoutes.get("/dashboard/creators", async (c) => {
   await requireAppUser(c);
-  const { result, response } = await requestBoominStanding(c);
-  return jsonWithStatus({
-    success: response.ok,
-    ...result,
-  }, response.ok ? 200 : response.status);
+  const options = buildStandingOptions(c);
+  try {
+    const result = await getPartnerStanding(options);
+    return jsonWithStatus({ success: true, ...result }, 200);
+  } catch (error) {
+    const sdkError = error as BoominSdkError;
+    const body = sdkError.response || { code: sdkError.code, message: sdkError.message };
+    return jsonWithStatus({ success: false, ...body }, sdkError.status || 502);
+  }
 });
 
 appRoutes.post("/dashboard/creators/test-click", async (c) => {
-  const { activeProfile, eventResult, eventResponse } = await recordBoominDashboardMetric(c, "link_clicks", 1);
-  const { result, response } = await requestBoominStanding(c, `atlantium_profile_${activeProfile.id}`);
-  return jsonWithStatus({
-    success: eventResponse.ok && response.ok,
-    event: eventResult,
-    ...result,
-  }, eventResponse.ok && response.ok ? 200 : eventResponse.ok ? response.status : eventResponse.status);
-});
-
-async function requestBoominHandoff(c: Context<{ Bindings: Env }>) {
   const { db, authUser } = await requireAppUser(c);
   const activeProfile = await ensureDefaultProfile(db, authUser);
-  const connectApiBase = boominConnectApiBase(c.env);
-  const publicKey = c.env.BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_demo_brand_partner_program";
-  const redirectUri = c.env.BOOMIN_HANDOFF_REDIRECT_URI || `${c.env.APP_BASE_URL || "https://atlantium.ai"}/creator-program`;
-  const configProgramId = c.env.BOOMIN_CONNECT_PROGRAM_ID || await resolveBoominProgramId(connectApiBase, publicKey);
-  const issuedAt = Math.floor(Date.now() / 1000);
-  const payload = {
-    iss: "atlantium.ai",
-    aud: "boomin.ai",
-    iat: issuedAt,
-    exp: issuedAt + 5 * 60,
-    nonce: crypto.randomUUID(),
-    publicKey,
-    programId: configProgramId,
+  const partnerRef = `atlantium_profile_${activeProfile.id}`;
+  const metricOptions = buildMetricOptions(c, partnerRef, "link_clicks");
+  const standingOptions = buildStandingOptions(c, partnerRef);
+
+  let event: Record<string, unknown> = {};
+  let eventOk = true;
+  let eventStatus = 200;
+  try {
+    event = await recordReferralClick(metricOptions);
+  } catch (error) {
+    const sdkError = error as BoominSdkError;
+    eventOk = false;
+    eventStatus = sdkError.status || 502;
+    event = sdkError.response || { code: sdkError.code, message: sdkError.message };
+  }
+
+  let standing: Record<string, unknown> = {};
+  let standingOk = true;
+  let standingStatus = 200;
+  try {
+    standing = await getPartnerStanding(standingOptions);
+  } catch (error) {
+    const sdkError = error as BoominSdkError;
+    standingOk = false;
+    standingStatus = sdkError.status || 502;
+    standing = sdkError.response || { code: sdkError.code, message: sdkError.message };
+  }
+
+  const success = eventOk && standingOk;
+  const status = success ? 200 : eventOk ? standingStatus : eventStatus;
+  return jsonWithStatus({ success, event, ...standing }, status);
+});
+
+async function buildHandoffOptions(c: Context<{ Bindings: Env }>) {
+  const { db, authUser } = await requireAppUser(c);
+  const activeProfile = await ensureDefaultProfile(db, authUser);
+  const redirectUri = c.env.BOOMIN_HANDOFF_REDIRECT_URI
+    || `${c.env.APP_BASE_URL || "https://atlantium.ai"}/creator-program`;
+  const options = {
+    issuer: BOOMIN_ISSUER,
+    audience: BOOMIN_AUDIENCE,
+    publicKey: c.env.BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_demo_brand_partner_program",
+    programId: requireEnv(c.env, "BOOMIN_CONNECT_PROGRAM_ID"),
     redirectUri,
     externalUserId: `atlantium_profile_${activeProfile.id}`,
     email: authUser.email,
@@ -237,91 +279,45 @@ async function requestBoominHandoff(c: Context<{ Bindings: Env }>) {
       atlantiumProfileId: activeProfile.id,
       profileType: activeProfile.type,
     },
+    signingSecret: requireEnv(c.env, "HANDOFF_SIGNING_SECRET"),
+    expiresInSeconds: BOOMIN_HANDOFF_EXPIRES_IN,
+    apiBase: boominConnectApiBase(c.env),
   };
-  const encodedPayload = stableJson(payload);
-  const signature = await hmacSign(encodedPayload, requireEnv(c.env, "HANDOFF_SIGNING_SECRET"));
-  const response = await fetch(`${connectApiBase}/handoff`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ payload, signature }),
-  });
-  const result = await response.json().catch(() => ({})) as Record<string, unknown>;
-  return { payload, redirectUri, result, response };
+  return { redirectUri, options, activeProfile };
 }
 
-async function requestBoominStanding(c: Context<{ Bindings: Env }>, externalUserId?: string) {
-  const connectApiBase = boominConnectApiBase(c.env);
-  const publicKey = c.env.BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_demo_brand_partner_program";
-  const programId = c.env.BOOMIN_CONNECT_PROGRAM_ID || await resolveBoominProgramId(connectApiBase, publicKey);
-  const issuedAt = Math.floor(Date.now() / 1000);
-  const payload = {
-    iss: "atlantium.ai",
-    aud: "boomin.ai",
-    iat: issuedAt,
-    exp: issuedAt + 5 * 60,
-    nonce: crypto.randomUUID(),
-    publicKey,
-    programId,
+function buildStandingOptions(c: Context<{ Bindings: Env }>, externalUserId?: string) {
+  return {
+    issuer: BOOMIN_ISSUER,
+    audience: BOOMIN_AUDIENCE,
+    publicKey: c.env.BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_demo_brand_partner_program",
+    programId: requireEnv(c.env, "BOOMIN_CONNECT_PROGRAM_ID"),
+    signingSecret: requireEnv(c.env, "HANDOFF_SIGNING_SECRET"),
+    expiresInSeconds: BOOMIN_HANDOFF_EXPIRES_IN,
+    apiBase: boominConnectApiBase(c.env),
     ...(externalUserId ? { externalUserId } : {}),
   };
-  const signature = await hmacSign(stableJson(payload), requireEnv(c.env, "HANDOFF_SIGNING_SECRET"));
-  const response = await fetch(`${connectApiBase}/standing`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ payload, signature }),
-  });
-  const result = await response.json().catch(() => ({})) as Record<string, unknown>;
-  return { payload, result, response };
 }
 
-async function recordBoominDashboardMetric(c: Context<{ Bindings: Env }>, metricKey: string, amount: number) {
-  const { db, authUser } = await requireAppUser(c);
-  const activeProfile = await ensureDefaultProfile(db, authUser);
-  const connectApiBase = boominConnectApiBase(c.env);
-  const publicKey = c.env.BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_demo_brand_partner_program";
-  const programId = c.env.BOOMIN_CONNECT_PROGRAM_ID || await resolveBoominProgramId(connectApiBase, publicKey);
-  const body = {
-    event_id: `atlantium:${metricKey}:${activeProfile.id}:${Date.now()}`,
-    event_type: "atlantium_dashboard_test",
-    publicKey,
-    programId,
-    partner_ref: `atlantium_profile_${activeProfile.id}`,
-    metric_key: metricKey,
-    amount,
-    occurred_at: new Date().toISOString(),
+function buildMetricOptions(c: Context<{ Bindings: Env }>, partnerRef: string, metricKey: string) {
+  return {
+    issuer: BOOMIN_ISSUER,
+    signingSecret: requireEnv(c.env, "HANDOFF_SIGNING_SECRET"),
+    publicKey: c.env.BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_demo_brand_partner_program",
+    programId: requireEnv(c.env, "BOOMIN_CONNECT_PROGRAM_ID"),
+    partnerRef,
+    eventType: "atlantium_dashboard_test",
+    occurredAt: new Date().toISOString(),
+    apiBase: boominConnectApiBase(c.env),
     metadata: {
       source: "atlantium_dashboard_test",
-      atlantiumUserId: authUser.id,
-      atlantiumProfileId: activeProfile.id,
+      metric_key: metricKey,
     },
   };
-  const signature = await hmacSign(stableJson(body), requireEnv(c.env, "HANDOFF_SIGNING_SECRET"));
-  const eventResponse = await fetch(`${connectApiBase}/events`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Boomin-Issuer": "atlantium.ai",
-      "X-Boomin-Signature": signature,
-    },
-    body: JSON.stringify(body),
-  });
-  const eventResult = await eventResponse.json().catch(() => ({})) as Record<string, unknown>;
-  return { activeProfile, eventResult, eventResponse };
 }
 
 function boominConnectApiBase(env: Env) {
   return (env.BOOMIN_CONNECT_API_BASE || "https://api.boomin.ai/v1/connect").replace(/\/+$/, "");
-}
-
-async function resolveBoominProgramId(connectApiBase: string, publicKey: string) {
-  const url = new URL(`${connectApiBase}/config`);
-  url.searchParams.set("publicKey", publicKey);
-  const response = await fetch(url);
-  const result = await response.json().catch(() => ({})) as { programId?: string; message?: string };
-  if (!response.ok || !result.programId) {
-    throw new HttpError(response.status || 502, "boomin_config_failed", result.message || "Could not resolve Boomin program config.");
-  }
-  return result.programId;
 }
 
 function withBoominParams(base: string, params: Record<string, string>) {
