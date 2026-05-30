@@ -13,6 +13,7 @@
     "worker:deploy": "wrangler deploy --config workers/wrangler.toml"
   },
   "dependencies": {
+    "@boomin/connect": "^0.1.0",
     "@hookform/resolvers": "^5.2.2",
     "@livekit/components-react": "^2.9.19",
     "@radix-ui/react-alert-dialog": "^1.1.15",
