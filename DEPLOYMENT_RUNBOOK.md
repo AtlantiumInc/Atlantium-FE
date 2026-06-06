@@ -57,6 +57,21 @@ git push origin main
 
 Cloudflare Pages should then build and deploy `atlantium-fe` automatically.
 
+If Cloudflare records the commit but shows `No deployment available`, the Git trigger did not publish assets. Publish the already-built `dist` folder manually:
+
+```bash
+cd /Users/user/Documents/Atlantium/web/atlantium_web
+npm run build
+npx wrangler pages deploy dist --project-name atlantium-fe --branch main --commit-hash "$(git -C .. rev-parse HEAD)" --commit-message "$(git -C .. log -1 --pretty=%s)"
+```
+
+After a manual publish, confirm the custom domain is serving the latest bundle:
+
+```bash
+curl -s https://atlantium.ai/ | rg "assets/index-"
+npx wrangler pages deployment list --project-name atlantium-fe
+```
+
 ## Verify Production
 
 After deploy:
