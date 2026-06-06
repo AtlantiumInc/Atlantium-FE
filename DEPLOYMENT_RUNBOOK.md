@@ -17,8 +17,20 @@ cd services/api
 npm run typecheck
 
 cd ../../atlantium_web
-npm run build
+VITE_ATLANTIUM_API_BASE=https://api.atlantium.ai/v1 VITE_BOOMIN_CONNECT_API_BASE=https://api.boomin.ai/v1/connect VITE_BOOMIN_CONNECT_REDIRECT_URI=https://atlantium.ai/creator-program npm run build
 ```
+
+Never deploy a frontend bundle that was built with a plain `npm run build` from `atlantium_web` if `.env.local` exists. Vite embeds `VITE_*` values at build time, and the local file may contain `localhost` API URLs.
+
+After every production frontend build, run these checks before deploying `dist`:
+
+```bash
+cd /Users/user/Documents/Atlantium/web/atlantium_web
+rg -n "localhost:8788|localhost:8787" dist
+rg -o "https://api.atlantium.ai/v1|https://api.boomin.ai/v1/connect" dist
+```
+
+The first command must print nothing. The second command must print the production Atlantium and Boomin API URLs.
 
 If API migrations changed, run them before deploying the Worker:
 
@@ -57,11 +69,13 @@ git push origin main
 
 Cloudflare Pages should then build and deploy `atlantium-fe` automatically.
 
-If Cloudflare records the commit but shows `No deployment available`, the Git trigger did not publish assets. Publish the already-built `dist` folder manually:
+If Cloudflare records the commit but shows `No deployment available`, the Git trigger did not publish assets. Publish a production-built `dist` folder manually:
 
 ```bash
 cd /Users/user/Documents/Atlantium/web/atlantium_web
 VITE_ATLANTIUM_API_BASE=https://api.atlantium.ai/v1 VITE_BOOMIN_CONNECT_API_BASE=https://api.boomin.ai/v1/connect VITE_BOOMIN_CONNECT_REDIRECT_URI=https://atlantium.ai/creator-program npm run build
+rg -n "localhost:8788|localhost:8787" dist
+rg -o "https://api.atlantium.ai/v1|https://api.boomin.ai/v1/connect" dist
 npx wrangler pages deploy dist --project-name atlantium-fe --branch main --commit-hash "$(git -C .. rev-parse HEAD)" --commit-message "$(git -C .. log -1 --pretty=%s)"
 ```
 
@@ -71,6 +85,15 @@ After a manual publish, confirm the custom domain is serving the latest bundle:
 curl -s https://atlantium.ai/ | rg "assets/index-"
 npx wrangler pages deployment list --project-name atlantium-fe
 ```
+
+Then verify the live bundle itself:
+
+```bash
+curl -s https://atlantium.ai/login | rg "assets/index-"
+curl -s https://atlantium.ai/assets/<bundle-from-login>.js | rg -o "localhost:8788|localhost:8787|https://api.atlantium.ai/v1|https://api.boomin.ai/v1/connect"
+```
+
+The live bundle check must show production API URLs and no `localhost:8788` or `localhost:8787`.
 
 ## Verify Production
 
@@ -82,6 +105,14 @@ After deploy:
 - `https://atlantium.ai/admin` loads for `kleveland.bishop@gmail.com`.
 - `https://atlantium.ai/admin/partnerships` loads the Boomin partnerships table.
 - `https://atlantium.ai/creator-program` still loads and can start Boomin handoff.
+
+OTP CORS smoke test:
+
+```bash
+curl -i -s -X OPTIONS https://api.atlantium.ai/v1/auth/otp -H "Origin: https://atlantium.ai" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: content-type"
+```
+
+Expected result: `204` with `Access-Control-Allow-Origin: https://atlantium.ai`.
 
 ## Rollback
 
