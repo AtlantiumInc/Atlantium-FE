@@ -8,10 +8,14 @@ export type Env = {
   RESEND_API_KEY?: string;
   RESEND_FROM?: string;
   DEBUG_AUTH_CODES?: string;
+  ADMIN_EMAILS?: string;
   BOOMIN_CONNECT_PUBLIC_KEY?: string;
   BOOMIN_CONNECT_PROGRAM_ID?: string;
   BOOMIN_CONNECT_API_BASE?: string;
   BOOMIN_HANDOFF_REDIRECT_URI?: string;
+  BOOMIN_APP_API_BASE?: string;
+  BOOMIN_APP_STANDING_EMAIL?: string;
+  BOOMIN_APP_STANDING_PROGRAM_ID?: string;
 };
 
 export function allowedOrigins(env: Env) {
@@ -30,4 +34,11 @@ export function requireEnv(env: Env, key: keyof Env) {
 
 export function isDebugAuthCodes(env: Env) {
   return env.DEBUG_AUTH_CODES === "true";
+}
+
+export function adminEmails(env: Env) {
+  return (env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
 }

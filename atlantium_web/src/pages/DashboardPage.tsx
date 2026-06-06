@@ -9,7 +9,11 @@ import { cn } from "@/lib/utils";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
 
-export function DashboardPage() {
+type DashboardPageProps = {
+  embedded?: boolean;
+};
+
+export function DashboardPage({ embedded = false }: DashboardPageProps = {}) {
   const { user, logout, hasAccess } = useAuth();
   const [state, setState] = useState<LoadState>("idle");
   const [data, setData] = useState<CreatorDashboardResponse | null>(null);
@@ -60,31 +64,12 @@ export function DashboardPage() {
   };
   const partners = useMemo(() => data?.partners ?? [], [data]);
 
-  if (!hasAccess) {
+  if (!hasAccess && !embedded) {
     return <AccessPendingOverlay onLogout={logout} />;
   }
 
-  return (
-    <div className="min-h-screen bg-[#030a10] text-slate-100">
-      <header className="border-b border-cyan-500/10 bg-black/30">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md border border-cyan-500/30 bg-cyan-500/10 text-cyan-300">
-              A
-            </div>
-            <div>
-              <p className="text-sm font-semibold tracking-wide">Atlantium</p>
-              <p className="text-xs text-slate-500">Creator operations</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-            <ProfileDropdown user={user} onLogout={logout} />
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-7xl px-5 py-7">
+  const page = (
+    <main className={cn("mx-auto max-w-7xl", embedded ? "px-0 py-0" : "px-5 py-7")}>
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="mb-2 inline-flex items-center gap-2 rounded-full border border-cyan-400/30 px-3 py-1 text-xs font-medium text-cyan-300">
@@ -132,8 +117,8 @@ export function DashboardPage() {
           </div>
         )}
 
-        <section className="overflow-hidden rounded-lg border border-slate-800 bg-slate-950/70">
-          <div className="grid grid-cols-[minmax(220px,1.35fr)_120px_130px_130px_160px_180px_220px] gap-4 border-b border-slate-800 px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        <section className="overflow-x-auto rounded-lg border border-slate-800 bg-slate-950/70">
+          <div className="grid min-w-[1100px] grid-cols-[minmax(220px,1.35fr)_120px_130px_130px_160px_180px_220px] gap-4 border-b border-slate-800 px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
             <span>Partner</span>
             <span>Approval</span>
             <span>Qualification</span>
@@ -152,6 +137,36 @@ export function DashboardPage() {
           )}
         </section>
       </main>
+  );
+
+  if (embedded) {
+    return (
+      <div className="-m-4 min-h-[calc(100vh-3.5rem)] bg-[#030a10] p-4 text-slate-100 md:-m-6 md:p-6">
+        {page}
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#030a10] text-slate-100">
+      <header className="border-b border-cyan-500/10 bg-black/30">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md border border-cyan-500/30 bg-cyan-500/10 text-cyan-300">
+              A
+            </div>
+            <div>
+              <p className="text-sm font-semibold tracking-wide">Atlantium</p>
+              <p className="text-xs text-slate-500">Creator operations</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <ProfileDropdown user={user} onLogout={logout} />
+          </div>
+        </div>
+      </header>
+      {page}
     </div>
   );
 }
@@ -184,7 +199,7 @@ function CreatorRow({ partner }: { partner: CreatorStandingPartner }) {
   const metrics = getPartnerMetrics(partner);
 
   return (
-    <div className="grid grid-cols-[minmax(220px,1.35fr)_120px_130px_130px_160px_180px_220px] items-center gap-4 border-b border-slate-900 px-4 py-4 text-sm last:border-b-0">
+    <div className="grid min-w-[1100px] grid-cols-[minmax(220px,1.35fr)_120px_130px_130px_160px_180px_220px] items-center gap-4 border-b border-slate-900 px-4 py-4 text-sm last:border-b-0">
       <div className="min-w-0">
         <p className="truncate font-medium text-slate-100">{displayName}</p>
         <p className="truncate text-xs text-slate-500">{email}</p>

@@ -34,6 +34,17 @@ app.get("/health", (c) => c.json({
   },
 }));
 
+app.get("/", (c) => c.json({
+  ok: true,
+  service: "atlantium-api",
+  message: "Atlantium API is running.",
+  routes: {
+    health: "/health",
+    app: "/v1",
+    auth: "/api/auth",
+  },
+}));
+
 app.on(["GET", "POST"], "/api/auth/*", (c) => createAuth(c.env, getExecutionCtx(c)).handler(c.req.raw));
 app.route("/v1", appRoutes);
 

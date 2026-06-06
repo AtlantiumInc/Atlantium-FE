@@ -26,6 +26,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 const emailSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -40,6 +41,7 @@ export function AdminLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { login, checkAuth } = useAuth();
 
   const emailForm = useForm<EmailFormValues>({
     resolver: zodResolver(emailSchema),
@@ -77,8 +79,17 @@ export function AdminLoginPage() {
 
     try {
       const response = await api.adminVerifyOtp(email, otpCode);
-      api.setAuthToken(response.auth_token);
-      localStorage.setItem("admin_token", response.auth_token);
+      login(response.auth_token, {
+        id: response.user.id,
+        email: response.user.email,
+        is_email_verified: true,
+        is_admin: true,
+        has_access: true,
+      });
+      const fullUser = await checkAuth();
+      if (!fullUser?.is_admin) {
+        throw new Error("Admin access required.");
+      }
       toast.success("Login successful");
       navigate("/admin");
     } catch (err) {

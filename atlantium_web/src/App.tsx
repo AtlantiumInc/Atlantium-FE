@@ -14,6 +14,7 @@ import { LoginPage } from "@/pages/LoginPage";
 import { SignupPage } from "@/pages/SignupPage";
 import { AdminLoginPage } from "@/pages/AdminLoginPage";
 import { DashboardPage } from "@/pages/DashboardPage";
+import { MemberDashboardPage } from "@/pages/MemberDashboardPage";
 import { LandingPage } from "@/pages/LandingPage";
 import { PrivacyPage } from "@/pages/PrivacyPage";
 import { TermsPage } from "@/pages/TermsPage";
@@ -119,7 +120,7 @@ function AppRoutes() {
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <DashboardPage />
+            <MemberDashboardPage />
           </ProtectedRoute>
         }
       />
@@ -145,6 +146,7 @@ function AppRoutes() {
         <Route path="events" element={<AdminEventsPage />} />
         <Route path="articles" element={<AdminArticlesPage />} />
         <Route path="users" element={<AdminUsersPage />} />
+        <Route path="partnerships" element={<DashboardPage embedded />} />
         <Route path="gtm" element={<AdminGTMPage />} />
       </Route>
       {/* Google OAuth callback */}

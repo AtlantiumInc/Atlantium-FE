@@ -1,20 +1,13 @@
 import { Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AdminProtectedRouteProps {
   children: React.ReactNode;
 }
 
 export function AdminProtectedRoute({ children }: AdminProtectedRouteProps) {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    const token = localStorage.getItem("admin_token");
-    setIsAuthenticated(!!token);
-    setIsLoading(false);
-  }, []);
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -26,6 +19,10 @@ export function AdminProtectedRoute({ children }: AdminProtectedRouteProps) {
 
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" replace />;
+  }
+
+  if (!user?.is_admin) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

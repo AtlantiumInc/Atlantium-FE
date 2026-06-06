@@ -102,7 +102,7 @@ export function publicUser(authUser: AuthUser, activeProfile: Awaited<ReturnType
     first_name: activeProfile.displayName.split(" ")[0] || activeProfile.displayName,
     last_name: activeProfile.displayName.split(" ").slice(1).join(" ") || undefined,
     has_access: true,
-    is_admin: false,
+    is_admin: authUser.isAdmin,
     _profile: {
       id: activeProfile.id,
       display_name: activeProfile.displayName,

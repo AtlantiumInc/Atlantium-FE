@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Calendar,
   FileText,
+  Handshake,
   Users,
   ChevronLeft,
   ChevronRight,
@@ -13,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AdminSidebarProps {
   collapsed?: boolean;
@@ -29,6 +31,7 @@ export function AdminSidebar({
 }: AdminSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuth();
 
   const navItems = [
     {
@@ -36,6 +39,12 @@ export function AdminSidebar({
       path: "/admin",
       icon: <LayoutDashboard size={20} />,
       label: "Dashboard",
+    },
+    {
+      id: "partnerships",
+      path: "/admin/partnerships",
+      icon: <Handshake size={20} />,
+      label: "Partnerships",
     },
     {
       id: "events",
@@ -70,8 +79,8 @@ export function AdminSidebar({
     return location.pathname.startsWith(path);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("admin_token");
+  const handleLogout = async () => {
+    await logout().catch(() => undefined);
     navigate("/admin/login");
   };
 
@@ -136,6 +145,8 @@ export function AdminSidebar({
           <Button
             key={item.id}
             variant={isActive(item.path) ? "secondary" : "ghost"}
+            title={item.label}
+            aria-label={item.label}
             className={cn(
               "w-full justify-start gap-3",
               collapsed && "md:justify-center md:px-2"

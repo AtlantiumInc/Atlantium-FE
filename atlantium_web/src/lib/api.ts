@@ -246,10 +246,6 @@ class ApiClient {
     return this.authToken;
   }
 
-  getAdminToken() {
-    return localStorage.getItem("admin_token");
-  }
-
   private async request<T>(
     endpoint: string,
     options: RequestInit = {},
@@ -262,7 +258,7 @@ class ApiClient {
     };
 
     const usesCookieAuth = baseUrl === ATLANTIUM_API_BASE_URL;
-    const token = useAdminToken ? this.getAdminToken() : usesCookieAuth ? null : this.authToken;
+    const token = useAdminToken ? this.authToken : usesCookieAuth ? null : this.authToken;
     if (token) {
       (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
     }
@@ -307,13 +303,13 @@ class ApiClient {
   }
 
   async getCreatorDashboard(): Promise<CreatorDashboardResponse> {
-    return this.request<CreatorDashboardResponse>("/dashboard/creators", {
+    return this.request<CreatorDashboardResponse>("/admin/partnerships/creators", {
       method: "GET",
     }, AUTH_API_BASE_URL);
   }
 
   async recordCreatorDashboardTestClick(): Promise<CreatorDashboardResponse> {
-    return this.request<CreatorDashboardResponse>("/dashboard/creators/test-click", {
+    return this.request<CreatorDashboardResponse>("/admin/partnerships/creators/test-click", {
       method: "POST",
     }, AUTH_API_BASE_URL);
   }
@@ -327,17 +323,22 @@ class ApiClient {
 
   // Admin auth methods
   async adminRequestOtp(email: string): Promise<OtpResponse> {
-    return this.request<OtpResponse>("/admin/otp", {
-      method: "POST",
-      body: JSON.stringify({ email }),
-    }, ADMIN_API_BASE_URL);
+    return this.requestOtp(email);
   }
 
   async adminVerifyOtp(email: string, code: string): Promise<AdminLoginResponse> {
-    return this.request<AdminLoginResponse>("/admin/verify", {
-      method: "POST",
-      body: JSON.stringify({ email, code }),
-    }, ADMIN_API_BASE_URL);
+    const response = await this.verifyOtp(email, code);
+    if (!response.user.is_admin) {
+      throw new Error("Admin access required.");
+    }
+    return {
+      success: response.success,
+      auth_token: response.auth_token ?? "cookie",
+      user: {
+        id: response.user.id,
+        email: response.user.email,
+      },
+    };
   }
 
   // Admin event methods
@@ -516,7 +517,7 @@ class ApiClient {
   }> {
     return this.request("/profile/me", {
       method: "GET",
-    }, APP_API_BASE_URL);
+    }, AUTH_API_BASE_URL);
   }
 
   async updateProfile(data: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -524,7 +525,7 @@ class ApiClient {
     return this.request<Record<string, unknown>>("/profile/edit", {
       method: "POST",
       body: JSON.stringify({ profile: data }),
-    }, APP_API_BASE_URL);
+    }, AUTH_API_BASE_URL);
   }
 
   async uploadImage(file: File): Promise<{ success: boolean; url: string }> {
@@ -916,13 +917,13 @@ class ApiClient {
   async getRealtimeConfig(): Promise<{ realtime_hash: string }> {
     return this.request<{ realtime_hash: string }>("/realtime/config", {
       method: "GET",
-    }, STRIPE_API_BASE_URL);
+    }, AUTH_API_BASE_URL);
   }
 
   async getSubscription(): Promise<SubscriptionResponse> {
-    return this.request<SubscriptionResponse>("/stripe/subscription", {
+    return this.request<SubscriptionResponse>("/subscription", {
       method: "GET",
-    }, STRIPE_API_BASE_URL);
+    }, AUTH_API_BASE_URL);
   }
 
   async createSetupIntent(): Promise<SetupIntentResponse> {
