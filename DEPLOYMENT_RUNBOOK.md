@@ -61,7 +61,7 @@ If Cloudflare records the commit but shows `No deployment available`, the Git tr
 
 ```bash
 cd /Users/user/Documents/Atlantium/web/atlantium_web
-npm run build
+VITE_ATLANTIUM_API_BASE=https://api.atlantium.ai/v1 VITE_BOOMIN_CONNECT_API_BASE=https://api.boomin.ai/v1/connect VITE_BOOMIN_CONNECT_REDIRECT_URI=https://atlantium.ai/creator-program npm run build
 npx wrangler pages deploy dist --project-name atlantium-fe --branch main --commit-hash "$(git -C .. rev-parse HEAD)" --commit-message "$(git -C .. log -1 --pretty=%s)"
 ```
 

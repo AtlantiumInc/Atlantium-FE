@@ -6,6 +6,7 @@ import { PublicNavbar } from "@/components/PublicNavbar";
 import { useAuth } from "@/contexts/AuthContext";
 import Boomin from "@boomin/connect";
 import { captureReferralCode, getReferralCode } from "@/lib/referral";
+import { publicRuntimeUrl } from "@/lib/runtimeEnv";
 
 type ConnectState = "details" | "otp" | "instagram" | "pending" | "connected" | "error";
 
@@ -50,9 +51,18 @@ type BoominStatusResult = {
 };
 
 const BOOMIN_PUBLIC_KEY = import.meta.env.VITE_BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_demo_brand_partner_program";
-const BOOMIN_API_BASE = import.meta.env.VITE_BOOMIN_CONNECT_API_BASE || "https://api.boomin.ai/v1/connect";
-const BOOMIN_REDIRECT_URI = import.meta.env.VITE_BOOMIN_CONNECT_REDIRECT_URI || "https://atlantium.ai/creator-program";
-const ATLANTIUM_API_BASE = (import.meta.env.VITE_ATLANTIUM_API_BASE || "https://api.atlantium.ai/v1").replace(/\/+$/, "");
+const BOOMIN_API_BASE = publicRuntimeUrl(
+  import.meta.env.VITE_BOOMIN_CONNECT_API_BASE,
+  "https://api.boomin.ai/v1/connect"
+).replace(/\/+$/, "");
+const BOOMIN_REDIRECT_URI = publicRuntimeUrl(
+  import.meta.env.VITE_BOOMIN_CONNECT_REDIRECT_URI,
+  "https://atlantium.ai/creator-program"
+);
+const ATLANTIUM_API_BASE = publicRuntimeUrl(
+  import.meta.env.VITE_ATLANTIUM_API_BASE,
+  "https://api.atlantium.ai/v1"
+).replace(/\/+$/, "");
 const CONNECT_RESULT_STORAGE_KEY = "atlantium_creator_connect_result";
 const BOOMIN_REDIRECT_RESULT_STORAGE_KEY = "boomin_connect_redirect_result";
 const CONNECT_RESULT_PARAMS = [

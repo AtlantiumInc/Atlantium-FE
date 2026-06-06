@@ -22,9 +22,12 @@ import type {
   LobbyLivekitTokenResponse,
   GroupLivekitTokenResponse,
 } from "./types";
+import { publicRuntimeUrl } from "./runtimeEnv";
 
-const ATLANTIUM_API_BASE_URL =
-  (import.meta.env.VITE_ATLANTIUM_API_BASE as string | undefined) || "https://api.atlantium.ai/v1";
+const ATLANTIUM_API_BASE_URL = publicRuntimeUrl(
+  import.meta.env.VITE_ATLANTIUM_API_BASE as string | undefined,
+  "https://api.atlantium.ai/v1"
+).replace(/\/+$/, "");
 const AUTH_API_BASE_URL = ATLANTIUM_API_BASE_URL;
 const APP_API_BASE_URL = "https://cloud.atlantium.ai/api:_c66cUCc";
 const STRIPE_API_BASE_URL = "https://cloud.atlantium.ai/api:-ulnKZsX";
