@@ -51,9 +51,45 @@ Important production secrets for `atlantium-api`:
 - `DATABASE_URL`
 - `BETTER_AUTH_SECRET`
 - `HANDOFF_SIGNING_SECRET`
-- optional `RESEND_API_KEY`
+- `LIVEKIT_URL`
+- `LIVEKIT_API_KEY`
+- `LIVEKIT_API_SECRET`
+- `RESEND_API_KEY` for emailed OTPs
 
 Production vars live in `services/api/wrangler.toml`. `DEBUG_AUTH_CODES` must stay `false` in production.
+
+Local auth note:
+
+- If `services/api/.dev.vars` does not include `RESEND_API_KEY`, localhost will not send OTP emails.
+- With `DEBUG_AUTH_CODES=true`, local login exposes the dev code on the OTP screen, accepts `123456`, and sends `123456` by email when `RESEND_API_KEY` is present.
+- To test dynamic emailed OTPs, set `DEBUG_AUTH_CODES=false`, restart the Worker, and confirm `curl -s http://localhost:8788/health` reports `"resend":true`.
+
+Lobby media will load chat and schedule without LiveKit, but users cannot join Office Hours media until the three LiveKit secrets are configured on the Worker.
+
+## Lobby Release Checklist
+
+Before releasing lobby changes:
+
+```bash
+cd /Users/user/Documents/Atlantium/web/services/api
+set -a; source .dev.vars; set +a; npm run db:migrate
+npm run typecheck
+
+cd ../../atlantium_web
+VITE_ATLANTIUM_API_BASE=https://api.atlantium.ai/v1 VITE_BOOMIN_CONNECT_API_BASE=https://api.boomin.ai/v1/connect VITE_BOOMIN_CONNECT_REDIRECT_URI=https://atlantium.ai/creator-program npm run build
+rg -n "localhost:8788|localhost:8787" dist
+```
+
+The lobby migration creates:
+
+- `memberships`
+- `lobby_rooms`
+- `lobby_events`
+- `lobby_messages`
+- `lobby_event_attendance`
+- `lobby_room_roles`
+
+Current `is_admin` users are implicit lobby moderators. Missing membership rows intentionally default to Free.
 
 ## Deploy Frontend
 
@@ -105,6 +141,9 @@ After deploy:
 - `https://atlantium.ai/admin` loads for `kleveland.bishop@gmail.com`.
 - `https://atlantium.ai/admin/partnerships` loads the Boomin partnerships table.
 - `https://atlantium.ai/creator-program` still loads and can start Boomin handoff.
+- `https://atlantium.ai/dashboard` > Lobby shows Lounge, Office Hours, daily noon ET events, and lets signed-in users send a lobby chat message.
+- Free users can chat/watch; paid members or moderators can publish during live Office Hours.
+- If Office Hours media fails with `livekit_not_configured`, set the LiveKit Worker secrets before retesting media.
 
 OTP CORS smoke test:
 

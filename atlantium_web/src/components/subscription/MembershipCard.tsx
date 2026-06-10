@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Crown, AlertTriangle, Loader2, Check, Camera } from "lucide-react";
+import { Crown, AlertTriangle, Loader2, Check, Camera, Shield } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { HolographicCard } from "@/components/ui/holographic-card";
@@ -73,6 +73,8 @@ export function MembershipCard({ onAvatarClick, bio, createdAt }: MembershipCard
   const isClubMember = subscription?.membership_tier === "club";
   const isPastDue = subscription?.subscription_status === "past_due";
   const isCanceling = subscription?.cancel_at_period_end;
+  const isAdmin = user?.is_admin === true;
+  const planLabel = isAdmin ? "Admin access" : isClubMember ? "Club member" : "Free member";
 
   // Format period end date
   const periodEndDate = subscription?.current_period_end
@@ -118,20 +120,30 @@ export function MembershipCard({ onAvatarClick, bio, createdAt }: MembershipCard
             <div className="flex-1">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2">
-                  <Crown className={`h-5 w-5 ${isClubMember ? "text-yellow-500" : "text-muted-foreground"}`} />
+                  {isAdmin ? (
+                    <Shield className="h-5 w-5 text-cyan-400" />
+                  ) : (
+                    <Crown className={`h-5 w-5 ${isClubMember ? "text-yellow-500" : "text-muted-foreground"}`} />
+                  )}
                   <CardTitle>{fullName || "Member"}</CardTitle>
                 </div>
-                {isClubMember && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs font-medium text-yellow-600 dark:text-yellow-400 -mt-1">
-                    <Check className="h-3 w-3" />
-                    Club Member
-                  </span>
-                )}
+                <div className="flex flex-wrap justify-end gap-1.5">
+                  {isAdmin && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/10 px-2.5 py-0.5 text-xs font-medium text-cyan-600 dark:text-cyan-300 -mt-1">
+                      <Shield className="h-3 w-3" />
+                      Admin
+                    </span>
+                  )}
+                  {isClubMember && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs font-medium text-yellow-600 dark:text-yellow-400 -mt-1">
+                      <Check className="h-3 w-3" />
+                      Club Member
+                    </span>
+                  )}
+                </div>
               </div>
               <CardDescription>
-                {profileBio || (isClubMember
-                  ? "Club member with access to all features."
-                  : "Free member")}
+                {profileBio || (isAdmin ? `Admin access enabled - ${planLabel}` : planLabel)}
               </CardDescription>
             </div>
           </div>
@@ -164,12 +176,38 @@ export function MembershipCard({ onAvatarClick, bio, createdAt }: MembershipCard
           )}
 
           {/* Membership details */}
+          {isAdmin && (
+            <div className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 p-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-cyan-500" />
+                  <span className="font-medium">Admin access</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 border-cyan-500/30 bg-background/40"
+                  onClick={() => window.location.assign("/admin")}
+                >
+                  Open Admin
+                </Button>
+              </div>
+            </div>
+          )}
+
           {isClubMember ? (
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Plan</span>
                 <span className="font-medium">Club Membership</span>
               </div>
+              {isAdmin && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Role</span>
+                  <span className="font-medium">Admin</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Events</span>
                 <span className="font-medium">All Access</span>
@@ -195,11 +233,17 @@ export function MembershipCard({ onAvatarClick, bio, createdAt }: MembershipCard
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Current plan</span>
-                <span className="font-medium">Free</span>
+                <span className="font-medium">{isAdmin ? "Admin" : "Free"}</span>
               </div>
+              {isAdmin && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Role</span>
+                  <span className="font-medium">Admin</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Events</span>
-                <span className="font-medium">Limited Access</span>
+                <span className="font-medium">{isAdmin ? "All Access" : "Limited Access"}</span>
               </div>
               {interests.length > 0 && (
                 <div className="flex justify-between text-sm">
@@ -209,23 +253,25 @@ export function MembershipCard({ onAvatarClick, bio, createdAt }: MembershipCard
                   </span>
                 </div>
               )}
-              <div className="rounded-lg border p-4 space-y-2">
-                <p className="font-medium">Club Membership - $128/month</p>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-500" />
-                    Office hours Mon–Thu
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-500" />
-                    AI engineering curriculum
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-500" />
-                    Exclusive member events
-                  </li>
-                </ul>
-              </div>
+              {!isAdmin && (
+                <div className="rounded-lg border p-4 space-y-2">
+                  <p className="font-medium">Club Membership - $128/month</p>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-500" />
+                      Office hours Mon-Thu
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-500" />
+                      AI engineering curriculum
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-500" />
+                      Exclusive member events
+                    </li>
+                  </ul>
+                </div>
+              )}
             </div>
           )}
 
@@ -242,7 +288,7 @@ export function MembershipCard({ onAvatarClick, bio, createdAt }: MembershipCard
                 className="text-[10px] font-medium tracking-wider uppercase text-muted-foreground/60"
                 style={{ letterSpacing: "0.1em" }}
               >
-                {isClubMember ? "Welcome to the Frontier" : "Free Member"}
+                {isAdmin ? "Admin" : isClubMember ? "Welcome to the Frontier" : "Free Member"}
               </p>
             </div>
           </div>
@@ -251,7 +297,7 @@ export function MembershipCard({ onAvatarClick, bio, createdAt }: MembershipCard
       </HolographicCard>
 
       {/* Upgrade CTA for free members */}
-      {!isClubMember && (
+      {!isClubMember && !isAdmin && (
         <div className="mt-3">
           <Button className="w-full" onClick={() => setShowUpgradeModal(true)}>
             <Crown className="h-4 w-4" />

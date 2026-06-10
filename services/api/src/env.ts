@@ -16,6 +16,9 @@ export type Env = {
   BOOMIN_APP_API_BASE?: string;
   BOOMIN_APP_STANDING_EMAIL?: string;
   BOOMIN_APP_STANDING_PROGRAM_ID?: string;
+  LIVEKIT_URL?: string;
+  LIVEKIT_API_KEY?: string;
+  LIVEKIT_API_SECRET?: string;
 };
 
 export function allowedOrigins(env: Env) {

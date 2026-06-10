@@ -59,6 +59,7 @@ export function LoginPage() {
   const [step, setStep] = useState<"email" | "otp">("email");
   const [email, setEmail] = useState("");
   const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
+  const [localDevCode, setLocalDevCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -85,15 +86,31 @@ export function LoginPage() {
     return () => clearInterval(interval);
   }, [nextSlide]);
 
+  const loadLocalDevCode = async (targetEmail: string) => {
+    const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+    if (!isLocalhost) return null;
+
+    try {
+      const response = await api.getDevOtpCode(targetEmail);
+      setLocalDevCode(response.code);
+      return response.code;
+    } catch {
+      setLocalDevCode(null);
+      return null;
+    }
+  };
+
   const handleEmailSubmit = async (values: EmailFormValues) => {
     setIsLoading(true);
     setError(null);
+    setLocalDevCode(null);
 
     try {
       await api.requestOtp(values.email);
       setEmail(values.email);
       setStep("otp");
-      toast.success("OTP sent to your email");
+      const code = await loadLocalDevCode(values.email);
+      toast.success(code ? `Local dev OTP: ${code}` : "OTP sent to your email");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to send OTP";
       setError(message);
@@ -180,6 +197,7 @@ export function LoginPage() {
   const handleBack = () => {
     setStep("email");
     setError(null);
+    setLocalDevCode(null);
     setOtpDigits(Array(OTP_LENGTH).fill(""));
   };
 
@@ -189,7 +207,8 @@ export function LoginPage() {
 
     try {
       await api.requestOtp(email);
-      toast.success("OTP resent to your email");
+      const code = await loadLocalDevCode(email);
+      toast.success(code ? `Local dev OTP: ${code}` : "OTP resent to your email");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to resend OTP";
       setError(message);
@@ -311,6 +330,25 @@ export function LoginPage() {
                   {error && (
                     <div className="mb-4 p-3 text-sm text-destructive bg-destructive/10 rounded-lg">
                       {error}
+                    </div>
+                  )}
+
+                  {localDevCode && (
+                    <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-3 text-sm">
+                      <div>
+                        <p className="font-medium text-foreground">Local dev OTP</p>
+                        <p className="text-muted-foreground">
+                          Use <span className="font-semibold text-foreground">{localDevCode}</span> on localhost.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setOtpDigits(localDevCode.split("").slice(0, OTP_LENGTH))}
+                      >
+                        Use code
+                      </Button>
                     </div>
                   )}
 

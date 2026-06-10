@@ -157,7 +157,10 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
       <Button
         variant="ghost"
         className="relative h-8 w-8 rounded-full p-0"
-        onClick={() => setIsEditOpen(true)}
+        onClick={() => {
+          void checkAuth();
+          setIsEditOpen(true);
+        }}
       >
         <Avatar className="h-8 w-8">
           <AvatarImage src={avatarUrl} alt={displayName} />

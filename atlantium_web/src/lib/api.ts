@@ -18,7 +18,8 @@ import type {
   UserIntegrations,
   UserSettings,
   LobbyResponse,
-  LobbyJoinResponse,
+  LobbyMessagesResponse,
+  LobbyMessageResponse,
   LobbyLivekitTokenResponse,
   GroupLivekitTokenResponse,
 } from "./types";
@@ -41,6 +42,10 @@ export interface ApiError {
 export interface OtpResponse {
   success: boolean;
   user_id: string;
+}
+
+export interface DevOtpResponse {
+  code: string | null;
 }
 
 export interface VerifyResponse {
@@ -289,6 +294,12 @@ class ApiClient {
     return this.request<OtpResponse>("/auth/otp", {
       method: "POST",
       body: JSON.stringify({ email }),
+    }, AUTH_API_BASE_URL);
+  }
+
+  async getDevOtpCode(email: string): Promise<DevOtpResponse> {
+    return this.request<DevOtpResponse>(`/auth/dev-code?email=${encodeURIComponent(email)}`, {
+      method: "GET",
     }, AUTH_API_BASE_URL);
   }
 
@@ -862,32 +873,42 @@ class ApiClient {
   async getLobby(): Promise<LobbyResponse> {
     return this.request<LobbyResponse>("/lobby", {
       method: "GET",
-    }, APP_API_BASE_URL);
+    }, AUTH_API_BASE_URL);
   }
 
-  async joinLobby(): Promise<LobbyJoinResponse> {
-    return this.request<LobbyJoinResponse>("/lobby/join", {
-      method: "POST",
-    }, APP_API_BASE_URL);
+  async getLobbyRoomMessages(roomId: string, limit: number = 50): Promise<LobbyMessagesResponse> {
+    return this.request<LobbyMessagesResponse>(
+      `/lobby/rooms/${encodeURIComponent(roomId)}/messages?limit=${limit}`,
+      { method: "GET" },
+      AUTH_API_BASE_URL
+    );
   }
 
-  async leaveLobby(): Promise<{ success: boolean }> {
-    return this.request<{ success: boolean }>("/lobby/leave", {
-      method: "POST",
-    }, APP_API_BASE_URL);
+  async sendLobbyMessage(roomId: string, content: string): Promise<LobbyMessageResponse> {
+    return this.request<LobbyMessageResponse>(
+      `/lobby/rooms/${encodeURIComponent(roomId)}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify({ content }),
+      },
+      AUTH_API_BASE_URL
+    );
   }
 
-  async moveLobby(col: number, row: number): Promise<{ success: boolean; position: { col: number; row: number } }> {
-    return this.request<{ success: boolean; position: { col: number; row: number } }>("/lobby/move", {
-      method: "POST",
-      body: JSON.stringify({ col, row }),
-    }, APP_API_BASE_URL);
+  async getLobbyEventLivekitToken(eventId: string): Promise<LobbyLivekitTokenResponse> {
+    return this.request<LobbyLivekitTokenResponse>(
+      `/lobby/events/${encodeURIComponent(eventId)}/livekit-token`,
+      { method: "POST" },
+      AUTH_API_BASE_URL
+    );
   }
 
-  async getLobbyLivekitToken(): Promise<LobbyLivekitTokenResponse> {
-    return this.request<LobbyLivekitTokenResponse>("/lobby/livekit-token", {
-      method: "POST",
-    }, APP_API_BASE_URL);
+  async getLobbyRoomLivekitToken(roomId: string): Promise<LobbyLivekitTokenResponse> {
+    return this.request<LobbyLivekitTokenResponse>(
+      `/lobby/rooms/${encodeURIComponent(roomId)}/livekit-token`,
+      { method: "POST" },
+      AUTH_API_BASE_URL
+    );
   }
 
   async getGroupLivekitToken(groupId: string): Promise<GroupLivekitTokenResponse> {
@@ -896,18 +917,19 @@ class ApiClient {
     }, APP_API_BASE_URL);
   }
 
-  async lobbyAdminAction(action: "mute" | "kick" | "spotlight", targetUserId: string, trackType?: "audio" | "video"): Promise<{ success: boolean }> {
-    const payload: Record<string, string> = {
-      action,
-      target_user_id: targetUserId,
-    };
-    if (trackType) {
-      payload.track_type = trackType;
-    }
-    return this.request<{ success: boolean }>("/lobby/admin-action", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }, APP_API_BASE_URL);
+  async lobbyModeratorAction(
+    eventId: string,
+    action: "mute-all" | "mute-user" | "remove-user" | "spotlight",
+    payload: Record<string, unknown> = {}
+  ): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>(
+      `/lobby/events/${encodeURIComponent(eventId)}/mod/${action}`,
+      {
+        method: "POST",
+        body: Object.keys(payload).length ? JSON.stringify(payload) : undefined,
+      },
+      AUTH_API_BASE_URL
+    );
   }
 
   // Stripe subscription methods

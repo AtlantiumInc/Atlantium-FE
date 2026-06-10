@@ -13,6 +13,18 @@ import {
 
 export const profileType = pgEnum("profile_type", ["personal", "child", "team"]);
 export const profileRole = pgEnum("profile_role", ["owner", "guardian", "member"]);
+export const membershipTier = pgEnum("membership_tier", ["free", "club", "club_annual"]);
+export const membershipStatus = pgEnum("membership_status", [
+  "active",
+  "trialing",
+  "past_due",
+  "canceled",
+  "unpaid",
+  "incomplete",
+]);
+export const lobbyRoomType = pgEnum("lobby_room_type", ["lounge", "office_hours"]);
+export const lobbyEventStatus = pgEnum("lobby_event_status", ["scheduled", "live", "cancelled", "ended"]);
+export const lobbyRoomRole = pgEnum("lobby_room_role", ["moderator"]);
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -100,10 +112,102 @@ export const profileMembers = pgTable("profile_members", {
   activeIdx: index("profile_members_user_active_idx").on(table.userId, table.isActive),
 }));
 
+export const memberships = pgTable("memberships", {
+  userId: text("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),
+  tier: membershipTier("membership_tier").notNull().default("free"),
+  status: membershipStatus("subscription_status"),
+  currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+  gracePeriodEnd: timestamp("grace_period_end", { withTimezone: true }),
+  paymentMethod: jsonb("payment_method").$type<Record<string, unknown> | null>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  tierIdx: index("memberships_tier_idx").on(table.tier),
+  statusIdx: index("memberships_status_idx").on(table.status),
+}));
+
+export const lobbyRooms = pgTable("lobby_rooms", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  slug: text("slug").notNull(),
+  name: text("name").notNull(),
+  type: lobbyRoomType("type").notNull(),
+  livekitRoomName: text("livekit_room_name").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  slugUnique: uniqueIndex("lobby_rooms_slug_unique").on(table.slug),
+  livekitRoomUnique: uniqueIndex("lobby_rooms_livekit_room_unique").on(table.livekitRoomName),
+  activeIdx: index("lobby_rooms_active_idx").on(table.isActive),
+}));
+
+export const lobbyEvents = pgTable("lobby_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  roomId: uuid("room_id").notNull().references(() => lobbyRooms.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+  timezone: text("timezone").notNull().default("America/New_York"),
+  status: lobbyEventStatus("status").notNull().default("scheduled"),
+  livekitRoomName: text("livekit_room_name").notNull(),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  roomStartsIdx: index("lobby_events_room_starts_idx").on(table.roomId, table.startsAt),
+  startsIdx: index("lobby_events_starts_idx").on(table.startsAt),
+  livekitRoomUnique: uniqueIndex("lobby_events_livekit_room_unique").on(table.livekitRoomName),
+}));
+
+export const lobbyMessages = pgTable("lobby_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  roomId: uuid("room_id").notNull().references(() => lobbyRooms.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+}, (table) => ({
+  roomCreatedIdx: index("lobby_messages_room_created_idx").on(table.roomId, table.createdAt),
+  userCreatedIdx: index("lobby_messages_user_created_idx").on(table.userId, table.createdAt),
+}));
+
+export const lobbyEventAttendance = pgTable("lobby_event_attendance", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventId: uuid("event_id").notNull().references(() => lobbyEvents.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  publishGranted: boolean("publish_granted").notNull().default(false),
+  joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  eventUserUnique: uniqueIndex("lobby_event_attendance_event_user_unique").on(table.eventId, table.userId),
+  userJoinedIdx: index("lobby_event_attendance_user_joined_idx").on(table.userId, table.joinedAt),
+  userPublishIdx: index("lobby_event_attendance_user_publish_idx").on(table.userId, table.publishGranted, table.joinedAt),
+}));
+
+export const lobbyRoomRoles = pgTable("lobby_room_roles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  roomId: uuid("room_id").notNull().references(() => lobbyRooms.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  role: lobbyRoomRole("role").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  roomUserRoleUnique: uniqueIndex("lobby_room_roles_room_user_role_unique").on(table.roomId, table.userId, table.role),
+  userRoleIdx: index("lobby_room_roles_user_role_idx").on(table.userId, table.role),
+}));
+
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
   profiles: many(profileMembers),
+  lobbyMessages: many(lobbyMessages),
+  lobbyRoles: many(lobbyRoomRoles),
 }));
 
 export const profileRelations = relations(profiles, ({ one, many }) => ({

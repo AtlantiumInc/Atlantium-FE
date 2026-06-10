@@ -1,139 +1,144 @@
-import { useState } from "react";
-import { api } from "@/lib/api";
-import { Button } from "@/components/ui/button";
-import { MicOff, VideoOff, UserX, Star } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useParticipants } from "@livekit/components-react";
+import { MicOff, Star, UserX, VideoOff, VolumeX } from "lucide-react";
 import { toast } from "sonner";
-import type { LobbyMember } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
 
 interface AdminPanelProps {
-  members: LobbyMember[];
+  eventId: string;
   currentUserId: string;
+  onSpotlight?: (userId: string | null) => void;
 }
 
-export function AdminPanel({ members, currentUserId }: AdminPanelProps) {
+export function AdminPanel({ eventId, currentUserId, onSpotlight }: AdminPanelProps) {
+  const participants = useParticipants();
   const [loading, setLoading] = useState<string | null>(null);
 
-  const handleMute = async (
-    userId: string,
-    trackType: "audio" | "video",
-    displayName: string
+  const otherParticipants = useMemo(
+    () => participants.filter((participant) => participant.identity !== currentUserId),
+    [participants, currentUserId]
+  );
+
+  const runAction = async (
+    key: string,
+    action: "mute-all" | "mute-user" | "remove-user" | "spotlight",
+    payload: Record<string, unknown>,
+    successMessage: string
   ) => {
-    setLoading(`${userId}-${trackType}`);
+    setLoading(key);
     try {
-      await api.lobbyAdminAction("mute", userId, trackType);
-      toast.success(
-        `Muted ${trackType} for ${displayName}`
-      );
+      await api.lobbyModeratorAction(eventId, action, payload);
+      toast.success(successMessage);
+      if (action === "spotlight") onSpotlight?.((payload.target_user_id as string | null) ?? null);
     } catch (err: any) {
-      toast.error(err.message || "Failed to mute user");
+      toast.error(err.message || "Moderator action failed");
     } finally {
       setLoading(null);
     }
   };
-
-  const handleKick = async (userId: string, displayName: string) => {
-    setLoading(`${userId}-kick`);
-    try {
-      await api.lobbyAdminAction("kick", userId);
-      toast.success(`Kicked ${displayName} from lobby`);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to kick user");
-    } finally {
-      setLoading(null);
-    }
-  };
-
-  const handleSpotlight = async (userId: string, displayName: string) => {
-    setLoading(`${userId}-spotlight`);
-    try {
-      await api.lobbyAdminAction("spotlight", userId);
-      toast.success(`Spotlighted ${displayName}`);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to spotlight user");
-    } finally {
-      setLoading(null);
-    }
-  };
-
-  const otherMembers = members.filter((m) => m.user_id !== currentUserId);
-
-  if (otherMembers.length === 0) {
-    return (
-      <p className="text-xs text-muted-foreground text-center py-4">
-        No other participants to manage.
-      </p>
-    );
-  }
 
   return (
-    <div className="space-y-2">
-      <h3 className="text-sm font-medium text-muted-foreground">
-        Admin Controls
-      </h3>
-      <div className="space-y-1">
-        {otherMembers.map((member) => {
-          const name = member.display_name || member.username || "User";
-          return (
-            <div
-              key={member.user_id}
-              className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50"
-            >
-              {member.avatar_url ? (
-                <img
-                  src={member.avatar_url}
-                  alt=""
-                  className="w-6 h-6 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-medium">
+    <div className="space-y-3 rounded-lg border border-border/60 bg-background/70 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-semibold">Moderator</h3>
+          <p className="text-xs text-muted-foreground">Manage the live office-hours room.</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={loading === "mute-all"}
+          onClick={() => runAction("mute-all", "mute-all", {}, "All microphones muted")}
+          className="h-8 gap-2"
+        >
+          <VolumeX className="h-4 w-4" />
+          Mute all
+        </Button>
+      </div>
+
+      {otherParticipants.length === 0 ? (
+        <p className="rounded-md border border-dashed border-border/60 px-3 py-4 text-center text-xs text-muted-foreground">
+          No other live participants yet.
+        </p>
+      ) : (
+        <div className="space-y-1">
+          {otherParticipants.map((participant) => {
+            const name = participant.name || participant.identity;
+            return (
+              <div
+                key={participant.sid}
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50"
+              >
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cyan-500/10 text-xs font-semibold text-cyan-200">
                   {name[0]?.toUpperCase()}
                 </div>
-              )}
-              <span className="text-sm flex-1 truncate">{name}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-yellow-500 hover:bg-yellow-500/10"
-                disabled={loading === `${member.user_id}-spotlight`}
-                onClick={() => handleSpotlight(member.user_id, name)}
-                title="Spotlight user"
-              >
-                <Star size={14} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                disabled={loading === `${member.user_id}-audio`}
-                onClick={() => handleMute(member.user_id, "audio", name)}
-                title="Mute audio"
-              >
-                <MicOff size={14} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                disabled={loading === `${member.user_id}-video`}
-                onClick={() => handleMute(member.user_id, "video", name)}
-                title="Mute video"
-              >
-                <VideoOff size={14} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-destructive hover:bg-destructive/10"
-                disabled={loading === `${member.user_id}-kick`}
-                onClick={() => handleKick(member.user_id, name)}
-                title="Kick from lobby"
-              >
-                <UserX size={14} />
-              </Button>
-            </div>
-          );
-        })}
-      </div>
+                <span className="min-w-0 flex-1 truncate text-sm">{name}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-yellow-500 hover:bg-yellow-500/10"
+                  disabled={loading === `${participant.identity}-spotlight`}
+                  onClick={() => runAction(
+                    `${participant.identity}-spotlight`,
+                    "spotlight",
+                    { target_user_id: participant.identity },
+                    `Spotlighted ${name}`
+                  )}
+                  title="Spotlight presenter"
+                >
+                  <Star className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  disabled={loading === `${participant.identity}-audio`}
+                  onClick={() => runAction(
+                    `${participant.identity}-audio`,
+                    "mute-user",
+                    { target_user_id: participant.identity, track_type: "audio" },
+                    `Muted ${name}`
+                  )}
+                  title="Mute microphone"
+                >
+                  <MicOff className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  disabled={loading === `${participant.identity}-video`}
+                  onClick={() => runAction(
+                    `${participant.identity}-video`,
+                    "mute-user",
+                    { target_user_id: participant.identity, track_type: "video" },
+                    `Muted ${name}'s video`
+                  )}
+                  title="Mute camera"
+                >
+                  <VideoOff className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                  disabled={loading === `${participant.identity}-remove`}
+                  onClick={() => runAction(
+                    `${participant.identity}-remove`,
+                    "remove-user",
+                    { target_user_id: participant.identity },
+                    `Removed ${name}`
+                  )}
+                  title="Remove participant"
+                >
+                  <UserX className="h-4 w-4" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

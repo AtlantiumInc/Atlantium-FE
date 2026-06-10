@@ -335,11 +335,81 @@ export interface LobbyMember {
   avatar_url: string | null;
 }
 
+export interface LobbyMembership {
+  membership_tier: MembershipTier;
+  subscription_status: SubscriptionStatus;
+  has_club_access: boolean;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  grace_period_end: string | null;
+  payment_method: PaymentMethod | null;
+}
+
+export type LobbyRoomType = "lounge" | "office_hours";
+
+export interface LobbyRoom {
+  id: string;
+  slug: string;
+  name: string;
+  type: LobbyRoomType;
+  description: string | null;
+  is_active: boolean;
+}
+
+export interface LobbyEvent {
+  id: string;
+  room_id: string;
+  title: string;
+  description: string | null;
+  starts_at: string;
+  ends_at: string;
+  timezone: string;
+  status: "scheduled" | "live" | "cancelled" | "ended";
+  is_live: boolean;
+  spotlight_user_id: string | null;
+}
+
+export interface LobbyPermissions {
+  can_chat: boolean;
+  can_watch: boolean;
+  can_publish_now: boolean;
+  publish_reason: string;
+  next_free_publish_at: string | null;
+  is_moderator: boolean;
+}
+
+export interface LobbyMessage {
+  id: string;
+  room_id: string;
+  sender_id: string;
+  sender_username: string;
+  sender_display_name: string;
+  sender_avatar: string | null;
+  content: string;
+  created_at: string;
+  updated_at: string | null;
+}
+
 export interface LobbyResponse {
   success: boolean;
-  thread_id: string;
-  name: string;
-  members: LobbyMember[];
+  server_time: string;
+  membership: LobbyMembership;
+  rooms: LobbyRoom[];
+  active_event: LobbyEvent | null;
+  upcoming_events: LobbyEvent[];
+  permissions: LobbyPermissions;
+  moderator_room_ids: string[];
+}
+
+export interface LobbyMessagesResponse {
+  success: boolean;
+  room_id: string;
+  messages: LobbyMessage[];
+}
+
+export interface LobbyMessageResponse {
+  success: boolean;
+  message: LobbyMessage;
 }
 
 export interface LobbyJoinResponse {
@@ -352,6 +422,14 @@ export interface LobbyLivekitTokenResponse {
   success: boolean;
   token: string;
   url: string;
+  room_name: string;
+  permissions: {
+    can_watch: boolean;
+    can_publish: boolean;
+    publish_reason: string;
+    next_free_publish_at: string | null;
+    is_moderator: boolean;
+  };
 }
 
 export interface GroupLivekitTokenResponse {

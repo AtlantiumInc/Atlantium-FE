@@ -1,20 +1,18 @@
 import { useState } from "react";
 import type { ComponentType } from "react";
 import {
-  Calendar,
   FlaskConical,
-  Handshake,
-  MessageCircle,
   Radio,
   Sparkles,
 } from "lucide-react";
+import { LobbyPage } from "@/components/pages/LobbyPage";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
 import { Sidebar } from "@/components/Sidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
-type DashboardSection = "hq" | "lobby" | "playground" | "events" | "messages" | "connect";
+type DashboardSection = "hq" | "lobby" | "playground";
 
 const sectionCopy: Record<DashboardSection, {
   title: string;
@@ -30,8 +28,8 @@ const sectionCopy: Record<DashboardSection, {
   },
   lobby: {
     title: "Lobby",
-    eyebrow: "Coming back online",
-    description: "Realtime lobby features are parked until the Neon data and realtime replacement are wired in.",
+    eyebrow: "Community",
+    description: "Member chat, office hours, schedule, and live room access.",
     icon: Radio,
   },
   playground: {
@@ -39,24 +37,6 @@ const sectionCopy: Record<DashboardSection, {
     eyebrow: "Workspace",
     description: "Project and AI assistant tools will come back into this shell without blocking auth.",
     icon: FlaskConical,
-  },
-  events: {
-    title: "Events",
-    eyebrow: "Community",
-    description: "Event browsing and RSVP data will be moved off Xano in the next migration slice.",
-    icon: Calendar,
-  },
-  messages: {
-    title: "Inbox",
-    eyebrow: "Connections",
-    description: "Messages and groups are intentionally not mounted yet so old APIs do not break the dashboard.",
-    icon: MessageCircle,
-  },
-  connect: {
-    title: "Connect",
-    eyebrow: "Network",
-    description: "Member directory, groups, and connection workflows will be attached once their Neon contracts exist.",
-    icon: Handshake,
   },
 };
 
@@ -72,6 +52,7 @@ export function MemberDashboardPage() {
   const [aiOpen, setAiOpen] = useState(false);
   const active = sectionCopy[activePage];
   const ActiveIcon = active.icon;
+  const lobbyHeaderSlotId = "member-dashboard-lobby-controls";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -84,68 +65,83 @@ export function MemberDashboardPage() {
         />
 
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/40">
-          <header className="flex h-14 shrink-0 items-center justify-between border-b border-border/60 px-4">
-            <div className="min-w-0">
+          <header className="flex min-h-14 shrink-0 items-center gap-3 border-b border-border/60 px-4 py-2">
+            <div className="min-w-[7rem] shrink-0">
               <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                 {active.eyebrow}
               </p>
               <h1 className="truncate text-base font-semibold">{active.title}</h1>
             </div>
-            <div className="flex items-center gap-2">
+
+            {activePage === "lobby" && (
+              <div
+                id={lobbyHeaderSlotId}
+                className="flex min-w-0 flex-1 justify-end"
+              />
+            )}
+
+            <div className="ml-auto flex shrink-0 items-center gap-2">
               <ThemeToggle />
               <ProfileDropdown user={user} onLogout={logout} />
             </div>
           </header>
 
-          <section className="flex-1 overflow-y-auto p-5 md:p-8">
-            <div className="mx-auto max-w-5xl">
-              <div className="mb-6 flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-cyan-500/25 bg-cyan-500/10 text-cyan-300">
-                  <ActiveIcon className="h-6 w-6" />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
-                    Welcome{user?.display_name ? `, ${user.display_name}` : ""}
-                  </h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                    {active.description}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-3">
-                {quickStats.map((stat) => (
-                  <div key={stat.label} className="rounded-lg border border-border/60 bg-background/60 p-4">
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">{stat.label}</p>
-                    <p className="mt-2 text-lg font-semibold">{stat.value}</p>
+          <section className={cn(
+            "flex-1",
+            activePage === "lobby" ? "min-h-0 overflow-hidden p-4" : "overflow-y-auto p-5 md:p-8"
+          )}>
+            {activePage === "lobby" ? (
+              <LobbyPage headerPortalId={lobbyHeaderSlotId} />
+            ) : (
+              <div className="mx-auto max-w-5xl">
+                <div className="mb-6 flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-cyan-500/25 bg-cyan-500/10 text-cyan-300">
+                    <ActiveIcon className="h-6 w-6" />
                   </div>
-                ))}
-              </div>
+                  <div>
+                    <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
+                      Welcome{user?.display_name ? `, ${user.display_name}` : ""}
+                    </h2>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                      {active.description}
+                    </p>
+                  </div>
+                </div>
 
-              <div className="mt-6 rounded-lg border border-border/60 bg-background/60 p-5">
-                <div className="flex flex-wrap items-center gap-2">
-                  {Object.entries(sectionCopy).map(([id, item]) => {
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => setActivePage(id as DashboardSection)}
-                        className={cn(
-                          "inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors",
-                          activePage === id
-                            ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-200"
-                            : "border-border/60 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                        )}
-                      >
-                        <Icon className="h-4 w-4" />
-                        {item.title}
-                      </button>
-                    );
-                  })}
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {quickStats.map((stat) => (
+                    <div key={stat.label} className="rounded-lg border border-border/60 bg-background/60 p-4">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">{stat.label}</p>
+                      <p className="mt-2 text-lg font-semibold">{stat.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-6 rounded-lg border border-border/60 bg-background/60 p-5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {Object.entries(sectionCopy).map(([id, item]) => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setActivePage(id as DashboardSection)}
+                          className={cn(
+                            "inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors",
+                            activePage === id
+                              ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-200"
+                              : "border-border/60 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                          )}
+                        >
+                          <Icon className="h-4 w-4" />
+                          {item.title}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </section>
         </main>
       </div>

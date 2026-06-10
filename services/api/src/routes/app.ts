@@ -1,11 +1,23 @@
 import { zValidator } from "@hono/zod-validator";
 import { getPartnerStanding, postHandoff, recordReferralClick } from "@boomin/server";
-import { eq } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNull, lte, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { z } from "zod";
 import { createDb } from "../db/client";
-import { profileMembers, profiles, user, verification } from "../db/schema";
+import type { Db } from "../db/client";
+import {
+  lobbyEventAttendance,
+  lobbyEvents,
+  lobbyMessages,
+  lobbyRoomRoles,
+  lobbyRooms,
+  memberships,
+  profileMembers,
+  profiles,
+  user,
+  verification,
+} from "../db/schema";
 import type { Env } from "../env";
 import { adminEmails, isDebugAuthCodes, requireEnv } from "../env";
 import { createAuth, getAuthSession } from "../lib/auth";
@@ -21,10 +33,22 @@ import {
 export const appRoutes = new Hono<{ Bindings: Env }>();
 
 const emailSchema = z.string().email().transform((value) => value.trim().toLowerCase());
+const lobbyMessageSchema = z.object({
+  content: z.string().trim().min(1).max(2000),
+});
+const lobbyTargetSchema = z.object({
+  target_user_id: z.string().trim().min(1),
+  track_type: z.enum(["audio", "video"]).optional(),
+});
+const lobbySpotlightSchema = z.object({
+  target_user_id: z.string().trim().min(1).nullable().optional(),
+});
 
 const BOOMIN_ISSUER = "atlantium.ai";
 const BOOMIN_AUDIENCE = "boomin.ai";
 const BOOMIN_HANDOFF_EXPIRES_IN = 5 * 60;
+const FREE_PUBLISH_COOLDOWN_DAYS = 14;
+const LOBBY_MESSAGE_LIMIT = 80;
 
 type BoominSdkError = Error & {
   status?: number;
@@ -94,10 +118,11 @@ appRoutes.post(
         .returning();
     }
     const activeProfile = await ensureDefaultProfile(db, freshUser);
+    const membership = await getMembership(db, freshUser.id);
     return withCopiedCookies(signInResponse, c.json({
       success: true,
       auth_token: null,
-      user: publicUser(freshUser, activeProfile),
+      user: { ...publicUser(freshUser, activeProfile), _subscription: membership },
     }));
   },
 );
@@ -110,7 +135,8 @@ appRoutes.post("/auth/logout", async (c) => {
 appRoutes.get("/auth/me", async (c) => {
   const { db, authUser } = await requireAppUser(c);
   const activeProfile = await ensureDefaultProfile(db, authUser);
-  return c.json(publicUser(authUser, activeProfile));
+  const membership = await getMembership(db, authUser.id);
+  return c.json({ ...publicUser(authUser, activeProfile), _subscription: membership });
 });
 
 appRoutes.get("/profile/me", async (c) => {
@@ -163,24 +189,267 @@ appRoutes.post(
 );
 
 appRoutes.get("/subscription", async (c) => {
-  await requireAppUser(c);
-  return c.json({
-    subscription: {
-      membership_tier: "free",
-      subscription_status: null,
-      has_club_access: false,
-      current_period_end: null,
-      cancel_at_period_end: false,
-      grace_period_end: null,
-      payment_method: null,
-    },
-  });
+  const { db, authUser } = await requireAppUser(c);
+  return c.json({ success: true, subscription: await getMembership(db, authUser.id) });
 });
 
 appRoutes.get("/realtime/config", async (c) => {
   await requireAppUser(c);
   return c.json({ realtime_hash: "" });
 });
+
+appRoutes.get("/lobby", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  await ensureDefaultProfile(db, authUser);
+  await ensureLobbySeed(db);
+
+  const roomRows = await db
+    .select()
+    .from(lobbyRooms)
+    .where(eq(lobbyRooms.isActive, true))
+    .orderBy(asc(lobbyRooms.type), asc(lobbyRooms.name));
+  const events = await getLobbyEventSummary(db);
+  const membership = await getMembership(db, authUser.id);
+  const moderatorRoomIds = await listModeratorRoomIds(db, authUser);
+  const activePermissions = await getLobbyPermissions(
+    db,
+    authUser,
+    membership,
+    events.activeEvent,
+    moderatorRoomIds,
+  );
+
+  return c.json({
+    success: true,
+    server_time: new Date().toISOString(),
+    membership,
+    rooms: roomRows.map(publicLobbyRoom),
+    active_event: events.activeEvent ? publicLobbyEvent(events.activeEvent) : null,
+    upcoming_events: events.upcomingEvents.map(publicLobbyEvent),
+    permissions: activePermissions,
+    moderator_room_ids: moderatorRoomIds,
+  });
+});
+
+appRoutes.get("/lobby/rooms/:roomId/messages", async (c) => {
+  const { db } = await requireAppUser(c);
+  const room = await getLobbyRoomOrThrow(db, c.req.param("roomId"));
+  const rawLimit = Number(c.req.query("limit") || "50");
+  const limit = Math.min(Math.max(Number.isFinite(rawLimit) ? rawLimit : 50, 1), LOBBY_MESSAGE_LIMIT);
+  const rows = await db
+    .select({
+      message: lobbyMessages,
+      sender: user,
+      profile: profiles,
+    })
+    .from(lobbyMessages)
+    .innerJoin(user, eq(user.id, lobbyMessages.userId))
+    .leftJoin(profileMembers, and(eq(profileMembers.userId, user.id), eq(profileMembers.isActive, true)))
+    .leftJoin(profiles, eq(profiles.id, profileMembers.profileId))
+    .where(and(eq(lobbyMessages.roomId, room.id), isNull(lobbyMessages.deletedAt)))
+    .orderBy(desc(lobbyMessages.createdAt))
+    .limit(limit);
+
+  return c.json({
+    success: true,
+    room_id: room.id,
+    messages: rows.reverse().map((row) => publicLobbyMessage(row.message, row.sender, row.profile)),
+  });
+});
+
+appRoutes.post(
+  "/lobby/rooms/:roomId/messages",
+  zValidator("json", lobbyMessageSchema),
+  async (c) => {
+    const { db, authUser } = await requireAppUser(c);
+    const activeProfile = await ensureDefaultProfile(db, authUser);
+    const room = await getLobbyRoomOrThrow(db, c.req.param("roomId"));
+    const body = c.req.valid("json");
+    const [message] = await db
+      .insert(lobbyMessages)
+      .values({
+        roomId: room.id,
+        userId: authUser.id,
+        content: body.content,
+      })
+      .returning();
+
+    return c.json({
+      success: true,
+      message: publicLobbyMessage(message, authUser, activeProfile),
+    }, 201);
+  },
+);
+
+appRoutes.post("/lobby/rooms/:roomId/livekit-token", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const activeProfile = await ensureDefaultProfile(db, authUser);
+  const room = await getLobbyRoomOrThrow(db, c.req.param("roomId"));
+  const membership = await getMembership(db, authUser.id);
+  const moderatorRoomIds = await listModeratorRoomIds(db, authUser);
+  const isModerator = moderatorRoomIds.includes(room.id);
+  const canPublish = isModerator || membership.has_club_access;
+  const publishReason = isModerator ? "moderator" : membership.has_club_access ? "paid_member" : "watch_only";
+
+  if (!c.env.LIVEKIT_URL || !c.env.LIVEKIT_API_KEY || !c.env.LIVEKIT_API_SECRET) {
+    throw new HttpError(503, "livekit_not_configured", "LiveKit is not configured for this environment.", {
+      can_publish: canPublish,
+    });
+  }
+
+  const token = await createLiveKitToken(c.env, {
+    identity: authUser.id,
+    name: activeProfile.displayName || authUser.email,
+    roomName: room.livekitRoomName,
+    ttlSeconds: 60 * 60 * 2,
+    grant: {
+      roomJoin: true,
+      room: room.livekitRoomName,
+      canSubscribe: true,
+      canPublish,
+      canPublishData: true,
+      canUpdateOwnMetadata: true,
+    },
+    metadata: {
+      email: authUser.email,
+      membership_tier: membership.membership_tier,
+      is_moderator: isModerator,
+      can_publish: canPublish,
+      lobby_room: room.slug,
+    },
+  });
+
+  return c.json({
+    success: true,
+    token,
+    url: c.env.LIVEKIT_URL,
+    room_name: room.livekitRoomName,
+    permissions: {
+      can_watch: true,
+      can_publish: canPublish,
+      publish_reason: publishReason,
+      next_free_publish_at: null,
+      is_moderator: isModerator,
+    },
+  });
+});
+
+appRoutes.post("/lobby/events/:eventId/livekit-token", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const activeProfile = await ensureDefaultProfile(db, authUser);
+  const event = await getLobbyEventOrThrow(db, c.req.param("eventId"));
+  const now = new Date();
+  if (!isEventLive(event, now)) {
+    throw new HttpError(409, "office_hours_not_live", "Office hours are not live right now.");
+  }
+
+  const membership = await getMembership(db, authUser.id);
+  const moderatorRoomIds = await listModeratorRoomIds(db, authUser);
+  const isModerator = moderatorRoomIds.includes(event.roomId);
+  const publish = await resolvePublishAccess(db, authUser.id, membership, event, isModerator, now);
+
+  if (!c.env.LIVEKIT_URL || !c.env.LIVEKIT_API_KEY || !c.env.LIVEKIT_API_SECRET) {
+    throw new HttpError(503, "livekit_not_configured", "LiveKit is not configured for this environment.", {
+      can_publish: publish.canPublish,
+    });
+  }
+
+  await recordLobbyAttendance(db, event.id, authUser.id, publish.consumeFreePass);
+
+  const token = await createLiveKitToken(c.env, {
+    identity: authUser.id,
+    name: activeProfile.displayName || authUser.email,
+    roomName: event.livekitRoomName,
+    ttlSeconds: 60 * 60 * 2,
+    grant: {
+      roomJoin: true,
+      room: event.livekitRoomName,
+      canSubscribe: true,
+      canPublish: publish.canPublish,
+      canPublishData: true,
+      canUpdateOwnMetadata: true,
+    },
+    metadata: {
+      email: authUser.email,
+      membership_tier: membership.membership_tier,
+      is_moderator: isModerator,
+      can_publish: publish.canPublish,
+    },
+  });
+
+  return c.json({
+    success: true,
+    token,
+    url: c.env.LIVEKIT_URL,
+    room_name: event.livekitRoomName,
+    permissions: {
+      can_watch: true,
+      can_publish: publish.canPublish,
+      publish_reason: publish.reason,
+      next_free_publish_at: publish.nextFreePublishAt,
+      is_moderator: isModerator,
+    },
+  });
+});
+
+appRoutes.post("/lobby/events/:eventId/mod/mute-all", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const event = await getLobbyEventOrThrow(db, c.req.param("eventId"));
+  await requireLobbyModerator(db, authUser, event.roomId);
+  const result = await muteLiveKitRoom(c, event.livekitRoomName);
+  return c.json({ success: true, ...result });
+});
+
+appRoutes.post(
+  "/lobby/events/:eventId/mod/mute-user",
+  zValidator("json", lobbyTargetSchema),
+  async (c) => {
+    const { db, authUser } = await requireAppUser(c);
+    const event = await getLobbyEventOrThrow(db, c.req.param("eventId"));
+    await requireLobbyModerator(db, authUser, event.roomId);
+    const body = c.req.valid("json");
+    const result = await muteLiveKitParticipant(c, event.livekitRoomName, body.target_user_id, body.track_type);
+    return c.json({ success: true, ...result });
+  },
+);
+
+appRoutes.post(
+  "/lobby/events/:eventId/mod/remove-user",
+  zValidator("json", lobbyTargetSchema.pick({ target_user_id: true })),
+  async (c) => {
+    const { db, authUser } = await requireAppUser(c);
+    const event = await getLobbyEventOrThrow(db, c.req.param("eventId"));
+    await requireLobbyModerator(db, authUser, event.roomId);
+    const body = c.req.valid("json");
+    await callLiveKitRoomService(c, event.livekitRoomName, "RemoveParticipant", {
+      room: event.livekitRoomName,
+      identity: body.target_user_id,
+    });
+    return c.json({ success: true, removed_user_id: body.target_user_id });
+  },
+);
+
+appRoutes.post(
+  "/lobby/events/:eventId/mod/spotlight",
+  zValidator("json", lobbySpotlightSchema),
+  async (c) => {
+    const { db, authUser } = await requireAppUser(c);
+    const event = await getLobbyEventOrThrow(db, c.req.param("eventId"));
+    await requireLobbyModerator(db, authUser, event.roomId);
+    const body = c.req.valid("json");
+    const metadata = {
+      ...safeRecord(event.metadata),
+      spotlightUserId: body.target_user_id || null,
+      spotlightedAt: new Date().toISOString(),
+    };
+    const [updated] = await db
+      .update(lobbyEvents)
+      .set({ metadata, updatedAt: new Date() })
+      .where(eq(lobbyEvents.id, event.id))
+      .returning();
+    return c.json({ success: true, event: publicLobbyEvent(updated) });
+  },
+);
 
 appRoutes.get("/auth/dev-code", async (c) => {
   if (!isDebugAuthCodes(c.env)) throw new HttpError(404, "not_found", "Route not found.");
@@ -636,6 +905,491 @@ function jsonWithStatus(body: unknown, status: number) {
     status,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+async function getMembership(db: Db, userId: string) {
+  const [row] = await db
+    .select()
+    .from(memberships)
+    .where(eq(memberships.userId, userId))
+    .limit(1);
+  const tier = row?.tier ?? "free";
+  const status = row?.status ?? null;
+  const paidTier = tier === "club" || tier === "club_annual";
+  const hasClubAccess = paidTier && (!status || ["active", "trialing", "past_due"].includes(status));
+  return {
+    membership_tier: tier,
+    subscription_status: status,
+    has_club_access: hasClubAccess,
+    current_period_end: toIso(row?.currentPeriodEnd),
+    cancel_at_period_end: row?.cancelAtPeriodEnd ?? false,
+    grace_period_end: toIso(row?.gracePeriodEnd),
+    payment_method: row?.paymentMethod ?? null,
+  };
+}
+
+async function ensureLobbySeed(db: Db) {
+  await db
+    .insert(lobbyRooms)
+    .values([
+      {
+        slug: "lounge",
+        name: "Lobby Lounge",
+        type: "lounge",
+        livekitRoomName: "atlantium-lobby-lounge",
+        description: "Always-on member lobby chat and hangout space.",
+        metadata: { seeded: true },
+      },
+      {
+        slug: "office-hours",
+        name: "Office Hours",
+        type: "office_hours",
+        livekitRoomName: "atlantium-office-hours",
+        description: "Daily live office hours room.",
+        metadata: { seeded: true },
+      },
+    ])
+    .onConflictDoNothing({ target: lobbyRooms.slug });
+
+  await db.execute(sql`
+    INSERT INTO "lobby_events" ("room_id", "title", "description", "starts_at", "ends_at", "timezone", "status", "livekit_room_name", "metadata")
+    SELECT
+      room.id,
+      'Daily Office Hours',
+      'Open technical help, project review, and live collaboration for Atlantium members.',
+      office_hour.starts_at,
+      office_hour.starts_at + interval '1 hour',
+      'America/New_York',
+      'scheduled',
+      'atlantium-office-hours-' || to_char(office_hour.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD'),
+      '{"seeded": true, "recurrence": "daily", "local_start": "12:00"}'::jsonb
+    FROM "lobby_rooms" room
+    CROSS JOIN LATERAL (
+      SELECT ((date_trunc('day', now() AT TIME ZONE 'America/New_York') + (day_offset * interval '1 day') + time '12:00') AT TIME ZONE 'America/New_York') AS starts_at
+      FROM generate_series(0, 29) AS day_offset
+    ) office_hour
+    WHERE room.slug = 'office-hours'
+    ON CONFLICT ("livekit_room_name") DO NOTHING
+  `);
+}
+
+async function getLobbyEventSummary(db: Db) {
+  const now = new Date();
+  const visibleStatuses = or(eq(lobbyEvents.status, "scheduled"), eq(lobbyEvents.status, "live"));
+  const [activeEvent] = await db
+    .select()
+    .from(lobbyEvents)
+    .where(and(lte(lobbyEvents.startsAt, now), gte(lobbyEvents.endsAt, now), visibleStatuses))
+    .orderBy(desc(lobbyEvents.startsAt))
+    .limit(1);
+  const upcomingEvents = await db
+    .select()
+    .from(lobbyEvents)
+    .where(and(gte(lobbyEvents.endsAt, now), visibleStatuses))
+    .orderBy(asc(lobbyEvents.startsAt))
+    .limit(14);
+  return { activeEvent: activeEvent ?? null, upcomingEvents };
+}
+
+async function getLobbyRoomOrThrow(db: Db, roomIdOrSlug: string) {
+  const where = isUuid(roomIdOrSlug)
+    ? eq(lobbyRooms.id, roomIdOrSlug)
+    : eq(lobbyRooms.slug, roomIdOrSlug);
+  const [room] = await db.select().from(lobbyRooms).where(where).limit(1);
+  if (!room || !room.isActive) throw new HttpError(404, "lobby_room_not_found", "Lobby room not found.");
+  return room;
+}
+
+async function getLobbyEventOrThrow(db: Db, eventId: string) {
+  if (!isUuid(eventId)) throw new HttpError(404, "lobby_event_not_found", "Lobby event not found.");
+  const [event] = await db.select().from(lobbyEvents).where(eq(lobbyEvents.id, eventId)).limit(1);
+  if (!event || event.status === "cancelled") {
+    throw new HttpError(404, "lobby_event_not_found", "Lobby event not found.");
+  }
+  return event;
+}
+
+async function listModeratorRoomIds(db: Db, authUser: typeof user.$inferSelect) {
+  if (authUser.isAdmin) {
+    const rooms = await db
+      .select({ id: lobbyRooms.id })
+      .from(lobbyRooms)
+      .where(eq(lobbyRooms.isActive, true));
+    return rooms.map((room) => room.id);
+  }
+  const rows = await db
+    .select({ roomId: lobbyRoomRoles.roomId })
+    .from(lobbyRoomRoles)
+    .innerJoin(lobbyRooms, eq(lobbyRooms.id, lobbyRoomRoles.roomId))
+    .where(and(
+      eq(lobbyRoomRoles.userId, authUser.id),
+      eq(lobbyRoomRoles.role, "moderator"),
+      eq(lobbyRooms.isActive, true),
+    ));
+  return rows.map((row) => row.roomId);
+}
+
+async function requireLobbyModerator(db: Db, authUser: typeof user.$inferSelect, roomId: string) {
+  const roomIds = await listModeratorRoomIds(db, authUser);
+  if (!roomIds.includes(roomId)) throw new HttpError(403, "forbidden", "Lobby moderator access required.");
+}
+
+async function getLobbyPermissions(
+  db: Db,
+  authUser: typeof user.$inferSelect,
+  membership: Awaited<ReturnType<typeof getMembership>>,
+  activeEvent: typeof lobbyEvents.$inferSelect | null,
+  moderatorRoomIds: string[],
+) {
+  if (!activeEvent) {
+    const canPublishInLounge = moderatorRoomIds.length > 0 || membership.has_club_access;
+    return {
+      can_chat: true,
+      can_watch: true,
+      can_publish_now: canPublishInLounge,
+      publish_reason: moderatorRoomIds.length > 0
+        ? "moderator"
+        : membership.has_club_access
+          ? "paid_member"
+          : "office_hours_not_live",
+      next_free_publish_at: canPublishInLounge ? null : await getNextFreePublishAt(db, authUser.id),
+      is_moderator: moderatorRoomIds.length > 0,
+    };
+  }
+  const publish = await resolvePublishAccess(
+    db,
+    authUser.id,
+    membership,
+    activeEvent,
+    moderatorRoomIds.includes(activeEvent.roomId),
+    new Date(),
+  );
+  return {
+    can_chat: true,
+    can_watch: true,
+    can_publish_now: publish.canPublish,
+    publish_reason: publish.reason,
+    next_free_publish_at: publish.nextFreePublishAt,
+    is_moderator: moderatorRoomIds.includes(activeEvent.roomId),
+  };
+}
+
+async function resolvePublishAccess(
+  db: Db,
+  userId: string,
+  membership: Awaited<ReturnType<typeof getMembership>>,
+  event: typeof lobbyEvents.$inferSelect,
+  isModerator: boolean,
+  now: Date,
+) {
+  if (isModerator) {
+    return { canPublish: true, reason: "moderator", nextFreePublishAt: null as string | null, consumeFreePass: false };
+  }
+  if (membership.has_club_access) {
+    return { canPublish: true, reason: "paid_member", nextFreePublishAt: null as string | null, consumeFreePass: false };
+  }
+
+  const [currentEventPass] = await db
+    .select()
+    .from(lobbyEventAttendance)
+    .where(and(
+      eq(lobbyEventAttendance.userId, userId),
+      eq(lobbyEventAttendance.eventId, event.id),
+      eq(lobbyEventAttendance.publishGranted, true),
+    ))
+    .limit(1);
+  if (currentEventPass) {
+    return { canPublish: true, reason: "free_pass_current_event", nextFreePublishAt: null as string | null, consumeFreePass: false };
+  }
+
+  const [lastGrant] = await db
+    .select()
+    .from(lobbyEventAttendance)
+    .where(and(eq(lobbyEventAttendance.userId, userId), eq(lobbyEventAttendance.publishGranted, true)))
+    .orderBy(desc(lobbyEventAttendance.joinedAt))
+    .limit(1);
+  if (!lastGrant) {
+    return { canPublish: true, reason: "free_pass_available", nextFreePublishAt: null as string | null, consumeFreePass: true };
+  }
+
+  const availableAt = addDays(lastGrant.joinedAt, FREE_PUBLISH_COOLDOWN_DAYS);
+  if (availableAt <= now) {
+    return { canPublish: true, reason: "free_pass_available", nextFreePublishAt: null as string | null, consumeFreePass: true };
+  }
+  return {
+    canPublish: false,
+    reason: "free_pass_cooldown",
+    nextFreePublishAt: availableAt.toISOString(),
+    consumeFreePass: false,
+  };
+}
+
+async function getNextFreePublishAt(db: Db, userId: string) {
+  const [lastGrant] = await db
+    .select()
+    .from(lobbyEventAttendance)
+    .where(and(eq(lobbyEventAttendance.userId, userId), eq(lobbyEventAttendance.publishGranted, true)))
+    .orderBy(desc(lobbyEventAttendance.joinedAt))
+    .limit(1);
+  return lastGrant ? addDays(lastGrant.joinedAt, FREE_PUBLISH_COOLDOWN_DAYS).toISOString() : null;
+}
+
+async function recordLobbyAttendance(db: Db, eventId: string, userId: string, publishGranted: boolean) {
+  const now = new Date();
+  const [existing] = await db
+    .select()
+    .from(lobbyEventAttendance)
+    .where(and(eq(lobbyEventAttendance.eventId, eventId), eq(lobbyEventAttendance.userId, userId)))
+    .limit(1);
+  if (existing) {
+    await db
+      .update(lobbyEventAttendance)
+      .set({
+        publishGranted: existing.publishGranted || publishGranted,
+        joinedAt: existing.joinedAt ?? now,
+        updatedAt: now,
+      })
+      .where(eq(lobbyEventAttendance.id, existing.id));
+    return;
+  }
+  await db.insert(lobbyEventAttendance).values({
+    eventId,
+    userId,
+    publishGranted,
+    joinedAt: now,
+  });
+}
+
+function publicLobbyRoom(room: typeof lobbyRooms.$inferSelect) {
+  return {
+    id: room.id,
+    slug: room.slug,
+    name: room.name,
+    type: room.type,
+    description: room.description,
+    is_active: room.isActive,
+  };
+}
+
+function publicLobbyEvent(event: typeof lobbyEvents.$inferSelect) {
+  const metadata = safeRecord(event.metadata);
+  return {
+    id: event.id,
+    room_id: event.roomId,
+    title: event.title,
+    description: event.description,
+    starts_at: toIso(event.startsAt),
+    ends_at: toIso(event.endsAt),
+    timezone: event.timezone,
+    status: event.status,
+    is_live: isEventLive(event, new Date()),
+    spotlight_user_id: typeof metadata.spotlightUserId === "string" ? metadata.spotlightUserId : null,
+  };
+}
+
+function publicLobbyMessage(
+  message: typeof lobbyMessages.$inferSelect,
+  sender: typeof user.$inferSelect,
+  profile: Pick<typeof profiles.$inferSelect, "displayName" | "avatarUrl" | "slug"> | null,
+) {
+  const displayName = profile?.displayName || sender.name || sender.email.split("@")[0];
+  return {
+    id: message.id,
+    room_id: message.roomId,
+    sender_id: sender.id,
+    sender_username: profile?.slug || sender.email.split("@")[0],
+    sender_display_name: displayName,
+    sender_avatar: profile?.avatarUrl || sender.image || null,
+    content: message.content,
+    created_at: toIso(message.createdAt),
+    updated_at: toIso(message.updatedAt),
+  };
+}
+
+function isEventLive(event: typeof lobbyEvents.$inferSelect, now: Date) {
+  return event.status !== "cancelled" && event.startsAt <= now && event.endsAt > now;
+}
+
+function addDays(value: Date, days: number) {
+  const result = new Date(value);
+  result.setUTCDate(result.getUTCDate() + days);
+  return result;
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function safeRecord(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function toIso(value: Date | string | null | undefined) {
+  if (!value) return null;
+  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+}
+
+type LiveKitGrant = {
+  roomJoin: boolean;
+  room: string;
+  canSubscribe?: boolean;
+  canPublish?: boolean;
+  canPublishData?: boolean;
+  canUpdateOwnMetadata?: boolean;
+  roomAdmin?: boolean;
+};
+
+async function createLiveKitToken(
+  env: Env,
+  options: {
+    identity: string;
+    name: string;
+    roomName: string;
+    ttlSeconds: number;
+    grant: LiveKitGrant;
+    metadata?: Record<string, unknown>;
+  },
+) {
+  const apiKey = requireEnv(env, "LIVEKIT_API_KEY");
+  const apiSecret = requireEnv(env, "LIVEKIT_API_SECRET");
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: "HS256", typ: "JWT" };
+  const payload = {
+    iss: apiKey,
+    sub: options.identity,
+    name: options.name,
+    nbf: now - 10,
+    exp: now + options.ttlSeconds,
+    video: options.grant,
+    metadata: JSON.stringify(options.metadata || {}),
+  };
+  const unsigned = `${base64UrlJson(header)}.${base64UrlJson(payload)}`;
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(apiSecret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(unsigned));
+  return `${unsigned}.${base64UrlBytes(new Uint8Array(signature))}`;
+}
+
+async function callLiveKitRoomService(
+  c: Context<{ Bindings: Env }>,
+  roomName: string,
+  method: "ListParticipants" | "MutePublishedTrack" | "RemoveParticipant",
+  body: Record<string, unknown>,
+) {
+  const url = liveKitHttpUrl(c.env.LIVEKIT_URL);
+  if (!url || !c.env.LIVEKIT_API_KEY || !c.env.LIVEKIT_API_SECRET) {
+    throw new HttpError(503, "livekit_not_configured", "LiveKit is not configured for this environment.");
+  }
+  const token = await createLiveKitToken(c.env, {
+    identity: "atlantium-api",
+    name: "Atlantium API",
+    roomName,
+    ttlSeconds: 60,
+    grant: {
+      roomJoin: true,
+      room: roomName,
+      roomAdmin: true,
+      canSubscribe: true,
+      canPublish: false,
+    },
+  });
+  const response = await fetch(`${url}/twirp/livekit.RoomService/${method}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  const text = await response.text();
+  const data = text ? JSON.parse(text) as Record<string, unknown> : {};
+  if (!response.ok) {
+    throw new HttpError(response.status, "livekit_service_error", "LiveKit service call failed.", { method, data });
+  }
+  return data;
+}
+
+async function muteLiveKitRoom(c: Context<{ Bindings: Env }>, roomName: string) {
+  const listed = await callLiveKitRoomService(c, roomName, "ListParticipants", { room: roomName });
+  const participants = Array.isArray(listed.participants) ? listed.participants as Array<Record<string, unknown>> : [];
+  let mutedTracks = 0;
+  for (const participant of participants) {
+    const identity = String(participant.identity || "");
+    const tracks = Array.isArray(participant.tracks) ? participant.tracks as Array<Record<string, unknown>> : [];
+    for (const track of tracks) {
+      if (!isAudioTrack(track)) continue;
+      const trackSid = String(track.sid || track.trackSid || "");
+      if (!identity || !trackSid) continue;
+      await callLiveKitRoomService(c, roomName, "MutePublishedTrack", {
+        room: roomName,
+        identity,
+        trackSid,
+        muted: true,
+      });
+      mutedTracks += 1;
+    }
+  }
+  return { muted_tracks: mutedTracks };
+}
+
+async function muteLiveKitParticipant(
+  c: Context<{ Bindings: Env }>,
+  roomName: string,
+  identity: string,
+  trackType: "audio" | "video" = "audio",
+) {
+  const listed = await callLiveKitRoomService(c, roomName, "ListParticipants", { room: roomName });
+  const participants = Array.isArray(listed.participants) ? listed.participants as Array<Record<string, unknown>> : [];
+  const participant = participants.find((row) => row.identity === identity);
+  if (!participant) throw new HttpError(404, "participant_not_found", "LiveKit participant not found.");
+  const tracks = Array.isArray(participant.tracks) ? participant.tracks as Array<Record<string, unknown>> : [];
+  const matchingTracks = tracks.filter((track) => trackType === "audio" ? isAudioTrack(track) : isVideoTrack(track));
+  let mutedTracks = 0;
+  for (const track of matchingTracks) {
+    const trackSid = String(track.sid || track.trackSid || "");
+    if (!trackSid) continue;
+    await callLiveKitRoomService(c, roomName, "MutePublishedTrack", {
+      room: roomName,
+      identity,
+      trackSid,
+      muted: true,
+    });
+    mutedTracks += 1;
+  }
+  return { muted_tracks: mutedTracks, target_user_id: identity, track_type: trackType };
+}
+
+function isAudioTrack(track: Record<string, unknown>) {
+  return track.source === "MICROPHONE" || track.type === "AUDIO" || track.kind === "audio";
+}
+
+function isVideoTrack(track: Record<string, unknown>) {
+  return track.source === "CAMERA" || track.source === "SCREEN_SHARE" || track.type === "VIDEO" || track.kind === "video";
+}
+
+function liveKitHttpUrl(rawUrl: string | undefined) {
+  if (!rawUrl) return null;
+  const url = new URL(rawUrl);
+  if (url.protocol === "wss:") url.protocol = "https:";
+  if (url.protocol === "ws:") url.protocol = "http:";
+  return url.toString().replace(/\/+$/, "");
+}
+
+function base64UrlJson(value: unknown) {
+  return base64UrlBytes(new TextEncoder().encode(JSON.stringify(value)));
+}
+
+function base64UrlBytes(bytes: Uint8Array) {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 async function requireAppUser(c: Context<{ Bindings: Env }>) {

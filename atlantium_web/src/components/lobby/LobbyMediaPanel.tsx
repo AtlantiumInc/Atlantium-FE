@@ -47,14 +47,18 @@ function ParticipantTile({
 
 interface LobbyMediaPanelProps {
   spotlightUserId?: string | null;
-  isAdmin?: boolean;
+  isModerator?: boolean;
+  canPublish?: boolean;
 }
 
-export function LobbyMediaPanel({ spotlightUserId, isAdmin }: LobbyMediaPanelProps) {
+export function LobbyMediaPanel({ spotlightUserId, isModerator, canPublish }: LobbyMediaPanelProps) {
   const [localFeaturedIndex, setLocalFeaturedIndex] = useState(0);
 
   const videoTracks = useTracks(
-    [{ source: Track.Source.Camera, withPlaceholder: true }],
+    [
+      { source: Track.Source.ScreenShare, withPlaceholder: false },
+      { source: Track.Source.Camera, withPlaceholder: true },
+    ],
     { onlySubscribed: false }
   );
 
@@ -68,8 +72,7 @@ export function LobbyMediaPanel({ spotlightUserId, isAdmin }: LobbyMediaPanelPro
     ? videoTracks.findIndex((t) => t.participant?.identity === spotlightUserId)
     : -1;
 
-  // Spotlight overrides local selection for non-admins
-  const effectiveIndex = spotlightIndex >= 0 && !isAdmin ? spotlightIndex : localFeaturedIndex;
+  const effectiveIndex = spotlightIndex >= 0 ? spotlightIndex : localFeaturedIndex;
 
   // When spotlight changes, also update local for admins so they see it too
   useEffect(() => {
@@ -97,7 +100,9 @@ export function LobbyMediaPanel({ spotlightUserId, isAdmin }: LobbyMediaPanelPro
       {videoTracks.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-2">
           <p className="text-sm">No one is on camera yet</p>
-          <p className="text-xs">Toggle your camera to get started</p>
+          <p className="text-xs">
+            {canPublish ? "Turn on camera or share your screen when you are ready." : "You can watch and listen in this session."}
+          </p>
         </div>
       ) : (
         <div className="flex-1 flex gap-3 min-h-0">
@@ -106,8 +111,7 @@ export function LobbyMediaPanel({ spotlightUserId, isAdmin }: LobbyMediaPanelPro
             <div className="w-44 shrink-0 flex flex-col gap-2 overflow-y-auto">
               {others.map((trackRef, i) => {
                 const origIndex = videoTracks.indexOf(trackRef);
-                // Only admins can click to change featured
-                const handleClick = isAdmin ? () => setLocalFeaturedIndex(origIndex) : undefined;
+                const handleClick = isModerator ? () => setLocalFeaturedIndex(origIndex) : undefined;
                 return (
                   <ParticipantTile
                     key={
@@ -118,7 +122,7 @@ export function LobbyMediaPanel({ spotlightUserId, isAdmin }: LobbyMediaPanelPro
                     trackRef={trackRef}
                     onClick={handleClick}
                     className={`aspect-video shrink-0 transition-all ${
-                      isAdmin ? "cursor-pointer hover:ring-2 hover:ring-primary/50" : ""
+                      isModerator ? "cursor-pointer hover:ring-2 hover:ring-primary/50" : ""
                     }`}
                   />
                 );

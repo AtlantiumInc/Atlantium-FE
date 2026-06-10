@@ -2,11 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
-  Calendar,
   FlaskConical,
-  Handshake,
   Loader2,
-  MessageCircle,
   Radio,
   Send,
   Sparkles,
@@ -40,9 +37,6 @@ export function Sidebar({
   const navItems = [
     { id: "lobby",       icon: <Radio size={20} />,        label: "Lobby" },
     { id: "playground",  icon: <FlaskConical size={20} />,  label: "Playground" },
-    { id: "events",      icon: <Calendar size={20} />,      label: "Events" },
-    { id: "messages",    icon: <MessageCircle size={20} />, label: "Inbox" },
-    { id: "connect",     icon: <Handshake size={20} />,     label: "Connect" },
   ];
 
   // Auto-scroll on new messages

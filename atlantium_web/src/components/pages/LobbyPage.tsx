@@ -1,414 +1,699 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useLobbyChannel } from "@/hooks/useLobbyChannel";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Loader2, Send, Users } from "lucide-react";
-import { api } from "@/lib/api";
-import { LobbyMediaPanel } from "@/components/lobby/LobbyMediaPanel";
-import { LobbyControls } from "@/components/lobby/LobbyControls";
-import { AdminPanel } from "@/components/lobby/AdminPanel";
+import {
+  Clock,
+  Crown,
+  Loader2,
+  MessageCircle,
+  Radio,
+  Send,
+  Users,
+  Video,
+  VideoOff,
+} from "lucide-react";
 import { toast } from "sonner";
-import type { LobbyMember, ThreadMessage } from "@/lib/types";
-import type {
-  LobbyJoinPayload,
-  LobbyLeavePayload,
-  PositionUpdatePayload,
-  AdminMutePayload,
-  AdminKickPayload,
-  AdminSpotlightPayload,
-} from "@/lib/realtime-types";
+import { AdminPanel } from "@/components/lobby/AdminPanel";
+import { LobbyControls } from "@/components/lobby/LobbyControls";
+import { LobbyMediaPanel } from "@/components/lobby/LobbyMediaPanel";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/contexts/AuthContext";
+import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import type { LobbyEvent, LobbyMessage, LobbyResponse, LobbyRoom } from "@/lib/types";
 
-export function LobbyPage() {
+interface LobbyPageProps {
+  headerPortalId?: string;
+}
+
+export function LobbyPage({ headerPortalId }: LobbyPageProps) {
   const { user } = useAuth();
-  const userId = user?.id || "";
-  const isAdmin = user?.is_admin === true;
-
-  const [threadId, setThreadId] = useState<string | null>(null);
-  const [members, setMembers] = useState<Map<string, LobbyMember>>(new Map());
-  const [messages, setMessages] = useState<ThreadMessage[]>([]);
+  const [lobby, setLobby] = useState<LobbyResponse | null>(null);
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<LobbyMessage[]>([]);
   const [messageInput, setMessageInput] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [livekitToken, setLivekitToken] = useState<string | null>(null);
-  const [livekitUrl, setLivekitUrl] = useState<string | null>(null);
-  const [spotlightUserId, setSpotlightUserId] = useState<string | null>(null);
+  const [isJoining, setIsJoining] = useState(false);
+  const [headerHost, setHeaderHost] = useState<HTMLElement | null>(null);
+  const [mediaSession, setMediaSession] = useState<{
+    eventId?: string;
+    roomId?: string;
+    token: string;
+    url: string;
+    canPublish: boolean;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const threadIdRef = useRef<string | null>(null);
 
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
+  const selectedRoom = useMemo(
+    () => lobby?.rooms.find((room) => room.id === selectedRoomId) ?? lobby?.rooms[0] ?? null,
+    [lobby?.rooms, selectedRoomId]
+  );
+  const officeHoursRoom = useMemo(
+    () => lobby?.rooms.find((room) => room.type === "office_hours") ?? null,
+    [lobby?.rooms]
+  );
+  const activeEvent = lobby?.active_event ?? null;
+  const isModerator = lobby?.permissions.is_moderator === true;
+  const canPublish = mediaSession?.canPublish ?? lobby?.permissions.can_publish_now ?? false;
+  const lobbyCount = useMemo(() => {
+    const userIds = new Set(messages.map((message) => message.sender_id).filter(Boolean));
+    if (user?.id) userIds.add(user.id);
+    return Math.max(userIds.size, user ? 1 : 0);
+  }, [messages, user]);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
+    if (!headerPortalId || typeof document === "undefined") {
+      setHeaderHost(null);
+      return;
+    }
+    setHeaderHost(document.getElementById(headerPortalId));
+  }, [headerPortalId]);
 
-  // Realtime callbacks
-  const handleMemberJoin = useCallback((payload: LobbyJoinPayload) => {
-    setMembers((prev) => {
-      const next = new Map(prev);
-      next.set(payload.user_id, {
-        user_id: payload.user_id,
-        position: payload.position,
-        username: payload.username,
-        display_name: payload.display_name,
-        avatar_url: payload.avatar_url,
-      });
-      return next;
-    });
-  }, []);
-
-  const handleMemberLeave = useCallback((payload: LobbyLeavePayload) => {
-    setMembers((prev) => {
-      const next = new Map(prev);
-      next.delete(payload.user_id);
-      return next;
-    });
-  }, []);
-
-  const handlePositionUpdate = useCallback((payload: PositionUpdatePayload) => {
-    setMembers((prev) => {
-      const existing = prev.get(payload.user_id);
-      if (!existing) return prev;
-      const next = new Map(prev);
-      next.set(payload.user_id, { ...existing, position: payload.position });
-      return next;
-    });
-  }, []);
-
-  const handleNewMessage = useCallback((message: ThreadMessage) => {
-    if (message.sender_id === user?.id) return;
-    setMessages((prev) => {
-      if (prev.some((m) => m.message_id === message.message_id)) return prev;
-      return [...prev, message];
-    });
-  }, [user?.id]);
-
-  const handleAdminMute = useCallback(
-    (payload: AdminMutePayload) => {
-      if (payload.target_user_id === userId) {
-        toast.warning(
-          `An admin muted your ${payload.track_type}. Please keep it muted.`
-        );
-        window.dispatchEvent(
-          new CustomEvent("lobby-admin-mute", {
-            detail: { trackType: payload.track_type },
-          })
-        );
+  const loadLobby = useCallback(async () => {
+    const data = await api.getLobby();
+    setLobby((previous) => {
+      if (!selectedRoomId && data.rooms.length > 0) {
+        const lounge = data.rooms.find((room) => room.slug === "lounge");
+        setSelectedRoomId(lounge?.id ?? data.rooms[0].id);
       }
-    },
-    [userId]
-  );
-
-  const handleAdminKick = useCallback(
-    (payload: AdminKickPayload) => {
-      if (payload.target_user_id === userId) {
-        toast.error("You have been kicked from the lobby by an admin.");
-        setLivekitToken(null);
-        setMembers(new Map());
+      if (previous?.active_event?.id !== data.active_event?.id) {
+        setMediaSession(null);
       }
-    },
-    [userId]
-  );
+      return data;
+    });
+  }, [selectedRoomId]);
 
-  const handleAdminSpotlight = useCallback(
-    (payload: AdminSpotlightPayload) => {
-      setSpotlightUserId(payload.target_user_id);
-      toast.info("An admin has spotlighted a participant.");
-    },
-    []
-  );
-
-  const { broadcastMessage: _broadcastMessage } = useLobbyChannel({
-    threadId,
-    onMemberJoin: handleMemberJoin,
-    onMemberLeave: handleMemberLeave,
-    onPositionUpdate: handlePositionUpdate,
-    onNewMessage: handleNewMessage,
-    onAdminMute: handleAdminMute,
-    onAdminKick: handleAdminKick,
-    onAdminSpotlight: handleAdminSpotlight,
-  });
-
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      console.log("[Lobby] Admin mute received for track:", detail.trackType);
-    };
-    window.addEventListener("lobby-admin-mute", handler);
-    return () => window.removeEventListener("lobby-admin-mute", handler);
-  }, []);
-
-  // Initialize lobby on mount
   useEffect(() => {
     let cancelled = false;
-
     async function init() {
       try {
         setIsLoading(true);
-        setError(null);
-
-        const lobbyData = await api.getLobby();
-        if (cancelled) return;
-
-        setThreadId(lobbyData.thread_id);
-        threadIdRef.current = lobbyData.thread_id;
-
-        await api.joinLobby();
-        if (cancelled) return;
-
-        const freshData = await api.getLobby();
-        if (cancelled) return;
-        const membersMap = new Map<string, LobbyMember>();
-        for (const m of freshData.members) {
-          membersMap.set(m.user_id, m);
-        }
-        setMembers(membersMap);
-
-        try {
-          const msgData = await api.getThreadMessages(lobbyData.thread_id, 1, 50);
-          if (cancelled) return;
-          setMessages(msgData.messages.reverse());
-        } catch {
-          // Messages may fail if thread is brand new
-        }
-
-        try {
-          const lkResponse = await api.getLobbyLivekitToken();
-          if (cancelled) return;
-          console.log("[Lobby] LiveKit token received, url:", lkResponse.url);
-          setLivekitToken(lkResponse.token);
-          setLivekitUrl(lkResponse.url);
-        } catch (lkErr: any) {
-          console.warn("[Lobby] LiveKit token failed, continuing without media:", lkErr.message);
-          toast.warning("Voice/video unavailable: " + (lkErr.message || "token error"));
-        }
-      } catch (err) {
-        if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Failed to load lobby");
+        await loadLobby();
+      } catch (err: any) {
+        if (!cancelled) toast.error(err.message || "Failed to load lobby");
       } finally {
         if (!cancelled) setIsLoading(false);
       }
     }
-
     init();
-
+    const interval = window.setInterval(() => {
+      loadLobby().catch((err) => console.warn("[Lobby] refresh failed", err));
+    }, 10000);
     return () => {
       cancelled = true;
-      if (threadIdRef.current) {
-        api.leaveLobby().catch(() => {});
-      }
+      window.clearInterval(interval);
     };
+  }, [loadLobby]);
+
+  const loadMessages = useCallback(async (roomId: string) => {
+    const response = await api.getLobbyRoomMessages(roomId, 60);
+    setMessages(response.messages);
   }, []);
 
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (threadIdRef.current) {
-        const token = api.getAuthToken();
-        if (token) {
-          fetch("https://cloud.atlantium.ai/api:_c66cUCc/lobby/leave", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            keepalive: true,
-          }).catch(() => {});
-        }
+    if (!selectedRoom?.id) return;
+    const roomId = selectedRoom.id;
+    let cancelled = false;
+    async function refresh() {
+      try {
+        const response = await api.getLobbyRoomMessages(roomId, 60);
+        if (!cancelled) setMessages(response.messages);
+      } catch (err) {
+        console.warn("[Lobby] messages refresh failed", err);
       }
+    }
+    refresh();
+    const interval = window.setInterval(refresh, 4000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
     };
+  }, [selectedRoom?.id]);
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, []);
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length]);
 
   const handleSendMessage = async () => {
-    if (!messageInput.trim() || !threadId || isSending) return;
-
     const content = messageInput.trim();
+    if (!content || !selectedRoom || isSending || !user) return;
     setMessageInput("");
     setIsSending(true);
 
-    const tempId = `temp-${Date.now()}`;
-    const optimisticMessage: ThreadMessage = {
-      message_id: tempId,
-      thread_id: threadId,
-      sender_id: user?.id || "",
-      sender_username: user?.display_name || user?.email || "",
-      sender_avatar: user?.avatar,
+    const optimistic: LobbyMessage = {
+      id: `temp-${Date.now()}`,
+      room_id: selectedRoom.id,
+      sender_id: user.id,
+      sender_username: user.email.split("@")[0],
+      sender_display_name: user.display_name || user.email,
+      sender_avatar: user.avatar ?? null,
       content,
-      is_reply: false,
       created_at: new Date().toISOString(),
+      updated_at: null,
     };
-
-    setMessages((prev) => [...prev, optimisticMessage]);
+    setMessages((current) => [...current, optimistic]);
 
     try {
-      const result = await api.sendMessage(threadId, content);
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.message_id === tempId
-            ? { ...m, message_id: result.message_id, created_at: result.created_at }
-            : m
-        )
-      );
-    } catch {
-      setMessages((prev) => prev.filter((m) => m.message_id !== tempId));
+      const response = await api.sendLobbyMessage(selectedRoom.id, content);
+      setMessages((current) => current.map((message) => message.id === optimistic.id ? response.message : message));
+    } catch (err: any) {
+      setMessages((current) => current.filter((message) => message.id !== optimistic.id));
+      toast.error(err.message || "Message failed");
     } finally {
       setIsSending(false);
     }
   };
 
-  const handleLeave = async () => {
+  const handleJoinMediaRoom = async () => {
+    if (!selectedRoom || isJoining) return;
+    setIsJoining(true);
     try {
-      await api.leaveLobby();
-      threadIdRef.current = null;
-      setLivekitToken(null);
-      setMembers(new Map());
+      const response = selectedRoom.type === "office_hours"
+        ? activeEvent
+          ? await api.getLobbyEventLivekitToken(activeEvent.id)
+          : null
+        : await api.getLobbyRoomLivekitToken(selectedRoom.id);
+      if (!response) {
+        toast.error("Office hours are not live right now");
+        return;
+      }
+      setMediaSession({
+        eventId: activeEvent?.id,
+        roomId: selectedRoom.id,
+        token: response.token,
+        url: response.url,
+        canPublish: response.permissions.can_publish,
+      });
+      if (officeHoursRoom) {
+        setSelectedRoomId(officeHoursRoom.id);
+        void loadMessages(officeHoursRoom.id);
+      }
     } catch (err: any) {
-      toast.error(err.message || "Failed to leave lobby");
+      toast.error(err.message || "Could not join office hours");
+    } finally {
+      setIsJoining(false);
     }
+  };
+
+  const leaveOfficeHours = () => {
+    setMediaSession(null);
+  };
+
+  const handleSpotlight = (userId: string | null) => {
+    setLobby((current) => current && current.active_event
+      ? {
+          ...current,
+          active_event: { ...current.active_event, spotlight_user_id: userId },
+          upcoming_events: current.upcoming_events.map((event) =>
+            event.id === current.active_event?.id ? { ...event, spotlight_user_id: userId } : event
+          ),
+        }
+      : current);
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  if (error) {
+  if (!lobby || !selectedRoom) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-destructive">{error}</p>
+      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+        Lobby unavailable.
       </div>
     );
   }
 
-  const membersArray: LobbyMember[] = Array.from(members.values());
+  const headerControls = (
+    <LobbyHeaderControls
+      rooms={lobby.rooms}
+      selectedRoom={selectedRoom}
+      activeEvent={activeEvent}
+      upcomingEvents={lobby.upcoming_events}
+      isFreeMember={lobby.membership.membership_tier === "free" && !isModerator}
+      canPublish={canPublish}
+      publishLabel={publishStatusLabel(lobby.permissions)}
+      lobbyCount={lobbyCount}
+      mediaActive={Boolean(mediaSession)}
+      isJoining={isJoining}
+      onRoomChange={setSelectedRoomId}
+      onJoinMediaRoom={handleJoinMediaRoom}
+      onLeaveOfficeHours={leaveOfficeHours}
+    />
+  );
+
+  const headerPortal = headerPortalId
+    ? headerHost
+      ? createPortal(headerControls, headerHost)
+      : null
+    : headerControls;
 
   const lobbyContent = (
-    <div className="absolute inset-0 flex flex-col">
-      {/* Main area: media + chat sidebar */}
-      <div className="flex-1 flex min-h-0">
-        {/* Video / media area */}
-        <div className="flex-1 min-w-0 min-h-0 p-3">
-          {livekitToken ? (
-            <div className="h-full">
-              <LobbyMediaPanel spotlightUserId={spotlightUserId} isAdmin={isAdmin} />
-            </div>
-          ) : (
-            <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-3">
-              <Users size={32} />
-              <p className="text-sm">Connecting to lobby...</p>
-            </div>
-          )}
-        </div>
+    <div className={cn("flex h-full min-h-0 flex-col", !headerPortalId && "gap-4")}>
+      {headerPortal}
 
-        {/* Right sidebar: Chat */}
-        <div className="w-72 shrink-0 border-l border-border flex flex-col min-h-0">
-          <div className="px-3 py-2 border-b border-border shrink-0 flex items-center justify-between">
-            <h3 className="text-sm font-medium">Chat</h3>
-            <div className="flex items-center gap-1.5">
-              <Users size={14} className="text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">{members.size}</span>
+      <section className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]">
+        <main className="min-h-0 rounded-lg border border-border/60 bg-background/50">
+          <div className="flex h-full min-h-0 flex-col">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border/60 p-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Radio className="h-4 w-4 text-cyan-300" />
+                  <h2 className="text-base font-semibold">{selectedRoom.name}</h2>
+                  {selectedRoom.type === "office_hours" && activeEvent && (
+                    <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300">Live</Badge>
+                  )}
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">{selectedRoom.description}</p>
+              </div>
             </div>
-          </div>
 
-          {isAdmin && (
-            <div className="p-2 border-b border-border shrink-0">
-              <AdminPanel members={membersArray} currentUserId={userId} />
-            </div>
-          )}
-
-          <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2 min-h-0">
-            {messages.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center mt-4">
-                No messages yet
-              </p>
-            ) : (
-              messages.map((msg) => {
-                const isOwn = msg.sender_id === user?.id;
-                return (
-                  <div key={msg.message_id} className="text-sm">
-                    <span className={`font-medium ${isOwn ? "text-primary" : "text-foreground"}`}>
-                      {msg.sender_username}
-                    </span>
-                    <span className="text-muted-foreground ml-1.5 text-xs">
-                      {new Date(msg.created_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                    <p className="text-foreground/90 break-words">{msg.content}</p>
+            <div className="min-h-0 flex-1 p-4">
+              {mediaSession ? (
+                <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-border/60 bg-card/30">
+                  <div className="min-h-0 flex-1 p-3">
+                    <LobbyMediaPanel
+                      spotlightUserId={activeEvent?.spotlight_user_id}
+                      isModerator={isModerator}
+                      canPublish={canPublish}
+                    />
                   </div>
-                );
-              })
+                  {isModerator && activeEvent && (
+                    <div className="shrink-0 border-t border-border/60 p-3">
+                      <AdminPanel
+                        eventId={activeEvent.id}
+                        currentUserId={user?.id || ""}
+                        onSpotlight={handleSpotlight}
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <OfficeHoursPanel
+                  activeEvent={activeEvent}
+                  upcomingEvents={lobby.upcoming_events}
+                  onJoin={handleJoinMediaRoom}
+                  isJoining={isJoining}
+                />
+              )}
+            </div>
+          </div>
+        </main>
+
+        <aside className="flex min-h-0 flex-col rounded-lg border border-border/60 bg-background/50">
+          <div className="flex shrink-0 items-center justify-between border-b border-border/60 p-3">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <MessageCircle className="h-4 w-4 text-cyan-300" />
+              {selectedRoom.name} chat
+            </div>
+            <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+              {messages.length}
+            </Badge>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto p-3">
+            {messages.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
+                No messages yet.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {messages.map((message) => (
+                  <ChatMessage key={message.id} message={message} isOwn={message.sender_id === user?.id} />
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
             )}
-            <div ref={messagesEndRef} />
           </div>
 
-          <div className="shrink-0 border-t border-border p-2">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSendMessage();
-              }}
-              className="flex gap-1.5"
-            >
-              <Input
+          <form
+            className="shrink-0 border-t border-border/60 p-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleSendMessage();
+            }}
+          >
+            <div className="flex gap-2">
+              <Textarea
                 value={messageInput}
-                onChange={(e) => setMessageInput(e.target.value)}
-                placeholder="Message..."
-                className="text-sm h-8"
+                onChange={(event) => setMessageInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    void handleSendMessage();
+                  }
+                }}
+                placeholder="Message the lobby"
+                rows={1}
+                className="min-h-10 resize-none"
               />
-              <Button
-                type="submit"
-                size="sm"
-                variant="ghost"
-                disabled={!messageInput.trim() || isSending}
-                className="h-8 w-8 p-0 shrink-0"
-              >
-                <Send size={14} />
+              <Button type="submit" size="icon" disabled={!messageInput.trim() || isSending} className="h-10 w-10 shrink-0">
+                {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
-            </form>
-          </div>
-        </div>
-      </div>
-
-      {/* Controls bar — pinned to bottom */}
-      {livekitToken && (
-        <div className="shrink-0 border-t border-border">
-          <LobbyControls onLeave={handleLeave} />
-        </div>
-      )}
+            </div>
+          </form>
+        </aside>
+      </section>
     </div>
   );
 
-  if (livekitToken && livekitUrl) {
+  if (mediaSession) {
     return (
-      <div className="relative h-full">
-        <LiveKitRoom
-          token={livekitToken}
-          serverUrl={livekitUrl}
-          connect={true}
-          audio={false}
-          video={false}
-          style={{ height: "100%", position: "relative" }}
-          onDisconnected={() => {
-            console.log("[Lobby] LiveKit disconnected");
-          }}
-        >
-          <RoomAudioRenderer />
-          {lobbyContent}
-        </LiveKitRoom>
-      </div>
+      <LiveKitRoom
+        serverUrl={mediaSession.url}
+        token={mediaSession.token}
+        connect={true}
+        audio={false}
+        video={false}
+        onDisconnected={leaveOfficeHours}
+        className="h-full"
+      >
+        {lobbyContent}
+        <RoomAudioRenderer />
+      </LiveKitRoom>
     );
   }
 
-  return <div className="relative h-full">{lobbyContent}</div>;
+  return lobbyContent;
+}
+
+function LobbyHeaderControls({
+  rooms,
+  selectedRoom,
+  activeEvent,
+  upcomingEvents,
+  isFreeMember,
+  canPublish,
+  publishLabel,
+  lobbyCount,
+  mediaActive,
+  isJoining,
+  onRoomChange,
+  onJoinMediaRoom,
+  onLeaveOfficeHours,
+}: {
+  rooms: LobbyRoom[];
+  selectedRoom: LobbyRoom;
+  activeEvent: LobbyEvent | null;
+  upcomingEvents: LobbyEvent[];
+  isFreeMember: boolean;
+  canPublish: boolean;
+  publishLabel: string;
+  lobbyCount: number;
+  mediaActive: boolean;
+  isJoining: boolean;
+  onRoomChange: (roomId: string) => void;
+  onJoinMediaRoom: () => void;
+  onLeaveOfficeHours: () => void;
+}) {
+  const canJoinMedia = selectedRoom.type === "lounge" || Boolean(activeEvent);
+  const joinLabel = selectedRoom.type === "lounge" ? "Join room" : "Join";
+
+  return (
+    <div className="flex w-full min-w-0 flex-nowrap items-center justify-end gap-1.5">
+      <RoomSwitch
+        rooms={rooms}
+        selectedRoom={selectedRoom}
+        activeEvent={activeEvent}
+        onRoomChange={onRoomChange}
+      />
+      <HeaderMetric
+        icon={<Clock className={cn("h-4 w-4", activeEvent ? "text-emerald-400" : "text-cyan-300")} />}
+        label={activeEvent ? "Live" : "Next"}
+        value={activeEvent ? timeRange(activeEvent) : nextEventLabel(upcomingEvents)}
+      />
+      <HeaderMetric
+        icon={<Users className="h-4 w-4 text-cyan-300" />}
+        label="Lobby"
+        value={`${lobbyCount}`}
+      />
+      <div className="flex shrink-0 items-center gap-1.5">
+        {mediaActive ? (
+          <LobbyControls onLeave={onLeaveOfficeHours} canPublish={canPublish} compact />
+        ) : (
+          <DisabledAvControls
+            activeEvent={activeEvent}
+            canJoinMedia={canJoinMedia}
+            canPublish={canPublish}
+            isFreeMember={isFreeMember}
+            isJoining={isJoining}
+            joinLabel={joinLabel}
+            publishLabel={publishLabel}
+            onJoinMediaRoom={onJoinMediaRoom}
+          />
+        )}
+        {isFreeMember && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => window.location.assign("/pricing")}
+            className="h-8 gap-1.5 px-2.5 border-cyan-500/30 bg-cyan-500/10 text-cyan-700 hover:bg-cyan-500/15 dark:text-cyan-200"
+          >
+            <Crown className="h-4 w-4" />
+            Upgrade
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function HeaderMetric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div className="flex h-8 min-w-0 max-w-[12rem] items-center gap-1.5 rounded-md border border-border/60 bg-card/40 px-2">
+      {icon}
+      <span className="hidden text-[10px] font-semibold uppercase tracking-wide text-muted-foreground xl:inline">
+        {label}
+      </span>
+      <span className="min-w-0 truncate text-xs font-semibold">{value}</span>
+    </div>
+  );
+}
+
+function RoomSwitch({
+  rooms,
+  selectedRoom,
+  activeEvent,
+  onRoomChange,
+}: {
+  rooms: LobbyRoom[];
+  selectedRoom: LobbyRoom;
+  activeEvent: LobbyEvent | null;
+  onRoomChange: (roomId: string) => void;
+}) {
+  return (
+    <div className="flex shrink-0 rounded-md border border-border/60 bg-card/40 p-0.5">
+      {rooms.map((room) => {
+        const selected = room.id === selectedRoom.id;
+        const live = room.type === "office_hours" && activeEvent?.room_id === room.id;
+        return (
+          <button
+            key={room.id}
+            type="button"
+            onClick={() => onRoomChange(room.id)}
+            className={cn(
+              "relative inline-flex h-8 items-center gap-1.5 rounded px-2.5 text-[11px] font-semibold transition-colors",
+              selected
+                ? "bg-cyan-500/15 text-cyan-200"
+                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+            )}
+          >
+            {room.name}
+            {live && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function DisabledAvControls({
+  activeEvent,
+  canJoinMedia,
+  canPublish,
+  isFreeMember,
+  isJoining,
+  joinLabel,
+  publishLabel,
+  onJoinMediaRoom,
+}: {
+  activeEvent: LobbyEvent | null;
+  canJoinMedia: boolean;
+  canPublish: boolean;
+  isFreeMember: boolean;
+  isJoining: boolean;
+  joinLabel: string;
+  publishLabel: string;
+  onJoinMediaRoom: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      {canJoinMedia && (
+        <Button
+          onClick={onJoinMediaRoom}
+          disabled={isJoining}
+          size="sm"
+          className="h-8 gap-2 bg-cyan-500 text-black hover:bg-cyan-400"
+        >
+          {isJoining ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />}
+          {joinLabel}
+        </Button>
+      )}
+      <AccessHint activeEvent={activeEvent} canPublish={canPublish} isFreeMember={isFreeMember} publishLabel={publishLabel} />
+    </div>
+  );
+}
+
+function AccessHint({
+  activeEvent,
+  canPublish,
+  isFreeMember,
+  publishLabel,
+}: {
+  activeEvent: LobbyEvent | null;
+  canPublish: boolean;
+  isFreeMember: boolean;
+  publishLabel: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const title = canPublish ? "AV available after joining" : "Watch and chat access";
+  const body = canPublish
+    ? "Join this room to use mic, camera, and screen share."
+    : activeEvent
+      ? publishLabel
+      : "Watch and chat are available. AV unlocks during live Office Hours when your access allows it.";
+
+  return (
+    <div
+      className="group relative"
+      onMouseEnter={() => setIsOpen(true)}
+      onMouseLeave={() => setIsOpen(false)}
+    >
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        data-disabled="true"
+        aria-expanded={isOpen}
+        aria-label={title}
+        onClick={() => setIsOpen((open) => !open)}
+        onFocus={() => setIsOpen(true)}
+        onBlur={() => setIsOpen(false)}
+        className="h-8 w-8 cursor-not-allowed border-border/60 bg-background/50 text-muted-foreground opacity-60"
+      >
+        {canPublish ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
+      </Button>
+      <div
+        className={cn(
+          "pointer-events-none absolute right-0 top-full z-50 mt-2 w-64 rounded-md border border-border/70 bg-popover p-3 text-left text-popover-foreground shadow-lg transition-opacity",
+          isOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+        )}
+      >
+        <p className="text-xs font-semibold">{title}</p>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">{body}</p>
+        {isFreeMember && (
+          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+            Free members can chat and watch anytime, with one publishing pass every 14 days during office hours.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function OfficeHoursPanel({
+  activeEvent,
+  upcomingEvents,
+  onJoin,
+  isJoining,
+}: {
+  activeEvent: LobbyEvent | null;
+  upcomingEvents: LobbyEvent[];
+  onJoin: () => void;
+  isJoining: boolean;
+}) {
+  const nextEvent = upcomingEvents[0] ?? null;
+  return (
+    <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border/70 bg-card/20 p-8 text-center">
+      <div className="max-w-md">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg border border-cyan-500/25 bg-cyan-500/10 text-cyan-300">
+          <Video className="h-6 w-6" />
+        </div>
+        <h3 className="mt-4 text-lg font-semibold">
+          {activeEvent ? "Office hours is live" : "Next office hours"}
+        </h3>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {activeEvent ? timeRange(activeEvent) : nextEvent ? eventTimeLabel(nextEvent) : "Schedule is being prepared."}
+        </p>
+        {activeEvent && (
+          <Button
+            onClick={onJoin}
+            disabled={isJoining}
+            className="mt-5 gap-2 bg-cyan-500 text-black hover:bg-cyan-400"
+          >
+            {isJoining ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />}
+            Join live room
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ChatMessage({ message, isOwn }: { message: LobbyMessage; isOwn: boolean }) {
+  return (
+    <div className={cn("rounded-md px-2 py-1.5", isOwn ? "bg-cyan-500/10" : "bg-card/30")}>
+      <div className="flex items-center justify-between gap-2">
+        <p className={cn("min-w-0 truncate text-xs font-semibold", isOwn ? "text-cyan-200" : "text-foreground")}>
+          {message.sender_display_name}
+        </p>
+        <span className="shrink-0 text-[10px] text-muted-foreground">
+          {new Date(message.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+        </span>
+      </div>
+      <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-5 text-foreground/90">{message.content}</p>
+    </div>
+  );
+}
+
+function publishStatusLabel(permissions: LobbyResponse["permissions"]) {
+  if (permissions.can_publish_now) return "Mic, camera, and screen share available";
+  if (permissions.next_free_publish_at) {
+    return `Next free publishing pass: ${new Date(permissions.next_free_publish_at).toLocaleDateString([], {
+      month: "short",
+      day: "numeric",
+    })}`;
+  }
+  return "Watch and chat access";
+}
+
+function nextEventLabel(events: LobbyEvent[]) {
+  return events[0] ? eventTimeLabel(events[0]) : "No events scheduled";
+}
+
+function eventTimeLabel(event: LobbyEvent) {
+  return new Intl.DateTimeFormat([], {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  }).format(new Date(event.starts_at));
+}
+
+function timeRange(event: LobbyEvent) {
+  const start = new Date(event.starts_at);
+  const end = new Date(event.ends_at);
+  return `${start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} - ${end.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  })}`;
 }

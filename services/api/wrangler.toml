@@ -23,5 +23,8 @@ BOOMIN_HANDOFF_REDIRECT_URI = "https://atlantium.ai/creator-program"
 #   wrangler secret put DATABASE_URL
 #   wrangler secret put BETTER_AUTH_SECRET
 #   wrangler secret put HANDOFF_SIGNING_SECRET
+#   wrangler secret put LIVEKIT_URL
+#   wrangler secret put LIVEKIT_API_KEY
+#   wrangler secret put LIVEKIT_API_SECRET
 # Optional:
 #   wrangler secret put RESEND_API_KEY

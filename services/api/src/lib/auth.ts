@@ -4,7 +4,7 @@ import { emailOTP } from "better-auth/plugins";
 import { createDb } from "../db/client";
 import * as schema from "../db/schema";
 import type { Env } from "../env";
-import { allowedOrigins, requireEnv } from "../env";
+import { allowedOrigins, isDebugAuthCodes, requireEnv } from "../env";
 import { sendOtpEmail } from "./email";
 
 export function createAuth(env: Env, executionCtx?: ExecutionContext) {
@@ -28,7 +28,8 @@ export function createAuth(env: Env, executionCtx?: ExecutionContext) {
         allowedAttempts: 5,
         storeOTP: "plain",
         sendVerificationOTP: async ({ email, otp }) => {
-          const task = sendOtpEmail(env, email, otp).then(() => undefined);
+          const code = isDebugAuthCodes(env) ? "123456" : otp;
+          const task = sendOtpEmail(env, email, code).then(() => undefined);
           if (executionCtx) {
             executionCtx.waitUntil(task);
             return;
