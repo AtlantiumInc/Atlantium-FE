@@ -142,10 +142,11 @@ export function CreatorProgramPage() {
     if (status === "pending_approval") {
       setConnectState("pending");
       if (returnedSessionId) setSessionId(returnedSessionId);
-      setStatusText(username ? `@${username} is connected and pending approval.` : "Your Instagram is connected and pending approval.");
+      // Only claim Instagram is connected when the flow actually returned one.
+      setStatusText(username ? `@${username} is connected and pending approval.` : "Application received — pending approval.");
     } else if (status === "approved" || status === "connected") {
       setConnectState("connected");
-      setStatusText(username ? `@${username} is connected.` : "Your Instagram is connected.");
+      setStatusText(username ? `@${username} is connected.` : "You are approved and active.");
     } else if (error) {
       if (returnedSessionId) setSessionId(returnedSessionId);
       setConnectState("error");
@@ -246,9 +247,10 @@ export function CreatorProgramPage() {
           setStatusText("Your creator application was not approved.");
         } else if (boomin.status === "pending_approval" || connectionStatus === "connected") {
           setConnectState("pending");
-          setStatusText(username
+          // "Instagram is connected" only when the membership actually has one.
+          setStatusText(username && connectionStatus === "connected"
             ? `@${username} is connected and pending approval.`
-            : "Your Instagram is connected and pending approval.");
+            : "Application received — pending approval.");
         } else if (boomin.status === "needs_instagram") {
           setConnectState("instagram");
           setStatusText("Connect Instagram to finish your creator application.");
