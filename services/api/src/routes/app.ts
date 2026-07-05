@@ -964,7 +964,7 @@ async function buildHandoffOptions(c: Context<{ Bindings: Env }>) {
   const options = {
     issuer: BOOMIN_ISSUER,
     audience: BOOMIN_AUDIENCE,
-    publicKey: c.env.BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_demo_brand_partner_program",
+    publicKey: c.env.BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_atlantium_creator_program_63xwon9h",
     redirectUri,
     externalUserId: `atlantium_profile_${activeProfile.id}`,
     email: authUser.email,
@@ -985,7 +985,7 @@ function buildStandingOptions(c: Context<{ Bindings: Env }>, externalUserId?: st
   return {
     issuer: BOOMIN_ISSUER,
     audience: BOOMIN_AUDIENCE,
-    publicKey: c.env.BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_demo_brand_partner_program",
+    publicKey: c.env.BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_atlantium_creator_program_63xwon9h",
     signingSecret: requireEnv(c.env, "HANDOFF_SIGNING_SECRET"),
     expiresInSeconds: BOOMIN_HANDOFF_EXPIRES_IN,
     apiBase: boominConnectApiBase(c.env),
@@ -997,7 +997,7 @@ function buildMetricOptions(c: Context<{ Bindings: Env }>, partnerRef: string, m
   return {
     issuer: BOOMIN_ISSUER,
     signingSecret: requireEnv(c.env, "HANDOFF_SIGNING_SECRET"),
-    publicKey: c.env.BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_demo_brand_partner_program",
+    publicKey: c.env.BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_atlantium_creator_program_63xwon9h",
     partnerRef,
     eventType: "atlantium_dashboard_test",
     occurredAt: new Date().toISOString(),

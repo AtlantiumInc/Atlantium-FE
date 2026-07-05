@@ -50,7 +50,7 @@ type BoominStatusResult = {
   };
 };
 
-const BOOMIN_PUBLIC_KEY = import.meta.env.VITE_BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_demo_brand_partner_program";
+const BOOMIN_PUBLIC_KEY = import.meta.env.VITE_BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_atlantium_creator_program_63xwon9h";
 const BOOMIN_API_BASE = publicRuntimeUrl(
   import.meta.env.VITE_BOOMIN_CONNECT_API_BASE,
   "https://api.boomin.ai/v1/connect"

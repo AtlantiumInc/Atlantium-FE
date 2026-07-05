@@ -8,7 +8,7 @@ env.AUTH_BASE_URL = process.env.AUTH_BASE_URL || "http://127.0.0.1";
 env.ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS || "http://localhost:5173,http://localhost:4173";
 env.DEBUG_AUTH_CODES = process.env.DEBUG_AUTH_CODES || "true";
 env.RESEND_FROM = process.env.RESEND_FROM || "Atlantium <hello@atlantium.ai>";
-env.BOOMIN_CONNECT_PUBLIC_KEY = process.env.BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_demo_brand_partner_program";
+env.BOOMIN_CONNECT_PUBLIC_KEY = process.env.BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_atlantium_creator_program_63xwon9h";
 env.BOOMIN_CONNECT_API_BASE = process.env.BOOMIN_CONNECT_API_BASE || "https://api.boomin.ai/v1/connect";
 env.BOOMIN_HANDOFF_REDIRECT_URI = process.env.BOOMIN_HANDOFF_REDIRECT_URI || "http://localhost:5173/creator-program";
 
