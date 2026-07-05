@@ -655,6 +655,42 @@ appRoutes.get("/handoff/current-user", async (c) => {
   });
 });
 
+// Public referral click-through — the one link affiliates share anywhere
+// (Instagram bio, Telegram, Discord, email; any plain HTTP GET works, no JS).
+// Records a link_clicks event against the member's referral code on Boomin,
+// then 302s to the site with ?ref= so signups keep their attribution.
+// Tracking must NEVER block the redirect.
+appRoutes.get("/r/:code", async (c) => {
+  const code = c.req.param("code").trim();
+  const destination = new URL(c.env.REFERRAL_LANDING_URL || "https://atlantium.ai/");
+  if (code) {
+    destination.searchParams.set("ref", code);
+    try {
+      await recordReferralClick({
+        issuer: BOOMIN_ISSUER,
+        signingSecret: requireEnv(c.env, "HANDOFF_SIGNING_SECRET"),
+        publicKey: c.env.BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_atlantium_creator_program_63xwon9h",
+        partnerRef: code,
+        eventType: "referral_click",
+        occurredAt: new Date().toISOString(),
+        apiBase: boominConnectApiBase(c.env),
+        metadata: {
+          source: "referral_link",
+          utm_source: c.req.query("utm_source") || null,
+          utm_medium: c.req.query("utm_medium") || null,
+          utm_campaign: c.req.query("utm_campaign") || null,
+          referrer: c.req.header("referer") || null,
+          user_agent: c.req.header("user-agent") || null,
+        },
+      });
+    } catch {
+      // Unknown code, Boomin outage, or signature drift — the visitor still
+      // lands on the site; the click is just not counted.
+    }
+  }
+  return c.redirect(destination.toString(), 302);
+});
+
 appRoutes.get("/handoff/boomin/join", async (c) => {
   const mode = c.req.query("mode") || "redirect";
   const { redirectUri, options } = await buildHandoffOptions(c);
