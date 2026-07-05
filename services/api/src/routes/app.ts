@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { getPartnerStanding, postHandoff, recordReferralClick } from "@boomin/server";
+import { getPartnerStanding, postHandoff, recordReferralClick, recordSignup } from "@boomin/server";
 import { and, asc, desc, eq, gte, isNull, lte, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
@@ -105,6 +105,8 @@ appRoutes.post(
     email: emailSchema,
     code: z.string().trim().min(4),
     name: z.string().trim().optional(),
+    // Referral attribution: the frontend forwards the stored ?ref code here.
+    referral_code: z.string().trim().optional(),
   })),
   async (c) => {
     const body = c.req.valid("json");
@@ -136,6 +138,35 @@ appRoutes.post(
         .returning();
     }
     const activeProfile = await ensureDefaultProfile(db, freshUser);
+
+    // Referral signup attribution: credit the referrer on Boomin when a
+    // referred visitor completes their FIRST verify (user row minted in the
+    // last few minutes). The event id is keyed by user id, so Boomin's
+    // (program, source, event_id) uniqueness makes replays and repeat logins
+    // a no-op. Best-effort — attribution must never block auth.
+    const isNewSignup = Date.now() - new Date(freshUser.createdAt).getTime() < 10 * 60 * 1000;
+    if (body.referral_code && isNewSignup) {
+      try {
+        await recordSignup({
+          issuer: BOOMIN_ISSUER,
+          signingSecret: requireEnv(c.env, "HANDOFF_SIGNING_SECRET"),
+          publicKey: c.env.BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_atlantium_creator_program_63xwon9h",
+          partnerRef: body.referral_code,
+          eventId: `atlantium_signup_${freshUser.id}`,
+          eventType: "referral_signup",
+          occurredAt: new Date().toISOString(),
+          apiBase: boominConnectApiBase(c.env),
+          metadata: {
+            source: "atlantium_signup",
+            atlantiumUserId: freshUser.id,
+            atlantiumProfileId: activeProfile.id,
+          },
+        });
+      } catch {
+        // Unknown/stale code or Boomin outage — signup proceeds uncredited.
+      }
+    }
+
     const membership = await getMembership(db, freshUser.id);
     return withCopiedCookies(signInResponse, c.json({
       success: true,
