@@ -19,6 +19,7 @@ export type Env = {
   LIVEKIT_URL?: string;
   LIVEKIT_API_KEY?: string;
   LIVEKIT_API_SECRET?: string;
+  ASSETS_BUCKET: R2Bucket;
 };
 
 export function allowedOrigins(env: Env) {
@@ -29,10 +30,10 @@ export function allowedOrigins(env: Env) {
     .filter(Boolean);
 }
 
-export function requireEnv(env: Env, key: keyof Env) {
+export function requireEnv<K extends keyof Env>(env: Env, key: K): NonNullable<Env[K]> {
   const value = env[key];
   if (!value) throw new Error(`Missing required environment variable: ${key}`);
-  return value;
+  return value as NonNullable<Env[K]>;
 }
 
 export function isDebugAuthCodes(env: Env) {

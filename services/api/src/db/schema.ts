@@ -32,6 +32,7 @@ export const user = pgTable("user", {
   email: text("email").notNull(),
   emailVerified: boolean("email_verified").notNull().default(false),
   isAdmin: boolean("is_admin").notNull().default(false),
+  isApproved: boolean("is_approved").notNull().default(false),
   image: text("image"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -91,6 +92,8 @@ export const profiles = pgTable("profiles", {
   type: profileType("type").notNull().default("personal"),
   avatarUrl: text("avatar_url"),
   metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+  registrationDetails: jsonb("registration_details").$type<Record<string, unknown>>().notNull().default({}),
+  onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({

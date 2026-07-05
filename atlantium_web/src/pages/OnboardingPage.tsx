@@ -107,11 +107,9 @@ export function OnboardingPage() {
     onComplete: handleComplete,
   });
 
-  // Handle keyboard navigation (disabled on pricing step)
+  // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Skip keyboard nav on pricing step (has its own flow)
-      if (currentStep === 5) return;
       if (e.key === "Enter" && !e.shiftKey) {
         // Don't trigger on textareas
         if ((e.target as HTMLElement)?.tagName === "TEXTAREA") return;
@@ -159,13 +157,7 @@ export function OnboardingPage() {
       case 4:
         return <StepInterests {...stepProps} />;
       case 5:
-        return (
-          <StepPricing
-            {...stepProps}
-            onPlanSelected={() => nextStep()}
-            onBack={prevStep}
-          />
-        );
+        return <StepPricing {...stepProps} />;
       case 6:
         return <StepProjectStatus {...stepProps} />;
       case 7:
@@ -201,9 +193,8 @@ export function OnboardingPage() {
         {/* Step content with animation */}
         <AnimatePresence mode="wait">{renderStep()}</AnimatePresence>
 
-        {/* Navigation buttons (hidden on pricing step — it has its own) */}
-        {currentStep !== 5 && (
-          <div className="flex items-center justify-between pt-4">
+        {/* Navigation buttons */}
+        <div className="flex items-center justify-between pt-4">
             <Button
               type="button"
               variant="ghost"
@@ -239,7 +230,6 @@ export function OnboardingPage() {
               )}
             </Button>
           </div>
-        )}
 
         {/* Skip hint for optional steps */}
         {(currentStep === 10 || currentStep === 11 || currentStep === 12) && (

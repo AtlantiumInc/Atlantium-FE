@@ -32,6 +32,24 @@ import {
 
 export const appRoutes = new Hono<{ Bindings: Env }>();
 
+// New users must be approved by an admin before they can use the community /
+// dashboard. This is enforced SERVER-SIDE (not just a UI overlay): unapproved
+// users get 403 from every data endpoint below. Auth, profile, upload and
+// billing endpoints stay open so pending users can still sign in and pay.
+// Admins always bypass.
+async function ensureApproved(c: Context<{ Bindings: Env }>) {
+  const { authUser } = await requireAppUser(c);
+  if (!authUser.isApproved && !authUser.isAdmin) {
+    throw new HttpError(403, "pending_approval", "Your account is pending review.");
+  }
+}
+for (const pattern of ["/lobby", "/lobby/*", "/realtime/*", "/dashboard/*"]) {
+  appRoutes.use(pattern, async (c, next) => {
+    await ensureApproved(c);
+    await next();
+  });
+}
+
 const emailSchema = z.string().email().transform((value) => value.trim().toLowerCase());
 const lobbyMessageSchema = z.object({
   content: z.string().trim().min(1).max(2000),
@@ -145,6 +163,102 @@ appRoutes.get("/profile/me", async (c) => {
   return c.json(publicProfile(authUser, activeProfile));
 });
 
+const ASSET_EXT_BY_TYPE: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "image/avif": "avif",
+};
+const MAX_ASSET_BYTES = 5 * 1024 * 1024;
+
+// Upload an asset (profile photo, etc.) to Atlantium's own R2 bucket.
+appRoutes.post("/upload", async (c) => {
+  const { authUser } = await requireAppUser(c);
+  const form = await c.req.formData();
+  const file = form.get("file") ?? form.get("image");
+  if (!(file instanceof File)) {
+    throw new HttpError(400, "bad_request", "No file provided.");
+  }
+  if (!file.type.startsWith("image/")) {
+    throw new HttpError(400, "bad_request", "Only image uploads are allowed.");
+  }
+  if (file.size > MAX_ASSET_BYTES) {
+    throw new HttpError(400, "bad_request", "Image must be less than 5MB.");
+  }
+  const ext = ASSET_EXT_BY_TYPE[file.type] ?? "bin";
+  const key = `avatars/${authUser.id}/${crypto.randomUUID()}.${ext}`;
+  await c.env.ASSETS_BUCKET.put(key, await file.arrayBuffer(), {
+    httpMetadata: { contentType: file.type },
+  });
+  const url = `${new URL(c.req.url).origin}/v1/assets/${key}`;
+  return c.json({ success: true, url, key });
+});
+
+// Serve an asset from R2 (bucket has public access disabled, so we proxy it).
+appRoutes.get("/assets/:key{.+}", async (c) => {
+  const object = await c.env.ASSETS_BUCKET.get(c.req.param("key"));
+  if (!object) {
+    return c.json({ code: "not_found", message: "Asset not found." }, 404);
+  }
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("etag", object.httpEtag);
+  headers.set("cache-control", "public, max-age=31536000, immutable");
+  return new Response(object.body, { headers });
+});
+
+// ── Admin: new-user approval queue (worker-owned, backs the Approvals tab) ──
+appRoutes.get("/admin/users", async (c) => {
+  const { db } = await requireAdminUser(c);
+  const [users, allProfiles] = await Promise.all([
+    db.query.user.findMany({ orderBy: (t, { desc }) => desc(t.createdAt) }),
+    db.query.profiles.findMany(),
+  ]);
+  const profileByOwner = new Map<string, (typeof allProfiles)[number]>();
+  for (const p of allProfiles) {
+    if (!profileByOwner.has(p.ownerUserId)) profileByOwner.set(p.ownerUserId, p);
+  }
+  return c.json(users.map((u) => {
+    const p = profileByOwner.get(u.id);
+    const reg = (p?.registrationDetails ?? {}) as Record<string, unknown>;
+    return {
+      id: u.id,
+      email: u.email,
+      display_name: p?.displayName ?? u.name,
+      is_admin: u.isAdmin,
+      is_approved: u.isApproved,
+      is_email_verified: u.emailVerified,
+      onboarding_completed: Boolean(p?.onboardingCompletedAt) || reg.is_completed === true,
+      membership_tier: typeof reg.membership_tier === "string" ? reg.membership_tier : null,
+      registration_details: reg,
+      created_at: u.createdAt?.toISOString?.() ?? u.createdAt,
+    };
+  }));
+});
+
+appRoutes.post("/admin/users/:userId/approve", async (c) => {
+  const { db } = await requireAdminUser(c);
+  const [updated] = await db
+    .update(user)
+    .set({ isApproved: true, updatedAt: new Date() })
+    .where(eq(user.id, c.req.param("userId")))
+    .returning();
+  if (!updated) throw new HttpError(404, "not_found", "User not found.");
+  return c.json({ success: true, is_approved: true });
+});
+
+appRoutes.post("/admin/users/:userId/revoke", async (c) => {
+  const { db } = await requireAdminUser(c);
+  const [updated] = await db
+    .update(user)
+    .set({ isApproved: false, updatedAt: new Date() })
+    .where(eq(user.id, c.req.param("userId")))
+    .returning();
+  if (!updated) throw new HttpError(404, "not_found", "User not found.");
+  return c.json({ success: true, is_approved: false });
+});
+
 appRoutes.post(
   "/profile/edit",
   zValidator("json", z.object({
@@ -166,8 +280,22 @@ appRoutes.post(
       ...(typeof input.bio === "string" ? { bio: input.bio } : {}),
       ...(typeof input.location === "string" ? { location: input.location } : {}),
       ...(typeof input.website_url === "string" ? { website_url: input.website_url } : {}),
+      ...(typeof input.linkedin_url === "string" ? { linkedin_url: input.linkedin_url } : {}),
       ...(typeof input.username === "string" ? { username: input.username } : {}),
     };
+
+    const incomingRegistration = input.registration_details
+      && typeof input.registration_details === "object"
+      && !Array.isArray(input.registration_details)
+      ? input.registration_details as Record<string, unknown>
+      : null;
+    const registrationDetails = incomingRegistration
+      ? { ...(activeProfile.registrationDetails || {}), ...incomingRegistration }
+      : (activeProfile.registrationDetails || {});
+    const isCompleted = (registrationDetails as Record<string, unknown>).is_completed === true;
+    const onboardingCompletedAt = isCompleted
+      ? (activeProfile.onboardingCompletedAt ?? new Date())
+      : activeProfile.onboardingCompletedAt;
 
     const [updated] = await db
       .update(profiles)
@@ -175,6 +303,8 @@ appRoutes.post(
         displayName,
         avatarUrl,
         metadata,
+        registrationDetails,
+        onboardingCompletedAt,
         updatedAt: new Date(),
       })
       .where(eq(profiles.id, activeProfile.id))
@@ -1447,6 +1577,8 @@ function publicProfile(
 ) {
   const metadata = activeProfile.metadata || {};
   const username = typeof metadata.username === "string" ? metadata.username : activeProfile.slug;
+  const storedRegistration = (activeProfile.registrationDetails ?? {}) as Record<string, unknown>;
+  const isCompleted = Boolean(activeProfile.onboardingCompletedAt) || storedRegistration.is_completed === true;
   return {
     id: activeProfile.id,
     user_id: authUser.id,
@@ -1458,6 +1590,9 @@ function publicProfile(
     avatar_url: activeProfile.avatarUrl || undefined,
     location: typeof metadata.location === "string" ? metadata.location : undefined,
     website_url: typeof metadata.website_url === "string" ? metadata.website_url : undefined,
+    linkedin_url: typeof metadata.linkedin_url === "string" ? metadata.linkedin_url : undefined,
+    registration_details: { ...storedRegistration, is_completed: isCompleted },
+    onboarding_completed_at: activeProfile.onboardingCompletedAt?.toISOString?.() ?? null,
     created_at: activeProfile.createdAt?.toISOString?.() ?? activeProfile.createdAt,
     updated_at: activeProfile.updatedAt?.toISOString?.() ?? activeProfile.updatedAt,
   };

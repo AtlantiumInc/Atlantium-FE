@@ -70,6 +70,7 @@ export interface User {
   created_at?: string;
   is_admin?: boolean;
   has_access?: boolean;
+  is_approved?: boolean;
   avatar?: string;
   display_name?: string;
   first_name?: string;
@@ -486,6 +487,30 @@ class ApiClient {
     }, ADMIN_API_BASE_URL, true);
   }
 
+  // ── Worker-backed approval queue (api.atlantium.ai, cookie-authed) ──
+  async getApprovalUsers(): Promise<Array<{
+    id: string;
+    email: string;
+    display_name: string;
+    is_admin: boolean;
+    is_approved: boolean;
+    is_email_verified: boolean;
+    onboarding_completed: boolean;
+    membership_tier: string | null;
+    registration_details: Record<string, unknown>;
+    created_at: string;
+  }>> {
+    return this.request("/admin/users", { method: "GET" }, AUTH_API_BASE_URL);
+  }
+
+  async approveUser(userId: string): Promise<{ success: boolean; is_approved: boolean }> {
+    return this.request(`/admin/users/${userId}/approve`, { method: "POST" }, AUTH_API_BASE_URL);
+  }
+
+  async revokeApproval(userId: string): Promise<{ success: boolean; is_approved: boolean }> {
+    return this.request(`/admin/users/${userId}/revoke`, { method: "POST" }, AUTH_API_BASE_URL);
+  }
+
   // Admin article methods
   async getAdminArticles(): Promise<FrontierArticle[]> {
     return this.request<FrontierArticle[]>("/articles/list", {
@@ -544,17 +569,19 @@ class ApiClient {
 
   async uploadImage(file: File): Promise<{ success: boolean; url: string }> {
     const formData = new FormData();
-    formData.append("image", file);
+    formData.append("file", file);
 
     const headers: HeadersInit = {};
     if (this.authToken) {
       headers["Authorization"] = `Bearer ${this.authToken}`;
     }
 
-    const response = await fetch(`${APP_API_BASE_URL}/image/upload`, {
+    // Upload to Atlantium's own R2 bucket via the worker (cookie-authed).
+    const response = await fetch(`${ATLANTIUM_API_BASE_URL}/upload`, {
       method: "POST",
       headers,
       body: formData,
+      credentials: "include",
     });
 
     const data = await response.json();

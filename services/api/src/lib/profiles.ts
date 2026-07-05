@@ -92,6 +92,8 @@ export async function setActiveProfile(db: Db, userId: string, profileId: string
 }
 
 export function publicUser(authUser: AuthUser, activeProfile: Awaited<ReturnType<typeof ensureDefaultProfile>>) {
+  const storedRegistration = (activeProfile.registrationDetails ?? {}) as Record<string, unknown>;
+  const isCompleted = Boolean(activeProfile.onboardingCompletedAt) || storedRegistration.is_completed === true;
   return {
     id: authUser.id,
     email: authUser.email,
@@ -103,14 +105,14 @@ export function publicUser(authUser: AuthUser, activeProfile: Awaited<ReturnType
     last_name: activeProfile.displayName.split(" ").slice(1).join(" ") || undefined,
     has_access: true,
     is_admin: authUser.isAdmin,
+    is_approved: authUser.isApproved || authUser.isAdmin,
     _profile: {
       id: activeProfile.id,
       display_name: activeProfile.displayName,
       avatar_url: activeProfile.avatarUrl,
       type: activeProfile.type,
-      registration_details: {
-        is_completed: true,
-      },
+      registration_details: { ...storedRegistration, is_completed: isCompleted },
+      onboarding_completed_at: activeProfile.onboardingCompletedAt?.toISOString?.() ?? null,
     },
   };
 }

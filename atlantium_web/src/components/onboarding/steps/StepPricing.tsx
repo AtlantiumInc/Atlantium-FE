@@ -1,11 +1,6 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { motion } from "motion/react";
-import { Elements } from "@stripe/react-stripe-js";
-import { ArrowLeft, Check, Crown, Loader2, Calendar, Star } from "lucide-react";
-import { Button } from "../../ui/button";
-import { PaymentForm } from "../../subscription/PaymentForm";
-import { stripePromise } from "../../../lib/stripe";
-import { api } from "../../../lib/api";
+import { Check, Crown, Calendar, Star } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import type { OnboardingFormData } from "../../../lib/onboarding-schema";
 
@@ -16,9 +11,6 @@ interface StepPricingProps {
     field: K,
     value: OnboardingFormData[K]
   ) => void;
-  onPlanSelected: (tier: string) => void;
-  onBack?: () => void;
-  existingSubscription?: string;
 }
 
 type PlanTier = "free" | "club" | "club_annual";
@@ -46,7 +38,7 @@ const PRICING_PLANS: PricingPlan[] = [
     icon: Crown,
     features: [
       "Everything in Free",
-      "Office hours Mon\u2013Thu",
+      "Office hours Mon–Thu",
       "AI engineering curriculum",
       "Focus groups",
       "Exclusive member events",
@@ -81,7 +73,6 @@ const PRICING_PLANS: PricingPlan[] = [
       "iOS app access",
       "Frontier feed access",
       "Public events",
-
       "Software perks & discounts",
     ],
   },
@@ -167,229 +158,71 @@ function PricingCard({
   );
 }
 
-export function StepPricing({
-  formData,
-  onUpdate,
-  onPlanSelected,
-  onBack,
-  existingSubscription,
-}: StepPricingProps) {
-  // If user already has a subscription, use that as the selected plan
-  const hasExistingPaidSubscription = existingSubscription && existingSubscription !== "free";
+export function StepPricing({ formData, onUpdate }: StepPricingProps) {
+  const selectedPlan = (formData.membership_tier as PlanTier) || "club";
 
-  const [selectedPlan, setSelectedPlan] = useState<PlanTier>(
-    (existingSubscription as PlanTier) || (formData.membership_tier as PlanTier) || "club"
-  );
-  const [showPayment, setShowPayment] = useState(false);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasPaid, setHasPaid] = useState(!!hasExistingPaidSubscription);
-
-  const selectedPlanData = PRICING_PLANS.find((p) => p.id === selectedPlan);
   const paidPlans = PRICING_PLANS.filter((p) => p.id !== "free");
   const freePlan = PRICING_PLANS.find((p) => p.id === "free")!;
 
+  // Record a default selection so the wizard's Continue always has a value,
+  // even if the user doesn't tap a card. No charge or entitlement is applied —
+  // the tier is persisted to registration_details for later follow-up.
   useEffect(() => {
-    if (showPayment && !clientSecret && selectedPlan !== "free") {
-      setIsLoading(true);
-      api
-        .createSetupIntent()
-        .then((response) => setClientSecret(response.client_secret))
-        .catch(console.error)
-        .finally(() => setIsLoading(false));
+    if (!formData.membership_tier) {
+      onUpdate("membership_tier" as keyof OnboardingFormData, "club");
     }
-  }, [showPayment, clientSecret, selectedPlan]);
+  }, [formData.membership_tier, onUpdate]);
 
   const handlePlanSelect = (planId: PlanTier) => {
-    if (hasPaid) return; // Can't change after payment
-    setSelectedPlan(planId);
+    onUpdate("membership_tier" as keyof OnboardingFormData, planId);
   };
 
-  const handleContinue = () => {
-    // If user already has a paid subscription, just continue
-    if (hasExistingPaidSubscription) {
-      onUpdate("membership_tier" as keyof OnboardingFormData, selectedPlan);
-      onPlanSelected(selectedPlan);
-      return;
-    }
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-6"
+    >
+      <div className="space-y-2 text-center">
+        <h2 className="text-2xl font-bold tracking-tight">
+          Choose your membership
+        </h2>
+        <p className="text-muted-foreground">
+          Select the plan that fits your journey. You can change anytime.
+        </p>
+      </div>
 
-    if (selectedPlan === "free") {
-      onUpdate("membership_tier" as keyof OnboardingFormData, "free");
-      onPlanSelected("free");
-    } else {
-      setShowPayment(true);
-    }
-  };
-
-  const handlePaymentSuccess = () => {
-    setHasPaid(true);
-    onUpdate("membership_tier" as keyof OnboardingFormData, selectedPlan);
-    onPlanSelected(selectedPlan);
-  };
-
-  const handleBackToPlans = () => {
-    setShowPayment(false);
-    setClientSecret(null);
-  };
-
-  // Show pricing cards
-  if (!showPayment) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -20 }}
-        transition={{ duration: 0.3 }}
-        className="space-y-6"
-      >
-        <div className="space-y-2 text-center">
-          <h2 className="text-2xl font-bold tracking-tight">
-            Choose your membership
-          </h2>
-          <p className="text-muted-foreground">
-            Select the plan that fits your journey. You can change anytime.
-          </p>
-        </div>
-
-        {/* If user already has subscription or just paid, only show their plan */}
-        {hasPaid ? (
-          <div className="max-w-md mx-auto">
+      {/* Club & Annual side by side */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {paidPlans.map((plan) => (
+          <div key={plan.id} className="min-w-0">
             <PricingCard
-              plan={selectedPlanData!}
-              selected={true}
-              onSelect={() => {}}
+              plan={plan}
+              selected={selectedPlan === plan.id}
+              onSelect={() => handlePlanSelect(plan.id)}
             />
-            <p className="text-center text-sm text-muted-foreground mt-4">
-              {hasExistingPaidSubscription
-                ? "You already have an active membership"
-                : "Your membership has been confirmed"}
-            </p>
           </div>
-        ) : (
-          <>
-            {/* Club & Annual side by side */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {paidPlans.map((plan) => (
-                <div key={plan.id} className="min-w-0">
-                  <PricingCard
-                    plan={plan}
-                    selected={selectedPlan === plan.id}
-                    onSelect={() => handlePlanSelect(plan.id)}
-                  />
-                </div>
-              ))}
-            </div>
+        ))}
+      </div>
 
-            {/* Free card spans below */}
-            <div className="border-t border-border/50 pt-4">
-              <PricingCard
-                plan={freePlan}
-                selected={selectedPlan === "free"}
-                onSelect={() => handlePlanSelect("free")}
-                compact
-              />
-            </div>
-          </>
-        )}
+      {/* Free card spans below */}
+      <div className="border-t border-border/50 pt-4">
+        <PricingCard
+          plan={freePlan}
+          selected={selectedPlan === "free"}
+          onSelect={() => handlePlanSelect("free")}
+          compact
+        />
+      </div>
 
-        <div className="flex items-center justify-center gap-4 pt-6">
-          {onBack && !hasPaid && (
-            <Button variant="ghost" onClick={onBack}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-          )}
-          <Button
-            onClick={handleContinue}
-            size="lg"
-            className="min-w-[200px]"
-          >
-            {hasPaid ? (
-              "Continue"
-            ) : selectedPlan === "free" ? (
-              "Continue with Free"
-            ) : (
-              <>
-                <Crown className="h-4 w-4 mr-2" />
-                Continue with {selectedPlanData?.name}
-              </>
-            )}
-          </Button>
-        </div>
-      </motion.div>
-    );
-  }
-
-  // Show loading
-  if (isLoading) {
-    return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="flex flex-col items-center justify-center py-12"
-      >
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-        <p className="text-muted-foreground">Setting up payment...</p>
-      </motion.div>
-    );
-  }
-
-  // Show payment form
-  if (clientSecret) {
-    console.log("[StepPricing] Rendering Elements with clientSecret:", clientSecret.substring(0, 30) + "...");
-    return (
-      <motion.div
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="space-y-6"
-      >
-        <div className="space-y-2 text-center">
-          <h2 className="text-2xl font-bold tracking-tight">
-            Complete your membership
-          </h2>
-          <p className="text-muted-foreground">
-            Enter your payment details to get started
-          </p>
-        </div>
-
-        {/* Plan summary */}
-        <div className="rounded-xl border-2 border-primary bg-primary/5 p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <Crown className="h-6 w-6 text-yellow-500" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-lg">{selectedPlanData?.name}</h3>
-              <p className="text-2xl font-bold">
-                {selectedPlanData?.price}{selectedPlanData?.period}
-              </p>
-            </div>
-          </div>
-          <ul className="space-y-2">
-            {selectedPlanData?.features.slice(0, 4).map((feature) => (
-              <li key={feature} className="flex items-center gap-2 text-sm">
-                <Check className="h-4 w-4 text-green-500 shrink-0" />
-                <span>{feature}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Stripe Elements with PaymentForm */}
-        <Elements
-          stripe={stripePromise}
-          options={{ clientSecret }}
-        >
-          <PaymentForm
-            clientSecret={clientSecret}
-            onSuccess={handlePaymentSuccess}
-            onCancel={handleBackToPlans}
-            tier={selectedPlan as "club" | "club_annual"}
-          />
-        </Elements>
-      </motion.div>
-    );
-  }
-
-  return null;
+      {selectedPlan !== "free" && (
+        <p className="text-center text-xs text-muted-foreground">
+          You won't be charged now — we'll confirm membership details with you
+          after you finish setting up.
+        </p>
+      )}
+    </motion.div>
+  );
 }

@@ -5,6 +5,7 @@ import {
   Radio,
   Sparkles,
 } from "lucide-react";
+import { ApprovalOverlay } from "@/components/ApprovalOverlay";
 import { LobbyPage } from "@/components/pages/LobbyPage";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
 import { Sidebar } from "@/components/Sidebar";
@@ -54,8 +55,11 @@ export function MemberDashboardPage() {
   const ActiveIcon = active.icon;
   const lobbyHeaderSlotId = "member-dashboard-lobby-controls";
 
+  const needsApproval = !user?.is_approved && !user?.is_admin;
+
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {needsApproval && <ApprovalOverlay />}
       <div className="flex h-screen gap-3 p-3">
         <Sidebar
           activePage={activePage}

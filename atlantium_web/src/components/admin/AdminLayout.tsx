@@ -17,6 +17,7 @@ export function AdminLayout() {
     if (path.startsWith("/admin/events")) return "Events";
     if (path.startsWith("/admin/articles")) return "Articles";
     if (path.startsWith("/admin/users")) return "Users";
+    if (path.startsWith("/admin/approvals")) return "Approvals";
     if (path.startsWith("/admin/partnerships")) return "Partnerships";
     if (path.startsWith("/admin/gtm")) return "GTM Plan";
     return "Admin";

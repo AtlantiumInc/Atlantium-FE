@@ -41,3 +41,5 @@ backend/
 
 # iOS (separate repo)
 atlantium_ios/
+services/api/.dev.vars.main.bak
+.dev.vars*

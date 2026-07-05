@@ -8,6 +8,11 @@ routes = [
   { pattern = "api.atlantium.ai", custom_domain = true }
 ]
 
+# Atlantium-owned asset storage (profile photos, etc.).
+[[r2_buckets]]
+binding = "ASSETS_BUCKET"
+bucket_name = "atlantium-assets"
+
 [vars]
 APP_BASE_URL = "https://atlantium.ai"
 AUTH_BASE_URL = "https://api.atlantium.ai"
