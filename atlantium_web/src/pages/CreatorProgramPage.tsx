@@ -21,9 +21,14 @@ type CurrentCreatorResult = {
   };
   member?: {
     approval_status?: string;
+    approvalStatus?: string;
     connection_status?: string;
+    connectionStatus?: string;
     integration_id?: string;
   };
+  instagram?: {
+    username?: string | null;
+  } | null;
   integration?: {
     username?: string;
     status?: string;
@@ -176,24 +181,26 @@ export function CreatorProgramPage() {
         if (creator?.email) setCreatorEmail(creator.email);
         if (creator?.name) setCreatorName(creator.name);
 
-        const approvalStatus = current.status || current.member?.approval_status || "pending";
-        // connection_status is authoritative (Boomin flips it when the IG token
-        // dies); integration presence alone is stale — an account row outlives
-        // its token. Only fall back to presence when the field is absent.
-        const connectionStatus = current.member?.connection_status;
+        const approvalStatus = current.status || current.member?.approvalStatus || current.member?.approval_status || "pending";
+        // connectionStatus is authoritative (Boomin flips it when the IG token
+        // dies); account presence alone is stale — an account row outlives its
+        // token. /me ships a raw camelCase member + a top-level `instagram`
+        // account; older payload shapes used snake_case + `integration`.
+        const connectionStatus = current.member?.connectionStatus ?? current.member?.connection_status;
+        const igUsername = current.instagram?.username ?? current.integration?.username ?? null;
         const isConnected = connectionStatus != null
           ? connectionStatus === "connected"
-          : Boolean(current.integration) || Boolean(current.member?.integration_id);
+          : Boolean(current.instagram) || Boolean(current.integration);
 
         if (approvalStatus === "approved" && !isConnected) {
           setConnectState("instagram");
-          setStatusText(current.integration?.username
-            ? `Approved — @${current.integration.username}'s Instagram connection expired. Reconnect to keep your posts counting.`
+          setStatusText(igUsername
+            ? `Approved — @${igUsername}'s Instagram connection expired. Reconnect to keep your posts counting.`
             : "Approved — reconnect your Instagram to keep your posts counting.");
         } else if (approvalStatus === "approved") {
           setConnectState("connected");
-          setStatusText(current.integration?.username
-            ? `@${current.integration.username} is approved and connected.`
+          setStatusText(igUsername
+            ? `@${igUsername} is approved and connected.`
             : "Approved. You are active in the Atlantium creator program.");
         } else if (approvalStatus === "rejected") {
           setConnectState("error");
