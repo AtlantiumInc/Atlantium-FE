@@ -253,9 +253,16 @@ export function CreatorProgramPage() {
         const connectionStatus = boomin.member?.connectionStatus || boomin.member?.connection_status || "";
         const username = boomin.instagram?.username || boomin.username || "";
 
-        if (approvalStatus === "approved" || boomin.status === "approved") {
-          setConnectState("connected");
+        if ((approvalStatus === "approved" || boomin.status === "approved") && connectionStatus && connectionStatus !== "connected") {
+          // Approved but the IG link is dead (Boomin flips connectionStatus on
+          // token expiry) — claim approval, demand the reconnect.
+          setConnectState("instagram");
           setStatusText(username
+            ? `Approved — @${username}'s Instagram connection expired. Reconnect to keep your posts counting.`
+            : "Approved — reconnect your Instagram to keep your posts counting.");
+        } else if (approvalStatus === "approved" || boomin.status === "approved") {
+          setConnectState("connected");
+          setStatusText(username && connectionStatus === "connected"
             ? `@${username} is approved and connected.`
             : "Approved. You are active in the Atlantium creator program.");
         } else if (approvalStatus === "rejected" || boomin.status === "rejected") {
