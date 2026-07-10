@@ -177,11 +177,20 @@ export function CreatorProgramPage() {
         if (creator?.name) setCreatorName(creator.name);
 
         const approvalStatus = current.status || current.member?.approval_status || "pending";
-        const isConnected = Boolean(current.integration)
-          || current.member?.connection_status === "connected"
-          || Boolean(current.member?.integration_id);
+        // connection_status is authoritative (Boomin flips it when the IG token
+        // dies); integration presence alone is stale — an account row outlives
+        // its token. Only fall back to presence when the field is absent.
+        const connectionStatus = current.member?.connection_status;
+        const isConnected = connectionStatus != null
+          ? connectionStatus === "connected"
+          : Boolean(current.integration) || Boolean(current.member?.integration_id);
 
-        if (approvalStatus === "approved") {
+        if (approvalStatus === "approved" && !isConnected) {
+          setConnectState("instagram");
+          setStatusText(current.integration?.username
+            ? `Approved — @${current.integration.username}'s Instagram connection expired. Reconnect to keep your posts counting.`
+            : "Approved — reconnect your Instagram to keep your posts counting.");
+        } else if (approvalStatus === "approved") {
           setConnectState("connected");
           setStatusText(current.integration?.username
             ? `@${current.integration.username} is approved and connected.`
