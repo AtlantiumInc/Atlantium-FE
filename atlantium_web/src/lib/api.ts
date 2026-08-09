@@ -82,6 +82,31 @@ export interface User {
   _settings?: UserSettings;
 }
 
+/** A live/paused campaign link for one partner, additive on Boomin's standing
+ *  response (deployment = channel; the partner rides the link + the event). */
+export interface CreatorDeployment {
+  id: string;
+  status?: string;
+  observed_status?: string;
+  channel?: string;
+  format?: string;
+  distribution?: {
+    id?: string;
+    name?: string;
+    objective?: string;
+    status?: string;
+  } | null;
+  link?: {
+    code?: string;
+    url?: string;
+    status?: string;
+  } | null;
+  performance?: {
+    events?: number;
+    value_minor?: number;
+  } | null;
+}
+
 export interface CreatorStandingPartner {
   partner?: {
     id: string;
@@ -161,6 +186,7 @@ export interface CreatorStandingPartner {
     total?: number;
     count?: number;
   }>;
+  deployments?: CreatorDeployment[];
 }
 
 export interface CreatorDashboardResponse {
@@ -319,6 +345,14 @@ class ApiClient {
 
   async getCreatorDashboard(): Promise<CreatorDashboardResponse> {
     return this.request<CreatorDashboardResponse>("/admin/partnerships/creators", {
+      method: "GET",
+    }, AUTH_API_BASE_URL);
+  }
+
+  /** Member-scoped partner standing: only the caller's own enrollment row,
+   *  including their evergreen referral link and live campaign deployments. */
+  async getMyPartnerStanding(): Promise<CreatorDashboardResponse> {
+    return this.request<CreatorDashboardResponse>("/dashboard/creators", {
       method: "GET",
     }, AUTH_API_BASE_URL);
   }
