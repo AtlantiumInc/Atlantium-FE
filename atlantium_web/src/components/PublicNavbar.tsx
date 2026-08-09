@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AnimatePresence, motion } from "motion/react";
-import { X, Menu, ChevronRight, Users, Wrench, BookOpen, Code2, Newspaper, Briefcase, GraduationCap, Route } from "lucide-react";
+import { X, Menu, ChevronRight, Users, Wrench, BookOpen, Code2, Newspaper, Briefcase, Route } from "lucide-react";
 
 const solutionItems = [
   {
@@ -21,28 +21,18 @@ const solutionItems = [
     image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400&h=250&fit=crop&q=80",
   },
   {
-    to: "/jobs",
-    label: "Job Board",
-    description: "Curated AI engineering roles from top companies in your area",
-    icon: Briefcase,
-    image: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=250&fit=crop&q=80",
-  },
-];
-
-const educationItems = [
-  {
-    to: "/homeschool",
-    label: "Homeschool",
-    description: "A complete K-12 curriculum platform built for homeschool families",
-    icon: GraduationCap,
-    image: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400&h=250&fit=crop&q=80",
-  },
-  {
     to: "/paths",
     label: "Learning Paths",
     description: "Structured study tracks across subjects to guide your education journey",
     icon: Route,
     image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop&q=80",
+  },
+  {
+    to: "/jobs",
+    label: "Job Board",
+    description: "Curated AI engineering roles from top companies in your area",
+    icon: Briefcase,
+    image: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=250&fit=crop&q=80",
   },
 ];
 
@@ -70,27 +60,19 @@ const resourceItems = [
   },
 ];
 
-const navLinks = [
-  { to: "/pricing",       label: "Pricing" },
-];
-
 const missionLink = { to: "/mission", label: "Mission" };
 
 export function PublicNavbar() {
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const [solutionsOpen, setSolutionsOpen] = useState(false);
-  const [educationOpen, setEducationOpen] = useState(false);
   const [resourcesOpen, setResourcesOpen] = useState(false);
   // Mobile accordion state
   const [mobileSolutions, setMobileSolutions] = useState(false);
-  const [mobileEducation, setMobileEducation] = useState(false);
   const [mobileResources, setMobileResources] = useState(false);
   const solutionsTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const educationTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resourcesTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const solutionsRef = useRef<HTMLDivElement>(null);
-  const educationRef = useRef<HTMLDivElement>(null);
   const resourcesRef = useRef<HTMLDivElement>(null);
 
   const handleSolutionsEnter = () => {
@@ -99,13 +81,6 @@ export function PublicNavbar() {
   };
   const handleSolutionsLeave = () => {
     solutionsTimeout.current = setTimeout(() => setSolutionsOpen(false), 150);
-  };
-  const handleEducationEnter = () => {
-    if (educationTimeout.current) clearTimeout(educationTimeout.current);
-    setEducationOpen(true);
-  };
-  const handleEducationLeave = () => {
-    educationTimeout.current = setTimeout(() => setEducationOpen(false), 150);
   };
   const handleResourcesEnter = () => {
     if (resourcesTimeout.current) clearTimeout(resourcesTimeout.current);
@@ -116,7 +91,7 @@ export function PublicNavbar() {
   };
 
   // Close on route change
-  useEffect(() => { setOpen(false); setSolutionsOpen(false); setEducationOpen(false); setResourcesOpen(false); }, [pathname]);
+  useEffect(() => { setOpen(false); setSolutionsOpen(false); setResourcesOpen(false); }, [pathname]);
 
   // Prevent body scroll when open
   useEffect(() => {
@@ -125,7 +100,6 @@ export function PublicNavbar() {
   }, [open]);
 
   const isSolutionsActive = solutionItems.some(s => pathname === s.to);
-  const isEducationActive = educationItems.some(e => pathname === e.to);
   const isResourcesActive = resourceItems.some(r => pathname === r.to);
 
   return (
@@ -181,74 +155,11 @@ export function PublicNavbar() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.96 }}
                     transition={{ duration: 0.2, ease: "easeOut" }}
-                    className="absolute top-full right-0 mt-2 w-[780px] rounded-2xl border border-border/50 bg-background shadow-2xl shadow-black/25 p-4 z-[60]"
+                    className="absolute top-full right-0 mt-2 w-[980px] max-w-[calc(100vw-3rem)] rounded-2xl border border-border/50 bg-background shadow-2xl shadow-black/25 p-4 z-[60]"
                   >
                     <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">Solutions</p>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-4 gap-3">
                       {solutionItems.map(({ to, label, description, icon: Icon, image }) => (
-                        <Link
-                          key={to}
-                          to={to}
-                          className="group rounded-xl overflow-hidden border border-border/40 hover:border-primary/40 bg-muted/20 hover:bg-muted/40 transition-all duration-200"
-                        >
-                          <div className="relative h-36 overflow-hidden">
-                            <img
-                              src={image}
-                              alt={label}
-                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-                            <div className="absolute bottom-3 left-3 flex items-center gap-2">
-                              <div className="h-7 w-7 rounded-lg bg-white/15 backdrop-blur-sm flex items-center justify-center">
-                                <Icon className="h-4 w-4 text-white" />
-                              </div>
-                              <span className="text-base font-semibold text-white">{label}</span>
-                            </div>
-                          </div>
-                          <div className="p-3">
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                              {description}
-                            </p>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Education dropdown trigger */}
-            <div
-              ref={educationRef}
-              className="relative"
-              onMouseEnter={handleEducationEnter}
-              onMouseLeave={handleEducationLeave}
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`relative text-muted-foreground hover:text-foreground gap-1 ${isEducationActive ? "text-foreground" : ""}`}
-              >
-                Education
-                <ChevronRight className={`h-3 w-3 transition-transform duration-200 ${educationOpen ? "rotate-90" : ""}`} />
-                {isEducationActive && (
-                  <span className="absolute -bottom-1 left-2 right-2 h-[2px] rounded-full bg-foreground/60" />
-                )}
-              </Button>
-
-              <AnimatePresence>
-                {educationOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
-                    className="absolute top-full right-0 mt-2 w-[520px] rounded-2xl border border-border/50 bg-background shadow-2xl shadow-black/25 p-4 z-[60]"
-                  >
-                    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">Education</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      {educationItems.map(({ to, label, description, icon: Icon, image }) => (
                         <Link
                           key={to}
                           to={to}
@@ -343,25 +254,6 @@ export function PublicNavbar() {
                 )}
               </AnimatePresence>
             </div>
-
-            {/* Regular nav links */}
-            {navLinks.map(({ to, label }) => {
-              const isActive = pathname === to;
-              return (
-                <Link key={to} to={to}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={`relative text-muted-foreground hover:text-foreground ${isActive ? "text-foreground" : ""}`}
-                  >
-                    {label}
-                    {isActive && (
-                      <span className="absolute -bottom-1 left-2 right-2 h-[2px] rounded-full bg-foreground/60" />
-                    )}
-                  </Button>
-                </Link>
-              );
-            })}
           </div>
 
           {/* Right — Auth stacked + theme */}
@@ -485,49 +377,11 @@ export function PublicNavbar() {
                 </AnimatePresence>
               </motion.div>
 
-              {/* Education accordion */}
-              <motion.div
-                initial={{ opacity: 0, x: -16 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.15, duration: 0.25 }}
-              >
-                <button
-                  onClick={() => setMobileEducation(!mobileEducation)}
-                  className="flex items-center justify-between py-4 border-b border-white/10 w-full text-white/60"
-                >
-                  <span className="text-2xl font-semibold tracking-tight">Education</span>
-                  <ChevronRight className={`h-5 w-5 text-white/30 transition-transform duration-200 ${mobileEducation ? "rotate-90" : ""}`} />
-                </button>
-                <AnimatePresence>
-                  {mobileEducation && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      {educationItems.map(({ to, label, icon: Icon }) => (
-                        <Link
-                          key={to}
-                          to={to}
-                          onClick={() => setOpen(false)}
-                          className={`flex items-center gap-3 py-3 pl-4 border-b border-white/5 group ${pathname === to ? "text-white" : "text-white/50"}`}
-                        >
-                          <Icon className="h-4 w-4 text-white/40 group-hover:text-white/70 transition-colors" />
-                          <span className="text-lg font-medium group-hover:text-white transition-colors">{label}</span>
-                        </Link>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-
               {/* Resources accordion */}
               <motion.div
                 initial={{ opacity: 0, x: -16 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2, duration: 0.25 }}
+                transition={{ delay: 0.15, duration: 0.25 }}
               >
                 <button
                   onClick={() => setMobileResources(!mobileResources)}
@@ -561,25 +415,6 @@ export function PublicNavbar() {
                 </AnimatePresence>
               </motion.div>
 
-              {/* Standalone nav links (Pricing) */}
-              {navLinks.map(({ to, label }, i) => (
-                <motion.div
-                  key={to}
-                  initial={{ opacity: 0, x: -16 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.25 + i * 0.05, duration: 0.25 }}
-                >
-                  <Link
-                    to={to}
-                    onClick={() => setOpen(false)}
-                    className={`flex items-center py-4 border-b border-white/10 group ${pathname === to ? "text-white" : "text-white/60"}`}
-                  >
-                    <span className="text-2xl font-semibold tracking-tight group-hover:text-white transition-colors">
-                      {label}
-                    </span>
-                  </Link>
-                </motion.div>
-              ))}
             </nav>
 
             {/* Bottom CTA */}
