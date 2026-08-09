@@ -7,6 +7,7 @@ import {
   Radio,
   Send,
   Sparkles,
+  Users,
 } from "lucide-react";
 
 interface Message {
@@ -36,6 +37,7 @@ export function Sidebar({
 
   const navItems = [
     { id: "lobby",       icon: <Radio size={20} />,        label: "Lobby" },
+    { id: "partners",    icon: <Users size={20} />,         label: "Partners" },
     { id: "playground",  icon: <FlaskConical size={20} />,  label: "Playground" },
   ];
 

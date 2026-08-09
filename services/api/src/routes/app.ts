@@ -23,6 +23,12 @@ import { adminEmails, isDebugAuthCodes, requireEnv } from "../env";
 import { createAuth, getAuthSession } from "../lib/auth";
 import { HttpError } from "../lib/http";
 import {
+  getRecord,
+  getString,
+  localPartnerExternalUserId,
+  profileExternalUserId,
+} from "../lib/partner-standing";
+import {
   ensureDefaultProfile,
   listProfiles,
   publicUser,
@@ -675,7 +681,7 @@ appRoutes.get("/handoff/current-user", async (c) => {
   const { db, authUser } = await requireAppUser(c);
   const activeProfile = await ensureDefaultProfile(db, authUser);
   return c.json({
-    externalUserId: `atlantium_profile_${activeProfile.id}`,
+    externalUserId: profileExternalUserId(activeProfile),
     email: authUser.email,
     name: activeProfile.displayName,
     metadata: {
@@ -768,9 +774,16 @@ appRoutes.get("/handoff/boomin/status", async (c) => {
   }
 });
 
+// MEMBER endpoint: scoped to the caller's OWN standing row. Without an
+// externalUserId the signed standing call returns the whole program roster,
+// which any approved member could read — that full view belongs only to the
+// admin endpoint below. Boomin's standing response passes through verbatim
+// (see @boomin/server getPartnerStanding), so each partner row carries the
+// evergreen `referral` object and the additive `deployments[]` campaign links.
 appRoutes.get("/dashboard/creators", async (c) => {
-  await requireAppUser(c);
-  return creatorStandingResponse(c);
+  const { db, authUser } = await requireAppUser(c);
+  const activeProfile = await ensureDefaultProfile(db, authUser);
+  return creatorStandingResponse(c, profileExternalUserId(activeProfile));
 });
 
 appRoutes.get("/admin/partnerships/creators", async (c) => {
@@ -781,7 +794,7 @@ appRoutes.get("/admin/partnerships/creators", async (c) => {
 appRoutes.post("/dashboard/creators/test-click", async (c) => {
   const { db, authUser } = await requireAppUser(c);
   const activeProfile = await ensureDefaultProfile(db, authUser);
-  const partnerRef = `atlantium_profile_${activeProfile.id}`;
+  const partnerRef = profileExternalUserId(activeProfile);
   const metricOptions = buildMetricOptions(c, partnerRef, "link_clicks");
   const standingOptions = buildStandingOptions(c, partnerRef);
 
@@ -817,7 +830,7 @@ appRoutes.post("/dashboard/creators/test-click", async (c) => {
 appRoutes.post("/admin/partnerships/creators/test-click", async (c) => {
   const { db, authUser } = await requireAdminUser(c);
   const activeProfile = await ensureDefaultProfile(db, authUser);
-  const partnerRef = `atlantium_profile_${activeProfile.id}`;
+  const partnerRef = profileExternalUserId(activeProfile);
   const metricOptions = buildMetricOptions(c, partnerRef, "link_clicks");
   const standingOptions = buildStandingOptions(c, partnerRef);
 
@@ -860,13 +873,13 @@ appRoutes.post("/admin/partnerships/creators/test-click", async (c) => {
   return jsonWithStatus({ success, event, ...standing }, status);
 });
 
-async function creatorStandingResponse(c: Context<{ Bindings: Env }>) {
-  const options = buildStandingOptions(c);
+async function creatorStandingResponse(c: Context<{ Bindings: Env }>, externalUserId?: string) {
+  const options = buildStandingOptions(c, externalUserId);
   try {
     const result = await getPartnerStanding(options);
     return jsonWithStatus({ success: true, ...result }, 200);
   } catch (error) {
-    const fallback = await localBoominAppStanding(c).catch(() => null);
+    const fallback = await localBoominAppStanding(c, externalUserId).catch(() => null);
     if (fallback) return jsonWithStatus({ success: true, ...fallback }, 200);
 
     const sdkError = error as BoominSdkError;
@@ -875,7 +888,7 @@ async function creatorStandingResponse(c: Context<{ Bindings: Env }>) {
   }
 }
 
-async function localBoominAppStanding(c: Context<{ Bindings: Env }>) {
+async function localBoominAppStanding(c: Context<{ Bindings: Env }>, externalUserId?: string) {
   if (!isDebugAuthCodes(c.env)) return null;
   const apiBase = c.env.BOOMIN_APP_API_BASE?.replace(/\/+$/, "");
   const email = c.env.BOOMIN_APP_STANDING_EMAIL?.trim().toLowerCase();
@@ -913,6 +926,9 @@ async function localBoominAppStanding(c: Context<{ Bindings: Env }>) {
 
   const partners = standing.partners
     .filter(isAtlantiumHandoffPartner)
+    // Same scoping contract as the signed standing call: when the caller is a
+    // member (externalUserId set), only their own enrollment may come back.
+    .filter((row) => !externalUserId || localPartnerExternalUserId(row) === externalUserId)
     .map((row) => normalizeLocalBoominPartner(c.env, row));
   return {
     source: "local_boomin_app",
@@ -1011,18 +1027,6 @@ function getNestedStatus(value: Record<string, unknown> | null | undefined) {
   return getString(value, "status");
 }
 
-function getRecord(value: Record<string, unknown> | null | undefined, key: string) {
-  const result = value?.[key];
-  return result && typeof result === "object" && !Array.isArray(result)
-    ? result as Record<string, unknown>
-    : null;
-}
-
-function getString(value: Record<string, unknown> | null | undefined, key: string) {
-  const result = value?.[key];
-  return typeof result === "string" && result ? result : null;
-}
-
 async function buildHandoffOptions(c: Context<{ Bindings: Env }>) {
   const { db, authUser } = await requireAppUser(c);
   const activeProfile = await ensureDefaultProfile(db, authUser);
@@ -1033,7 +1037,7 @@ async function buildHandoffOptions(c: Context<{ Bindings: Env }>) {
     audience: BOOMIN_AUDIENCE,
     publicKey: c.env.BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_atlantium_creator_program_63xwon9h",
     redirectUri,
-    externalUserId: `atlantium_profile_${activeProfile.id}`,
+    externalUserId: profileExternalUserId(activeProfile),
     email: authUser.email,
     name: activeProfile.displayName,
     metadata: {

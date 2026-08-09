@@ -4,16 +4,18 @@ import {
   FlaskConical,
   Radio,
   Sparkles,
+  Users,
 } from "lucide-react";
 import { ApprovalOverlay } from "@/components/ApprovalOverlay";
 import { LobbyPage } from "@/components/pages/LobbyPage";
+import { PartnersPanel } from "@/components/pages/PartnersPanel";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
 import { Sidebar } from "@/components/Sidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
-type DashboardSection = "hq" | "lobby" | "playground";
+type DashboardSection = "hq" | "lobby" | "partners" | "playground";
 
 const sectionCopy: Record<DashboardSection, {
   title: string;
@@ -32,6 +34,12 @@ const sectionCopy: Record<DashboardSection, {
     eyebrow: "Community",
     description: "Member chat, office hours, schedule, and live room access.",
     icon: Radio,
+  },
+  partners: {
+    title: "Partners",
+    eyebrow: "Creator program",
+    description: "Your partner standing, referral link, and live campaign links — hosted right here on Atlantium.",
+    icon: Users,
   },
   playground: {
     title: "Playground",
@@ -96,6 +104,10 @@ export function MemberDashboardPage() {
           )}>
             {activePage === "lobby" ? (
               <LobbyPage headerPortalId={lobbyHeaderSlotId} />
+            ) : activePage === "partners" ? (
+              <div className="mx-auto max-w-5xl">
+                <PartnersPanel />
+              </div>
             ) : (
               <div className="mx-auto max-w-5xl">
                 <div className="mb-6 flex items-start gap-4">
