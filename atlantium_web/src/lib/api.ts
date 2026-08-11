@@ -1308,6 +1308,20 @@ class ApiClient {
     }, ATLANTIUM_API_BASE_URL);
   }
 
+  async rescrapeJobPostings(): Promise<{
+    success: boolean;
+    buildId: string;
+    scraped: number;
+    kept: number;
+    created: number;
+    reactivated: number;
+    expired: number;
+  }> {
+    return this.request("/admin/jobs/rescrape", {
+      method: "POST",
+    }, ATLANTIUM_API_BASE_URL);
+  }
+
   async deleteJobPosting(jobId: string): Promise<{ success: boolean; message: string }> {
     return this.request<{ success: boolean; message: string }>(`/job_postings/${jobId}/delete`, {
       method: "POST",

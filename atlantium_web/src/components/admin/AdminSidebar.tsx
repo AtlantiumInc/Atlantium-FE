@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
+  Briefcase,
   Calendar,
   FileText,
   Handshake,
@@ -58,6 +59,12 @@ export function AdminSidebar({
       path: "/admin/articles",
       icon: <FileText size={20} />,
       label: "Articles",
+    },
+    {
+      id: "jobs",
+      path: "/admin/jobs",
+      icon: <Briefcase size={20} />,
+      label: "Jobs",
     },
     {
       id: "users",

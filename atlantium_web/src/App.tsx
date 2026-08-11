@@ -26,6 +26,7 @@ import { ComponentsPage } from "@/pages/ComponentsPage";
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
 import { AdminEventsPage } from "@/pages/admin/AdminEventsPage";
 import { AdminArticlesPage } from "@/pages/admin/AdminArticlesPage";
+import { AdminJobsPage } from "@/pages/admin/AdminJobsPage";
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
 import { AdminApprovalsPage } from "@/pages/admin/AdminApprovalsPage";
 import { AdminGTMPage } from "@/pages/admin/AdminGTMPage";
@@ -146,6 +147,7 @@ function AppRoutes() {
         <Route index element={<AdminDashboardPage />} />
         <Route path="events" element={<AdminEventsPage />} />
         <Route path="articles" element={<AdminArticlesPage />} />
+        <Route path="jobs" element={<AdminJobsPage />} />
         <Route path="users" element={<AdminUsersPage />} />
         <Route path="approvals" element={<AdminApprovalsPage />} />
         <Route path="partnerships" element={<DashboardPage embedded />} />

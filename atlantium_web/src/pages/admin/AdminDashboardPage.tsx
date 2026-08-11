@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  Briefcase,
   Calendar,
   FileText,
   Users,
@@ -9,6 +10,7 @@ import {
   ArrowRight,
   Loader2,
 } from "lucide-react";
+import { isNewThisWeek } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
@@ -59,6 +61,7 @@ interface Event {
 export function AdminDashboardPage() {
   const navigate = useNavigate();
   const [events, setEvents] = useState<Event[]>([]);
+  const [jobStats, setJobStats] = useState<{ active: number; newThisWeek: number } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -73,6 +76,11 @@ export function AdminDashboardPage() {
       }
     };
     fetchData();
+    api.getJobPostings()
+      .then((jobs) =>
+        setJobStats({ active: jobs.length, newThisWeek: jobs.filter(isNewThisWeek).length }),
+      )
+      .catch(() => setJobStats(null));
   }, []);
 
   const formatDate = (dateString: string) => {
@@ -106,10 +114,12 @@ export function AdminDashboardPage() {
           loading={isLoading}
         />
         <StatCard
-          title="Recent Activity"
-          value={events.length}
-          icon={<TrendingUp className="h-4 w-4" />}
-          loading={isLoading}
+          title="Active Jobs"
+          value={jobStats?.active ?? 0}
+          icon={<Briefcase className="h-4 w-4" />}
+          trend={jobStats && jobStats.newThisWeek > 0 ? `${jobStats.newThisWeek} new this week` : undefined}
+          trendUp
+          loading={jobStats === null && isLoading}
         />
       </div>
 
