@@ -230,6 +230,22 @@ export const jobPostings = pgTable("job_postings", {
   statusPostedIdx: index("job_postings_status_posted_idx").on(table.status, table.postedAt),
 }));
 
+export const digestSuppressions = pgTable("digest_suppressions", {
+  email: text("email").primaryKey(),
+  reason: text("reason").notNull().default("unsubscribed"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const digestRuns = pgTable("digest_runs", {
+  periodKey: text("period_key").primaryKey(),
+  kind: text("kind").notNull().default("weekly"),
+  recipients: integer("recipients").notNull().default(0),
+  sent: integer("sent").notNull().default(0),
+  failed: integer("failed").notNull().default(0),
+  sections: jsonb("sections").$type<Record<string, number>>().notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),

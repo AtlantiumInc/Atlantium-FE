@@ -8,6 +8,14 @@ import { createDb } from "../db/client";
 import type { Db } from "../db/client";
 import { syncJobPostings } from "../lib/jobs-sync";
 import {
+  buildSections,
+  renderDigest,
+  sendWeeklyDigest,
+  unsubscribeUrl,
+  verifyUnsubscribeSig,
+} from "../lib/digest";
+import {
+  digestSuppressions,
   jobPostings,
   lobbyEventAttendance,
   lobbyEvents,
@@ -922,6 +930,72 @@ appRoutes.post("/admin/jobs/rescrape", async (c) => {
   await requireAdminUser(c);
   const result = await syncJobPostings(c.env);
   return c.json({ success: true, ...result });
+});
+
+// ── Weekly digest ───────────────────────────────────────────────────────────
+
+// Signed one-click unsubscribe — must work logged-out from an email client.
+appRoutes.get("/email/unsubscribe", async (c) => {
+  const email = c.req.query("email")?.trim().toLowerCase();
+  const sig = c.req.query("sig") ?? "";
+  if (!email || !(await verifyUnsubscribeSig(c.env, email, sig))) {
+    throw new HttpError(400, "invalid_link", "This unsubscribe link is invalid or expired.");
+  }
+  const db = createDb(c.env);
+  await db
+    .insert(digestSuppressions)
+    .values({ email, reason: "unsubscribed" })
+    .onConflictDoNothing({ target: digestSuppressions.email });
+  return c.html(
+    `<!doctype html><body style="font-family:system-ui;background:#0b1220;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;">
+      <div style="text-align:center;max-width:420px;padding:24px;">
+        <h1 style="font-size:22px;">You're unsubscribed</h1>
+        <p style="color:#94a3b8;line-height:1.6;">${email} won't get the weekly report anymore. Changed your mind? Sign in at atlantium.ai and rejoin from the jobs page.</p>
+      </div>
+    </body>`,
+  );
+});
+
+// RFC 8058 one-click unsubscribe (mail clients POST here).
+appRoutes.post("/email/unsubscribe", async (c) => {
+  const email = c.req.query("email")?.trim().toLowerCase();
+  const sig = c.req.query("sig") ?? "";
+  if (!email || !(await verifyUnsubscribeSig(c.env, email, sig))) {
+    throw new HttpError(400, "invalid_link", "Invalid unsubscribe link.");
+  }
+  const db = createDb(c.env);
+  await db
+    .insert(digestSuppressions)
+    .values({ email, reason: "unsubscribed" })
+    .onConflictDoNothing({ target: digestSuppressions.email });
+  return c.json({ success: true });
+});
+
+// Admin: send the digest. {test:true} → only to the calling admin's inbox;
+// {force:true} → bypass the week run-lock (e.g. re-send after a fix).
+appRoutes.post(
+  "/admin/digest/send",
+  zValidator("json", z.object({ test: z.boolean().optional(), force: z.boolean().optional() }).optional()),
+  async (c) => {
+    const { authUser: adminUser } = await requireAdminUser(c);
+    const body = c.req.valid("json") ?? {};
+    const result = await sendWeeklyDigest(c.env, {
+      testTo: body.test === false ? undefined : adminUser.email,
+      force: body.force,
+    });
+    return c.json({ success: true, ...result });
+  },
+);
+
+// Dev-only rendered preview (guarded by the debug-codes flag, never on in prod).
+appRoutes.get("/digest/preview", async (c) => {
+  if (!isDebugAuthCodes(c.env)) {
+    throw new HttpError(404, "not_found", "Route not found.");
+  }
+  const db = createDb(c.env);
+  const sections = await buildSections(db);
+  const unsub = await unsubscribeUrl(c.env, "preview@example.com");
+  return c.html(renderDigest(sections, unsub));
 });
 
 appRoutes.get("/job_postings", async (c) => {

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
+  Mail,
   Plus,
   Search,
   MoreHorizontal,
@@ -106,6 +107,7 @@ export function AdminJobsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
   const [isRescraping, setIsRescraping] = useState(false);
+  const [isSendingDigest, setIsSendingDigest] = useState(false);
   const [formData, setFormData] = useState(emptyForm);
 
   const fetchJobs = useCallback(async (status: "active" | "expired") => {
@@ -144,6 +146,23 @@ export function AdminJobsPage() {
     () => new Set(jobs.map((j) => j.company.toLowerCase())).size,
     [jobs],
   );
+
+  const handleTestDigest = async () => {
+    setIsSendingDigest(true);
+    try {
+      const r = await api.sendDigest({ test: true });
+      if (r.skipped === "no_content") {
+        toast.info("Nothing to send — no new jobs or upcoming events this week.");
+      } else {
+        const parts = Object.entries(r.sections).map(([k, v]) => `${v} ${k}`).join(", ");
+        toast.success(`Test digest sent to your inbox (${parts})`);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Test digest failed");
+    } finally {
+      setIsSendingDigest(false);
+    }
+  };
 
   const handleRescrape = async () => {
     setIsRescraping(true);
@@ -265,6 +284,14 @@ export function AdminJobsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleTestDigest} disabled={isSendingDigest}>
+            {isSendingDigest ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Mail className="h-4 w-4 mr-2" />
+            )}
+            {isSendingDigest ? "Sending..." : "Test Digest"}
+          </Button>
           <Button variant="outline" onClick={handleRescrape} disabled={isRescraping}>
             {isRescraping ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />

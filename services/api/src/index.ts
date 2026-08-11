@@ -4,6 +4,7 @@ import { createAuth } from "./lib/auth";
 import type { Env } from "./env";
 import { allowedOrigins } from "./env";
 import { jsonError } from "./lib/http";
+import { sendWeeklyDigest } from "./lib/digest";
 import { syncJobPostings } from "./lib/jobs-sync";
 import { appRoutes } from "./routes/app";
 
@@ -65,9 +66,20 @@ app.onError((error, c) => jsonError(c, error));
 
 export default {
   fetch: app.fetch,
-  // Weekly hiring.cafe rescrape (cron in wrangler.toml) keeps the job board
-  // and its "new this week" badges accurate without a manual seed run.
+  // Monday crons: 10:00 UTC rescrapes the job board; 13:00 UTC sends the
+  // weekly member digest (jobs + events sections), after fresh data lands.
   async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    if (event.cron === "0 13 * * 1") {
+      ctx.waitUntil(
+        sendWeeklyDigest(env)
+          .then((r) => console.log("digest ok", JSON.stringify(r)))
+          .catch((error) => {
+            console.error("digest failed", error);
+            throw error;
+          }),
+      );
+      return;
+    }
     ctx.waitUntil(
       syncJobPostings(env)
         .then((r) => console.log("jobs-sync ok", JSON.stringify(r)))

@@ -1346,6 +1346,22 @@ class ApiClient {
     }, ATLANTIUM_API_BASE_URL);
   }
 
+  async sendDigest(opts?: { test?: boolean; force?: boolean }): Promise<{
+    success: boolean;
+    periodKey: string;
+    skipped?: string;
+    sections: Record<string, number>;
+    recipients: number;
+    sent: number;
+    failed: number;
+    test: boolean;
+  }> {
+    return this.request("/admin/digest/send", {
+      method: "POST",
+      body: JSON.stringify(opts ?? {}),
+    }, ATLANTIUM_API_BASE_URL);
+  }
+
   async deleteJobPosting(jobId: string): Promise<{ success: boolean; message: string }> {
     return this.request<{ success: boolean; message: string }>(`/job_postings/${jobId}/delete`, {
       method: "POST",
