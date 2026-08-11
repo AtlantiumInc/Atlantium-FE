@@ -26,6 +26,7 @@ import SpotlightCard from "@/components/ui/SpotlightCard";
 import ShinyText from "@/components/ui/ShinyText";
 import Aurora from "@/components/Aurora";
 import { api, type JobPosting } from "@/lib/api";
+import { isNewThisWeek } from "@/lib/utils";
 
 function formatSalary(min?: number | null, max?: number | null): string | null {
   if (!min && !max) return null;
@@ -220,6 +221,11 @@ export function JobDetailPage() {
 
                   {/* Badges */}
                   <div className="flex flex-wrap items-center gap-2 mb-3">
+                    {isNewThisWeek(job) && (
+                      <Badge variant="outline" className="text-xs font-semibold px-2.5 py-0.5 bg-cyan-500/15 border-cyan-400/40 text-cyan-300">
+                        New this week
+                      </Badge>
+                    )}
                     {job.workplace_type && (
                       <Badge variant="outline" className={`text-xs px-2.5 py-0.5 ${getWorkplaceColor(job.workplace_type)}`}>
                         {job.workplace_type}

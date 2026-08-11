@@ -212,7 +212,7 @@ async function fetchJobOg(slug) {
 // Per-job OG image (1200x630 PNG rendered with satori/resvg via workers-og)
 // ---------------------------------------------------------------------------
 
-const OG_RENDER_VERSION = '2';
+const OG_RENDER_VERSION = '3';
 
 const FONT_URLS = {
   regular: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.ttf',
@@ -251,6 +251,10 @@ async function renderJobOgImage(slug, request) {
   const job = await res.json();
   if (!job || !job.title) return Response.redirect(`${SITE_ORIGIN}/og-image.png`, 302);
 
+  const newDate = job.posted_at || job.created_at;
+  const newAge = newDate ? Date.now() - new Date(newDate).getTime() : -1;
+  const isNewThisWeek = newAge >= 0 && newAge < 7 * 24 * 60 * 60 * 1000;
+
   const salary = formatSalaryRange(job.salary_min, job.salary_max);
   const stack = ((job.content && job.content.tech_stack) || []).slice(0, 6);
   let location = (job.location || 'Atlanta, GA').split(',').slice(0, 2).join(',');
@@ -260,6 +264,7 @@ async function renderJobOgImage(slug, request) {
     <div style="display: flex; align-items: center; margin-right: 14px; padding: 6px 16px; border-radius: 999px; font-size: 22px; font-weight: 600; color: ${color}; background: ${bg}; border: 1px solid ${border};">${escapeHtml(label)}</div>`;
 
   const badges = [
+    isNewThisWeek ? badge('New this week', '#22d3ee', 'rgba(6,182,212,0.15)', 'rgba(34,211,238,0.5)') : '',
     job.workplace_type ? badge(job.workplace_type, '#34d399', 'rgba(16,185,129,0.12)', 'rgba(16,185,129,0.4)') : '',
     job.seniority ? badge(job.seniority, '#a5b4fc', 'rgba(99,102,241,0.12)', 'rgba(99,102,241,0.4)') : '',
     salary ? badge(salary, '#6ee7b7', 'rgba(16,185,129,0.08)', 'rgba(16,185,129,0.3)') : '',

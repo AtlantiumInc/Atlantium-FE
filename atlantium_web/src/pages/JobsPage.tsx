@@ -8,6 +8,7 @@ import { PublicNavbar } from "@/components/PublicNavbar";
 import SpotlightCard from "@/components/ui/SpotlightCard";
 import Aurora from "@/components/Aurora";
 import { api, type JobPosting } from "@/lib/api";
+import { isNewThisWeek } from "@/lib/utils";
 
 type Job = JobPosting & {
   // convenience aliases derived from content
@@ -104,6 +105,11 @@ function JobCard({ job, index }: { job: Job; index: number }) {
 
         {/* Meta row */}
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2 sm:mt-3">
+          {isNewThisWeek(job) && (
+            <Badge variant="outline" className="text-[9px] sm:text-[10px] font-semibold px-2 py-0.5 bg-cyan-500/15 border-cyan-400/40 text-cyan-300">
+              New this week
+            </Badge>
+          )}
           {job.workplace_type && (
             <Badge variant="outline" className={`text-[9px] sm:text-[10px] font-medium px-2 py-0.5 ${getWorkplaceColor(job.workplace_type)}`}>
               {job.workplace_type}
@@ -357,6 +363,7 @@ export function JobsPage() {
 
   const remoteCount = jobs.filter((j) => j.workplace_type === "Remote").length;
   const hybridCount = jobs.filter((j) => j.workplace_type === "Hybrid").length;
+  const newThisWeekCount = jobs.filter(isNewThisWeek).length;
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -403,6 +410,9 @@ export function JobsPage() {
             <span><span className="text-foreground font-semibold">{jobs.length}</span> open roles</span>
             <span><span className="text-emerald-400 font-semibold">{remoteCount}</span> remote</span>
             <span><span className="text-violet-400 font-semibold">{hybridCount}</span> hybrid</span>
+            {newThisWeekCount > 0 && (
+              <span><span className="text-cyan-400 font-semibold">{newThisWeekCount}</span> new this week</span>
+            )}
             {jobs.length > 0 && jobs[0].posted_at && (
               <span className="text-xs self-center opacity-60">
                 updated {new Date(Math.max(...jobs.filter((j) => j.posted_at).map((j) => new Date(j.posted_at!).getTime()))).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
