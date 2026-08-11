@@ -27,6 +27,7 @@ import ShinyText from "@/components/ui/ShinyText";
 import Aurora from "@/components/Aurora";
 import { api, type JobPosting } from "@/lib/api";
 import { isNewThisWeek } from "@/lib/utils";
+import { JobReportSignupModal, useJobReportSignup } from "@/components/JobReportSignupModal";
 
 function formatSalary(min?: number | null, max?: number | null): string | null {
   if (!min && !max) return null;
@@ -113,6 +114,7 @@ export function JobDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const [bannerVisible, setBannerVisible] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const signup = useJobReportSignup();
 
   useEffect(() => {
     const timer = setTimeout(() => setBannerVisible(true), 3000);
@@ -457,6 +459,12 @@ export function JobDetailPage() {
           )}
         </AnimatePresence>
       </main>
+
+      <JobReportSignupModal
+        open={signup.open}
+        onOpenChange={signup.setOpen}
+        initialEmail={signup.initialEmail}
+      />
     </div>
   );
 }

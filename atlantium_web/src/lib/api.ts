@@ -1067,6 +1067,30 @@ class ApiClient {
     }, APP_API_BASE_URL);
   }
 
+  /**
+   * Start the better-auth Google OAuth flow. Returns the Google consent URL;
+   * the caller redirects there. After consent, better-auth sets the session
+   * cookie and redirects back to callbackURL.
+   */
+  async googleSignInStart(callbackURL: string): Promise<{ url: string }> {
+    const authOrigin = ATLANTIUM_API_BASE_URL.replace(/\/v1\/?$/, "");
+    const response = await fetch(`${authOrigin}/api/auth/sign-in/social`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        provider: "google",
+        callbackURL,
+        errorCallbackURL: callbackURL,
+      }),
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => null) as { message?: string } | null;
+      throw new Error(body?.message ?? "Google sign-in is unavailable right now.");
+    }
+    return response.json();
+  }
+
   async googleAuth(code: string, redirectUri?: string): Promise<VerifyResponse> {
     let url = `/auth/google?code=${encodeURIComponent(code)}`;
     if (redirectUri) {

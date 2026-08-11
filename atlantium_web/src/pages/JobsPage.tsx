@@ -9,6 +9,7 @@ import SpotlightCard from "@/components/ui/SpotlightCard";
 import Aurora from "@/components/Aurora";
 import { api, type JobPosting } from "@/lib/api";
 import { isNewThisWeek } from "@/lib/utils";
+import { JobReportSignupModal, useJobReportSignup } from "@/components/JobReportSignupModal";
 
 type Job = JobPosting & {
   // convenience aliases derived from content
@@ -271,15 +272,18 @@ function CompactTrainingCard() {
   );
 }
 
-function JobAlertsCard() {
+function JobAlertsCard({
+  isMember,
+  onJoin,
+}: {
+  isMember: boolean;
+  onJoin: (email?: string) => void;
+}) {
   const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
-    // TODO: wire to backend
-    setSubmitted(true);
+    onJoin(email.trim() || undefined);
   };
 
   return (
@@ -289,21 +293,21 @@ function JobAlertsCard() {
           <Bell className="h-[18px] w-[18px] text-cyan-400" />
         </div>
         <div>
-          <p className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest">Job Alerts</p>
+          <p className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest">Weekly Job Report</p>
           <h3 className="font-semibold text-foreground text-sm leading-tight">New Roles, Weekly</h3>
         </div>
       </div>
 
-      {submitted ? (
+      {isMember ? (
         <div className="flex flex-col items-center gap-2 py-3 text-center">
           <CheckCircle2 className="h-8 w-8 text-emerald-400" />
-          <p className="text-sm font-medium text-foreground">You're on the list!</p>
-          <p className="text-xs text-muted-foreground">We'll email you when new AI roles drop in Atlanta.</p>
+          <p className="text-sm font-medium text-foreground">You're a member!</p>
+          <p className="text-xs text-muted-foreground">The Weekly Job Report is headed to your inbox.</p>
         </div>
       ) : (
         <>
           <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-            Get notified when new AI engineering jobs are posted in Atlanta.
+            Join Atlantium free and get the Weekly Job Report — new Atlanta AI &amp; tech roles in your inbox.
           </p>
           <form onSubmit={handleSubmit} className="space-y-2">
             <input
@@ -311,12 +315,11 @@ function JobAlertsCard() {
               placeholder="your@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required
               className="w-full px-3 py-2 rounded-lg bg-background/60 border border-border/60 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all"
             />
             <Button type="submit" size="sm" className="w-full gap-2 bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30">
               <Bell className="h-3.5 w-3.5" />
-              Notify Me
+              Join Free
             </Button>
           </form>
         </>
@@ -332,6 +335,7 @@ export function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const signup = useJobReportSignup();
 
   useEffect(() => {
     api.getJobPostings()
@@ -526,7 +530,7 @@ export function JobsPage() {
           {/* Desktop sidebar */}
           <div className="hidden lg:flex lg:flex-col w-72 xl:w-80 flex-shrink-0 space-y-4 sticky top-24">
             <TrainingCard />
-            <JobAlertsCard />
+            <JobAlertsCard isMember={signup.isMember} onJoin={signup.openWithEmail} />
           </div>
         </div>
 
@@ -535,6 +539,12 @@ export function JobsPage() {
           <CompactTrainingCard />
         </div>
       </main>
+
+      <JobReportSignupModal
+        open={signup.open}
+        onOpenChange={signup.setOpen}
+        initialEmail={signup.initialEmail}
+      />
     </div>
   );
 }

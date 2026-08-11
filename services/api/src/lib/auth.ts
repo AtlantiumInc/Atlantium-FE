@@ -6,6 +6,7 @@ import * as schema from "../db/schema";
 import type { Env } from "../env";
 import { allowedOrigins, isDebugAuthCodes, requireEnv } from "../env";
 import { sendOtpEmail } from "./email";
+import { ensureDefaultProfile } from "./profiles";
 
 export function createAuth(env: Env, executionCtx?: ExecutionContext) {
   const db = createDb(env);
@@ -20,6 +21,39 @@ export function createAuth(env: Env, executionCtx?: ExecutionContext) {
     }),
     emailAndPassword: {
       enabled: false,
+    },
+    ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+      ? {
+          socialProviders: {
+            google: {
+              clientId: env.GOOGLE_CLIENT_ID,
+              clientSecret: env.GOOGLE_CLIENT_SECRET,
+            },
+          },
+        }
+      : {}),
+    account: {
+      accountLinking: {
+        enabled: true,
+        // A Google sign-in with an email that already has an OTP account
+        // links to it instead of erroring.
+        trustedProviders: ["google", "email-otp"],
+      },
+    },
+    databaseHooks: {
+      user: {
+        create: {
+          // OTP signups get their profile from /auth/verify; social signups
+          // need the same freemium-member provisioning.
+          after: async (createdUser) => {
+            try {
+              await ensureDefaultProfile(db, createdUser as never);
+            } catch (error) {
+              console.error("ensureDefaultProfile after social signup failed", error);
+            }
+          },
+        },
+      },
     },
     plugins: [
       emailOTP({
