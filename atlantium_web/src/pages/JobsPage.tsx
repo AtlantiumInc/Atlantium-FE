@@ -275,15 +275,28 @@ function CompactTrainingCard() {
 function JobAlertsCard({
   isMember,
   onJoin,
+  onStart,
 }: {
   isMember: boolean;
   onJoin: (email?: string) => void;
+  onStart: (email: string) => Promise<void>;
 }) {
   const [email, setEmail] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onJoin(email.trim() || undefined);
+    const value = email.trim();
+    if (!value) {
+      onJoin();
+      return;
+    }
+    setIsSending(true);
+    try {
+      await onStart(value);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -317,9 +330,9 @@ function JobAlertsCard({
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-background/60 border border-border/60 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all"
             />
-            <Button type="submit" size="sm" className="w-full gap-2 bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30">
-              <Bell className="h-3.5 w-3.5" />
-              Join Free
+            <Button type="submit" size="sm" disabled={isSending} className="w-full gap-2 bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30">
+              {isSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Bell className="h-3.5 w-3.5" />}
+              {isSending ? "Sending code..." : "Join Free"}
             </Button>
           </form>
         </>
@@ -530,7 +543,7 @@ export function JobsPage() {
           {/* Desktop sidebar */}
           <div className="hidden lg:flex lg:flex-col w-72 xl:w-80 flex-shrink-0 space-y-4 sticky top-24">
             <TrainingCard />
-            <JobAlertsCard isMember={signup.isMember} onJoin={signup.openWithEmail} />
+            <JobAlertsCard isMember={signup.isMember} onJoin={signup.openWithEmail} onStart={signup.startWithEmail} />
           </div>
         </div>
 
@@ -544,6 +557,7 @@ export function JobsPage() {
         open={signup.open}
         onOpenChange={signup.setOpen}
         initialEmail={signup.initialEmail}
+        initialStep={signup.initialStep}
       />
     </div>
   );

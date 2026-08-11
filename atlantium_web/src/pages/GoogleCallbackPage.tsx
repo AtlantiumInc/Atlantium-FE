@@ -1,13 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
-import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
+/**
+ * Landing page for the better-auth Google flow. By the time the browser gets
+ * here the session cookie is already set (better-auth handled the OAuth code
+ * exchange on api.atlantium.ai) — so this page just reads the session and
+ * routes to onboarding or the dashboard.
+ */
 export function GoogleCallbackPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { login, checkAuth } = useAuth();
+  const { checkAuth } = useAuth();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
   const hasRun = useRef(false);
@@ -16,33 +21,29 @@ export function GoogleCallbackPage() {
     if (hasRun.current) return;
     hasRun.current = true;
 
-    const code = searchParams.get("code");
     const error = searchParams.get("error");
-
     if (error) {
       setStatus("error");
-      setMessage("Google authorization was denied");
+      setMessage(
+        error === "access_denied"
+          ? "Google authorization was denied"
+          : "Google sign-in didn't complete. Please try again.",
+      );
       return;
     }
 
-    if (!code) {
-      setStatus("error");
-      setMessage("No authorization code received");
-      return;
-    }
-
-    const handleGoogleAuth = async () => {
+    const finishSignIn = async () => {
       try {
-        const response = await api.googleAuth(code);
-        login(response.auth_token, response.user);
-
-        // Fetch full user data to check onboarding status
         const fullUser = await checkAuth();
+        if (!fullUser) {
+          setStatus("error");
+          setMessage("Sign-in didn't complete. Please try again.");
+          return;
+        }
 
         setStatus("success");
         setMessage("Signed in with Google!");
 
-        // Check onboarding status from the freshly fetched user data
         const profile = (fullUser as unknown as Record<string, unknown>)?._profile as Record<string, unknown> | undefined;
         const registrationDetails = profile?.registration_details as Record<string, unknown> | undefined;
         const isOnboardingCompleted = registrationDetails?.is_completed === true;
@@ -53,15 +54,15 @@ export function GoogleCallbackPage() {
           } else {
             navigate("/onboarding", { replace: true });
           }
-        }, 1000);
+        }, 800);
       } catch (err) {
         setStatus("error");
         setMessage(err instanceof Error ? err.message : "Failed to sign in with Google");
       }
     };
 
-    handleGoogleAuth();
-  }, [searchParams, navigate, login, checkAuth]);
+    finishSignIn();
+  }, [searchParams, navigate, checkAuth]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">

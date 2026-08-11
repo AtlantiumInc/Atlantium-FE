@@ -19,6 +19,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/lib/api";
 import { getReferralCode, clearReferralCode } from "@/lib/referral";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 const emailSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -293,6 +294,17 @@ export function LoginPage() {
                       </Button>
                     </form>
                   </Form>
+
+                  <div className="flex items-center gap-3 mt-5">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-xs text-muted-foreground">or</span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  <div className="mt-5">
+                    <GoogleSignInButton
+                      callbackURL={`${window.location.origin}/auth/google/callback`}
+                    />
+                  </div>
 
                   {/* Sign up link */}
                   <p className="mt-6 text-sm text-muted-foreground text-center">

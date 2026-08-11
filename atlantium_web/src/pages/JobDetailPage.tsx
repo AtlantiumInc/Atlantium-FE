@@ -464,6 +464,7 @@ export function JobDetailPage() {
         open={signup.open}
         onOpenChange={signup.setOpen}
         initialEmail={signup.initialEmail}
+        initialStep={signup.initialStep}
       />
     </div>
   );
