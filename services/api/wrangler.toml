@@ -33,3 +33,7 @@ BOOMIN_HANDOFF_REDIRECT_URI = "https://atlantium.ai/creator-program"
 #   wrangler secret put LIVEKIT_API_SECRET
 # Optional:
 #   wrangler secret put RESEND_API_KEY
+
+# Weekly job-board rescrape (Mondays 10:00 UTC = 6am ET) — src/lib/jobs-sync.ts
+[triggers]
+crons = ["0 10 * * 1"]

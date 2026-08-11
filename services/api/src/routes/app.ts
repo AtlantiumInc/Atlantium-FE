@@ -6,6 +6,7 @@ import type { Context } from "hono";
 import { z } from "zod";
 import { createDb } from "../db/client";
 import type { Db } from "../db/client";
+import { syncJobPostings } from "../lib/jobs-sync";
 import {
   jobPostings,
   lobbyEventAttendance,
@@ -914,6 +915,14 @@ function jobSlug(title: string, company: string) {
   const salt = crypto.randomUUID().slice(0, 8);
   return `${base}-${salt}`;
 }
+
+// Manual trigger for the weekly cron rescrape (same code path). Runs inline
+// so the response carries the sync counts.
+appRoutes.post("/admin/jobs/rescrape", async (c) => {
+  await requireAdminUser(c);
+  const result = await syncJobPostings(c.env);
+  return c.json({ success: true, ...result });
+});
 
 appRoutes.get("/job_postings", async (c) => {
   const db = createDb(c.env);

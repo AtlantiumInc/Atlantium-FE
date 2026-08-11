@@ -4,6 +4,7 @@ import { createAuth } from "./lib/auth";
 import type { Env } from "./env";
 import { allowedOrigins } from "./env";
 import { jsonError } from "./lib/http";
+import { syncJobPostings } from "./lib/jobs-sync";
 import { appRoutes } from "./routes/app";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -51,7 +52,21 @@ app.route("/v1", appRoutes);
 app.notFound((c) => c.json({ code: "not_found", message: "Route not found.", path: c.req.path }, 404));
 app.onError((error, c) => jsonError(c, error));
 
-export default app;
+export default {
+  fetch: app.fetch,
+  // Weekly hiring.cafe rescrape (cron in wrangler.toml) keeps the job board
+  // and its "new this week" badges accurate without a manual seed run.
+  async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(
+      syncJobPostings(env)
+        .then((r) => console.log("jobs-sync ok", JSON.stringify(r)))
+        .catch((error) => {
+          console.error("jobs-sync failed", error);
+          throw error;
+        }),
+    );
+  },
+};
 
 function getExecutionCtx(c: { executionCtx: ExecutionContext }) {
   try {

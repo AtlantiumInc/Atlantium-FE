@@ -200,7 +200,9 @@ async function fetchJobOg(slug) {
     siteName: 'Atlantium',
     title: `${job.title} at ${job.company} — Atlanta Tech Jobs`,
     description,
-    image: `${SITE_ORIGIN}/og/jobs/${encodeURIComponent(slug)}.png`,
+    // Version in the URL: unfurl caches key on the image URL, so bumping
+    // OG_RENDER_VERSION makes platforms fetch the new render.
+    image: `${SITE_ORIGIN}/og/jobs/${encodeURIComponent(slug)}.png?v=${OG_RENDER_VERSION}`,
     imageWidth: '1200',
     imageHeight: '630',
     url: `${SITE_ORIGIN}/jobs/${encodeURIComponent(slug)}`,
