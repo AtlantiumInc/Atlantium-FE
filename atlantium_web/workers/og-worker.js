@@ -10,6 +10,7 @@
 
 const XANO_API_BASE = 'https://cloud.atlantium.ai/api:-ulnKZsX';
 const APP_API_BASE = 'https://cloud.atlantium.ai/api:_c66cUCc';
+const ATLANTIUM_API_BASE = 'https://api.atlantium.ai/v1';
 const SITE_ORIGIN = 'https://atlantium.ai';
 
 const BOT_USER_AGENTS =
@@ -166,21 +167,37 @@ async function fetchGroupOg(slug) {
 }
 
 async function fetchJobOg(slug) {
+  // Job postings live on the Neon-backed api worker (Xano og endpoint is dead).
   const res = await fetch(
-    `${XANO_API_BASE}/job?slug=${encodeURIComponent(slug)}`
+    `${ATLANTIUM_API_BASE}/job_postings/${encodeURIComponent(slug)}`
   );
   if (!res.ok) return null;
 
-  const { job, og } = await res.json();
-  if (!job || !og) return null;
+  const job = await res.json();
+  if (!job || !job.title) return null;
+
+  const salary =
+    job.salary_min && job.salary_max
+      ? `$${Math.round(job.salary_min / 1000)}k–$${Math.round(job.salary_max / 1000)}k`
+      : null;
+  const parts = [
+    job.workplace_type,
+    job.location,
+    salary,
+    job.content && job.content.requirements_summary,
+  ].filter(Boolean);
+  const description = parts.join(' · ').slice(0, 250) ||
+    `${job.title} at ${job.company} — AI & tech jobs in Atlanta on Atlantium.`;
 
   return buildOgString({
-    type: og.type,
-    siteName: og.site_name,
-    title: og.title,
-    description: og.description,
-    image: og.image,
-    url: og.url,
+    type: 'website',
+    siteName: 'Atlantium',
+    title: `${job.title} at ${job.company} — Atlanta Tech Jobs`,
+    description,
+    image: `${SITE_ORIGIN}/og-image.png`,
+    imageWidth: '1200',
+    imageHeight: '630',
+    url: `${SITE_ORIGIN}/jobs/${encodeURIComponent(slug)}`,
     twitterCard: 'summary_large_image',
   });
 }

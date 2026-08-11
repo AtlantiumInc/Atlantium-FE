@@ -2,6 +2,7 @@ import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   index,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -203,6 +204,30 @@ export const lobbyRoomRoles = pgTable("lobby_room_roles", {
 }, (table) => ({
   roomUserRoleUnique: uniqueIndex("lobby_room_roles_room_user_role_unique").on(table.roomId, table.userId, table.role),
   userRoleIdx: index("lobby_room_roles_user_role_idx").on(table.userId, table.role),
+}));
+
+// Scraped Atlanta AI/tech job postings (sourced from hiring.cafe, seeded via
+// services/api/scripts/seed-jobs.ts). Public read; admin-only writes.
+export const jobPostings = pgTable("job_postings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  slug: text("slug").notNull(),
+  title: text("title").notNull(),
+  company: text("company").notNull(),
+  location: text("location").notNull(),
+  workplaceType: text("workplace_type"),
+  seniority: text("seniority"),
+  salaryMin: integer("salary_min"),
+  salaryMax: integer("salary_max"),
+  applyUrl: text("apply_url").notNull(),
+  status: text("status").notNull().default("active"),
+  postedAt: timestamp("posted_at", { withTimezone: true }),
+  content: jsonb("content"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  slugUnique: uniqueIndex("job_postings_slug_unique").on(table.slug),
+  applyUrlUnique: uniqueIndex("job_postings_apply_url_unique").on(table.applyUrl),
+  statusPostedIdx: index("job_postings_status_posted_idx").on(table.status, table.postedAt),
 }));
 
 export const userRelations = relations(user, ({ many }) => ({

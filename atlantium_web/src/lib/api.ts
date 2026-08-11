@@ -1261,13 +1261,13 @@ class ApiClient {
     const qs = params.toString();
     return this.request<JobPosting[]>(`/job_postings${qs ? `?${qs}` : ""}`, {
       method: "GET",
-    }, APP_API_BASE_URL);
+    }, ATLANTIUM_API_BASE_URL);
   }
 
   async getJobPosting(slug: string): Promise<JobPosting> {
     return this.request<JobPosting>(`/job_postings/${encodeURIComponent(slug)}`, {
       method: "GET",
-    }, APP_API_BASE_URL);
+    }, ATLANTIUM_API_BASE_URL);
   }
 
   async createJobPosting(data: {
@@ -1286,7 +1286,7 @@ class ApiClient {
     return this.request<JobPosting>("/job_postings/create", {
       method: "POST",
       body: JSON.stringify(data),
-    }, APP_API_BASE_URL);
+    }, ATLANTIUM_API_BASE_URL);
   }
 
   async updateJobPosting(jobId: string, data: Partial<{
@@ -1305,13 +1305,13 @@ class ApiClient {
     return this.request<{ success: boolean; job: JobPosting }>(`/job_postings/${jobId}/update`, {
       method: "POST",
       body: JSON.stringify(data),
-    }, APP_API_BASE_URL);
+    }, ATLANTIUM_API_BASE_URL);
   }
 
   async deleteJobPosting(jobId: string): Promise<{ success: boolean; message: string }> {
     return this.request<{ success: boolean; message: string }>(`/job_postings/${jobId}/delete`, {
       method: "POST",
-    }, APP_API_BASE_URL);
+    }, ATLANTIUM_API_BASE_URL);
   }
 
   // RSVP to a public event by ID (auth required)

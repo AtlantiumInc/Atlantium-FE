@@ -7,6 +7,7 @@ import { z } from "zod";
 import { createDb } from "../db/client";
 import type { Db } from "../db/client";
 import {
+  jobPostings,
   lobbyEventAttendance,
   lobbyEvents,
   lobbyMessages,
@@ -871,6 +872,140 @@ appRoutes.post("/admin/partnerships/creators/test-click", async (c) => {
   }
   const status = success ? 200 : eventOk ? standingStatus : eventStatus;
   return jsonWithStatus({ success, event, ...standing }, status);
+});
+
+// ── Job postings (scraped Atlanta AI/tech board, public read) ───────────────
+const jobPostingWriteSchema = z.object({
+  title: z.string().trim().min(1),
+  company: z.string().trim().min(1),
+  location: z.string().trim().min(1),
+  workplace_type: z.string().trim().nullish(),
+  seniority: z.string().trim().nullish(),
+  salary_min: z.number().int().nullish(),
+  salary_max: z.number().int().nullish(),
+  apply_url: z.string().trim().url(),
+  status: z.string().trim().optional(),
+  posted_at: z.string().datetime({ offset: true }).nullish(),
+  content: z.record(z.string(), z.unknown()).nullish(),
+});
+
+function publicJobPosting(row: typeof jobPostings.$inferSelect) {
+  return {
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    company: row.company,
+    location: row.location,
+    workplace_type: row.workplaceType,
+    seniority: row.seniority,
+    salary_min: row.salaryMin,
+    salary_max: row.salaryMax,
+    apply_url: row.applyUrl,
+    status: row.status,
+    posted_at: row.postedAt?.toISOString() ?? null,
+    content: row.content ?? {},
+    created_at: row.createdAt.toISOString(),
+    updated_at: row.updatedAt.toISOString(),
+  };
+}
+
+function jobSlug(title: string, company: string) {
+  const base = slugify(`${company} ${title}`);
+  const salt = crypto.randomUUID().slice(0, 8);
+  return `${base}-${salt}`;
+}
+
+appRoutes.get("/job_postings", async (c) => {
+  const db = createDb(c.env);
+  const status = c.req.query("status") ?? "active";
+  const workplaceType = c.req.query("workplace_type");
+  const seniority = c.req.query("seniority");
+  const conditions = [eq(jobPostings.status, status)];
+  if (workplaceType) conditions.push(eq(jobPostings.workplaceType, workplaceType));
+  if (seniority) conditions.push(eq(jobPostings.seniority, seniority));
+  const rows = await db
+    .select()
+    .from(jobPostings)
+    .where(and(...conditions))
+    .orderBy(desc(jobPostings.postedAt));
+  return c.json(rows.map(publicJobPosting));
+});
+
+appRoutes.get("/job_postings/:slug", async (c) => {
+  const db = createDb(c.env);
+  const row = await db.query.jobPostings.findFirst({
+    where: eq(jobPostings.slug, c.req.param("slug")),
+  });
+  if (!row) throw new HttpError(404, "not_found", "Job posting not found.");
+  return c.json(publicJobPosting(row));
+});
+
+appRoutes.post(
+  "/job_postings/create",
+  zValidator("json", jobPostingWriteSchema),
+  async (c) => {
+    const { db } = await requireAdminUser(c);
+    const body = c.req.valid("json");
+    const [row] = await db
+      .insert(jobPostings)
+      .values({
+        slug: jobSlug(body.title, body.company),
+        title: body.title,
+        company: body.company,
+        location: body.location,
+        workplaceType: body.workplace_type ?? null,
+        seniority: body.seniority ?? null,
+        salaryMin: body.salary_min ?? null,
+        salaryMax: body.salary_max ?? null,
+        applyUrl: body.apply_url,
+        status: body.status ?? "active",
+        postedAt: body.posted_at ? new Date(body.posted_at) : null,
+        content: body.content ?? {},
+      })
+      .onConflictDoNothing({ target: jobPostings.applyUrl })
+      .returning();
+    if (!row) throw new HttpError(409, "duplicate", "A posting with this apply_url already exists.");
+    return c.json(publicJobPosting(row));
+  },
+);
+
+appRoutes.post(
+  "/job_postings/:jobId/update",
+  zValidator("json", jobPostingWriteSchema.partial()),
+  async (c) => {
+    const { db } = await requireAdminUser(c);
+    const body = c.req.valid("json");
+    const [row] = await db
+      .update(jobPostings)
+      .set({
+        ...(body.title !== undefined && { title: body.title }),
+        ...(body.company !== undefined && { company: body.company }),
+        ...(body.location !== undefined && { location: body.location }),
+        ...(body.workplace_type !== undefined && { workplaceType: body.workplace_type }),
+        ...(body.seniority !== undefined && { seniority: body.seniority }),
+        ...(body.salary_min !== undefined && { salaryMin: body.salary_min }),
+        ...(body.salary_max !== undefined && { salaryMax: body.salary_max }),
+        ...(body.apply_url !== undefined && { applyUrl: body.apply_url }),
+        ...(body.status !== undefined && { status: body.status ?? "active" }),
+        ...(body.posted_at !== undefined && { postedAt: body.posted_at ? new Date(body.posted_at) : null }),
+        ...(body.content !== undefined && { content: body.content ?? {} }),
+        updatedAt: new Date(),
+      })
+      .where(eq(jobPostings.id, c.req.param("jobId")))
+      .returning();
+    if (!row) throw new HttpError(404, "not_found", "Job posting not found.");
+    return c.json({ success: true, job: publicJobPosting(row) });
+  },
+);
+
+appRoutes.post("/job_postings/:jobId/delete", async (c) => {
+  const { db } = await requireAdminUser(c);
+  const [row] = await db
+    .delete(jobPostings)
+    .where(eq(jobPostings.id, c.req.param("jobId")))
+    .returning();
+  if (!row) throw new HttpError(404, "not_found", "Job posting not found.");
+  return c.json({ success: true, message: "Job posting deleted." });
 });
 
 async function creatorStandingResponse(c: Context<{ Bindings: Env }>, externalUserId?: string) {

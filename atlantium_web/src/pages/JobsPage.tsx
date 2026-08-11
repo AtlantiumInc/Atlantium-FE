@@ -403,7 +403,11 @@ export function JobsPage() {
             <span><span className="text-foreground font-semibold">{jobs.length}</span> open roles</span>
             <span><span className="text-emerald-400 font-semibold">{remoteCount}</span> remote</span>
             <span><span className="text-violet-400 font-semibold">{hybridCount}</span> hybrid</span>
-            <span className="text-xs self-center opacity-60">updated Feb 2026</span>
+            {jobs.length > 0 && jobs[0].posted_at && (
+              <span className="text-xs self-center opacity-60">
+                updated {new Date(Math.max(...jobs.filter((j) => j.posted_at).map((j) => new Date(j.posted_at!).getTime()))).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+              </span>
+            )}
           </div>
         </motion.div>
 
