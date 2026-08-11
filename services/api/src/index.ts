@@ -35,6 +35,17 @@ app.get("/health", (c) => c.json({
   },
 }));
 
+// better-auth's OAuth state-mismatch path redirects to the API root with
+// ?error= — send humans to the app's login page instead of raw JSON.
+app.get("/", (c, next) => {
+  const error = c.req.query("error");
+  if (error) {
+    const appBase = c.env.APP_BASE_URL || "https://atlantium.ai";
+    return c.redirect(`${appBase}/login?error=${encodeURIComponent(error)}`, 302);
+  }
+  return next();
+});
+
 app.get("/", (c) => c.json({
   ok: true,
   service: "atlantium-api",

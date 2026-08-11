@@ -69,6 +69,21 @@ export function LoginPage() {
   const navigate = useNavigate();
   const returnTo = new URLSearchParams(window.location.search).get("returnTo");
 
+  // OAuth failures (e.g. a stale Google consent page) bounce here with ?error=.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthError = params.get("error");
+    if (!oauthError) return;
+    setError(
+      oauthError === "please_restart_the_process"
+        ? "That Google sign-in attempt expired — please try again."
+        : "Sign-in didn't complete. Please try again.",
+    );
+    params.delete("error");
+    const qs = params.toString();
+    window.history.replaceState({}, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+  }, []);
+
   const emailForm = useForm<EmailFormValues>({
     resolver: zodResolver(emailSchema),
     defaultValues: { email: "" },
