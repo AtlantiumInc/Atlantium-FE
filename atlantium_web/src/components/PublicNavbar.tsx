@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AnimatePresence, motion } from "motion/react";
-import { X, Menu, ChevronRight, Users, Wrench, BookOpen, Code2, Newspaper, Briefcase, Route } from "lucide-react";
+import { X, Menu, ChevronRight, Users, Wrench, BookOpen, Code2, Newspaper, Briefcase, GraduationCap } from "lucide-react";
 
 const solutionItems = [
   {
@@ -21,11 +21,11 @@ const solutionItems = [
     image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400&h=250&fit=crop&q=80",
   },
   {
-    to: "/paths",
-    label: "Learning Paths",
-    description: "Structured study tracks across subjects to guide your education journey",
-    icon: Route,
-    image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop&q=80",
+    to: "/training",
+    label: "AI Engineer Training",
+    description: "4-week hands-on program — build enterprise apps, daily office hours, warm introductions",
+    icon: GraduationCap,
+    image: "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=400&h=250&fit=crop&q=80",
   },
   {
     to: "/jobs",
