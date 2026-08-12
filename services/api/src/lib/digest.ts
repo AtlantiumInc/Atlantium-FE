@@ -19,11 +19,14 @@ import { createDb, type Db } from "../db/client";
 import {
   digestRuns,
   digestSuppressions,
+  directoryEntries,
+  grantDetails,
   jobPostings,
   lobbyEvents,
   lobbyRooms,
   user,
 } from "../db/schema";
+import { grantClosesAt } from "./directory";
 import type { Env } from "../env";
 import { requireEnv } from "../env";
 
@@ -93,6 +96,56 @@ async function jobsSection(db: Db): Promise<DigestSection | null> {
   };
 }
 
+/** Grants closing soon — urgency is the point, so this sorts by deadline. */
+async function grantsSection(db: Db): Promise<DigestSection | null> {
+  const rows = await db
+    .select({ entry: directoryEntries, grant: grantDetails })
+    .from(directoryEntries)
+    .innerJoin(grantDetails, eq(grantDetails.entryId, directoryEntries.id))
+    .where(eq(directoryEntries.status, "active"));
+
+  const dated = rows
+    .map((r) => ({ ...r, closesAt: grantClosesAt(r.grant) }))
+    .filter((r) => r.closesAt !== null)
+    .sort((a, b) => a.closesAt!.getTime() - b.closesAt!.getTime());
+  const undated = rows.filter((r) => grantClosesAt(r.grant) === null);
+  const featured = [...dated, ...undated.map((r) => ({ ...r, closesAt: null as Date | null }))].slice(0, 6);
+  if (featured.length === 0) return null;
+
+  const rowsHtml = featured
+    .map((r) => {
+      const amount = r.grant.amountMax
+        ? `up to $${Math.round(r.grant.amountMax / 1000)}k`
+        : r.grant.amountMin
+          ? `from $${Math.round(r.grant.amountMin / 1000)}k`
+          : null;
+      const days = r.closesAt
+        ? Math.ceil((r.closesAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+        : null;
+      const deadline = days === null ? "Rolling" : days <= 0 ? "Closing today" : `${days} days left`;
+      const meta = [r.grant.funder, amount, deadline].filter(Boolean).join(" · ");
+      return `
+      <tr>
+        <td style="padding:10px 0;border-bottom:1px solid #e8edf3;">
+          <a href="${SITE}/directory/grant/${esc(r.entry.slug)}" style="color:#0f172a;font-weight:600;text-decoration:none;font-size:15px;">${esc(r.entry.name)}</a>
+          <div style="color:#475569;font-size:13px;padding-top:2px;">${esc(meta)}</div>
+        </td>
+      </tr>`;
+    })
+    .join("");
+
+  return {
+    key: "grants",
+    title: `${featured.length} Atlanta grants & programs open now`,
+    count: featured.length,
+    html: `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rowsHtml}</table>
+      <div style="padding-top:16px;">
+        <a href="${SITE}/grants" style="display:inline-block;background:#0891b2;color:#ffffff;font-weight:600;font-size:14px;text-decoration:none;padding:10px 22px;border-radius:8px;">See every open grant</a>
+      </div>`,
+  };
+}
+
 async function eventsSection(db: Db): Promise<DigestSection | null> {
   const now = new Date();
   const horizon = new Date(Date.now() + WEEK_MS);
@@ -146,7 +199,7 @@ async function eventsSection(db: Db): Promise<DigestSection | null> {
 }
 
 export async function buildSections(db: Db): Promise<DigestSection[]> {
-  const sections = await Promise.all([jobsSection(db), eventsSection(db)]);
+  const sections = await Promise.all([jobsSection(db), grantsSection(db), eventsSection(db)]);
   return sections.filter((s): s is DigestSection => s !== null);
 }
 

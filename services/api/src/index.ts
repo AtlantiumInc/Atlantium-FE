@@ -6,6 +6,7 @@ import { allowedOrigins } from "./env";
 import { jsonError } from "./lib/http";
 import { sendWeeklyDigest } from "./lib/digest";
 import { runReviewCycle } from "./lib/jobs-review";
+import { syncGrants } from "./lib/grants-sync";
 import { syncJobPostings } from "./lib/jobs-sync";
 import { appRoutes } from "./routes/app";
 import { contentRoutes } from "./routes/content";
@@ -101,6 +102,13 @@ export default {
           console.error("jobs-sync failed", error);
           throw error;
         }),
+    );
+    // Same daily tick refreshes the grants directory and expires anything
+    // whose deadline passed in its own timezone.
+    ctx.waitUntil(
+      syncGrants(env)
+        .then((r) => console.log("grants-sync ok", JSON.stringify(r)))
+        .catch((error) => console.error("grants-sync failed", error)),
     );
   },
 };

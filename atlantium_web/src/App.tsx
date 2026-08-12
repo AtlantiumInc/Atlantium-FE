@@ -44,6 +44,8 @@ import { JobDetailPage } from "@/pages/JobDetailPage";
 import { BlogPage } from "@/pages/BlogPage";
 import { DocsPage } from "@/pages/DocsPage";
 import { ContentDocumentPage } from "@/pages/ContentDocumentPage";
+import { GrantsPage } from "@/pages/GrantsPage";
+import { DirectoryEntryPage } from "@/pages/DirectoryEntryPage";
 import { TrainingPage } from "@/pages/TrainingPage";
 import { PricingPage as PublicPricingPage } from "@/pages/PricingPage";
 import { AIEngineerPage } from "@/pages/AIEngineerPage";
@@ -96,6 +98,9 @@ function AppRoutes() {
       <Route path="/blog/:slug" element={<ContentDocumentPage />} />
       <Route path="/docs" element={<DocsPage />} />
       <Route path="/docs/:slug" element={<ContentDocumentPage />} />
+      <Route path="/grants" element={<GrantsPage />} />
+      <Route path="/directory" element={<GrantsPage />} />
+      <Route path="/directory/:kind/:slug" element={<DirectoryEntryPage />} />
       <Route path="/training" element={<TrainingPage />} />
       <Route path="/pricing" element={<PublicPricingPage />} />
       <Route path="/index/:slug" element={<ArticleDetailPage />} />

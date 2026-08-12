@@ -336,6 +336,93 @@ export const threadMessages = pgTable("thread_messages", {
   threadTimeIdx: index("thread_messages_thread_time_idx").on(table.threadId, table.createdAt),
 }));
 
+// ── Directory rail (plan §3.2) ──────────────────────────────────────────────
+export const directoryKind = pgEnum("directory_kind", ["company", "person", "investor", "grant", "resource"]);
+export const directoryStatus = pgEnum("directory_status", ["active", "expired", "hidden"]);
+
+export const directorySources = pgTable("directory_sources", {
+  id: text("id").primaryKey(),
+  displayName: text("display_name").notNull(),
+  baseUrl: text("base_url"),
+  enabled: boolean("enabled").notNull().default(true),
+  lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const directoryEntries = pgTable("directory_entries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kind: directoryKind("kind").notNull(),
+  slug: text("slug").notNull(),
+  name: text("name").notNull(),
+  summary: text("summary"),
+  website: text("website"),
+  location: text("location"),
+  tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
+  status: directoryStatus("status").notNull().default("active"),
+  attributes: jsonb("attributes").$type<Record<string, unknown>>().notNull().default({}),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  review: jsonb("review").$type<Record<string, unknown> | null>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  kindSlugUq: uniqueIndex("directory_entries_kind_slug_uq").on(table.kind, table.slug),
+  kindStatusIdx: index("directory_entries_kind_status_idx").on(table.kind, table.status, table.updatedAt),
+}));
+
+export const grantDetails = pgTable("grant_details", {
+  entryId: uuid("entry_id").primaryKey().references(() => directoryEntries.id, { onDelete: "cascade" }),
+  funder: text("funder"),
+  amountMin: integer("amount_min"),
+  amountMax: integer("amount_max"),
+  // Date-safe deadlines: most grants publish a DATE, not an instant.
+  deadlineDate: text("deadline_date"),
+  deadlineAt: timestamp("deadline_at", { withTimezone: true }),
+  deadlineTimezone: text("deadline_timezone").default("America/New_York"),
+  recurring: boolean("recurring").notNull().default(false),
+  eligibility: text("eligibility").array().notNull().default(sql`'{}'::text[]`),
+  applicationUrl: text("application_url"),
+});
+
+export const resourceDetails = pgTable("resource_details", {
+  entryId: uuid("entry_id").primaryKey().references(() => directoryEntries.id, { onDelete: "cascade" }),
+  category: text("category").notNull(),
+  eligibility: text("eligibility").array().notNull().default(sql`'{}'::text[]`),
+  applicationUrl: text("application_url"),
+});
+
+export const companyDetails = pgTable("company_details", {
+  entryId: uuid("entry_id").primaryKey().references(() => directoryEntries.id, { onDelete: "cascade" }),
+  stage: text("stage"),
+  headcountBand: text("headcount_band"),
+  foundedYear: integer("founded_year"),
+  fundingTotalUsd: integer("funding_total_usd"),
+  isHiring: boolean("is_hiring").notNull().default(false),
+});
+
+export const directoryEntrySources = pgTable("directory_entry_sources", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  entryId: uuid("entry_id").notNull().references(() => directoryEntries.id, { onDelete: "cascade" }),
+  source: text("source").notNull().references(() => directorySources.id),
+  externalId: text("external_id").notNull(),
+  sourceUrl: text("source_url"),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  sourceData: jsonb("source_data").$type<Record<string, unknown>>().notNull().default({}),
+  enabled: boolean("enabled").notNull().default(true),
+}, (table) => ({
+  sourceExternalUq: uniqueIndex("directory_entry_sources_source_external_uq").on(table.source, table.externalId),
+  entryIdx: index("directory_entry_sources_entry_idx").on(table.entryId),
+}));
+
+export const directorySyncRuns = pgTable("directory_sync_runs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kind: directoryKind("kind").notNull(),
+  source: text("source").notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+  stats: jsonb("stats").$type<Record<string, number>>().notNull().default({}),
+});
+
 // ── Funnel instrumentation (plan §7.5) ──────────────────────────────────────
 export const funnelEvents = pgTable("funnel_events", {
   id: uuid("id").primaryKey().defaultRandom(),

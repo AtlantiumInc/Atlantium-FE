@@ -293,6 +293,39 @@ export interface AdminContentDocument extends ContentDocumentSummary {
   body_md: string;
 }
 
+export interface DirectoryEntry {
+  id: string;
+  kind: "grant" | "resource" | "company" | "person" | "investor";
+  slug: string;
+  name: string;
+  summary?: string | null;
+  website?: string | null;
+  location?: string | null;
+  tags: string[];
+  status: string;
+  attributes?: Record<string, unknown>;
+  verified_at?: string | null;
+  contact_state: "none" | "hidden" | "revealable" | "revealed" | "upgrade_required";
+  updated_at: string;
+  grant?: {
+    funder?: string | null;
+    amount_min?: number | null;
+    amount_max?: number | null;
+    deadline_date?: string | null;
+    deadline_at?: string | null;
+    closes_at?: string | null;
+    days_until_close?: number | null;
+    recurring: boolean;
+    eligibility: string[];
+    application_url?: string | null;
+  };
+  resource?: {
+    category: string;
+    eligibility: string[];
+    application_url?: string | null;
+  };
+}
+
 export interface FrontierArticle {
   id: string;
   thread_id: string;
@@ -1449,6 +1482,52 @@ class ApiClient {
 
   async adminDeleteContentDocument(id: string): Promise<{ success: boolean }> {
     return this.request(`/admin/content/documents/${id}`, { method: "DELETE" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async getDirectory(params?: {
+    kind?: string;
+    category?: string;
+    tag?: string;
+    q?: string;
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{
+    entries: DirectoryEntry[];
+    total: number;
+    limit: number;
+    offset: number;
+    counts: Record<string, number>;
+  }> {
+    const search = new URLSearchParams();
+    for (const [k, v] of Object.entries(params ?? {})) {
+      if (v !== undefined && v !== null && v !== "") search.set(k, String(v));
+    }
+    return this.request(`/directory?${search}`, { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async getDirectoryEntry(kind: string, slug: string): Promise<{
+    entry: DirectoryEntry;
+    provenance: Array<{ source: string; source_url?: string | null; last_seen_at: string }>;
+  }> {
+    return this.request(`/directory/${kind}/${slug}`, { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async adminSyncDirectory(): Promise<Record<string, number>> {
+    return this.request("/admin/directory/sync", { method: "POST" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async adminGetDirectorySources(): Promise<{
+    sources: Array<{ id: string; display_name: string; base_url?: string | null; enabled: boolean; last_sync_at?: string | null }>;
+  }> {
+    return this.request("/admin/directory/sources", { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async adminSetDirectorySourceEnabled(id: string, enabled: boolean): Promise<{ id: string; enabled: boolean }> {
+    return this.request(`/admin/directory/sources/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ enabled }),
+    }, ATLANTIUM_API_BASE_URL);
   }
 
   async adminGenerateCover(id: string, subject?: string): Promise<{ cover_image_url: string }> {

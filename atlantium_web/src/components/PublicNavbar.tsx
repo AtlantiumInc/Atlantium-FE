@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AnimatePresence, motion } from "motion/react";
-import { X, Menu, ChevronRight, Users, Wrench, BookOpen, Newspaper, Briefcase, GraduationCap } from "lucide-react";
+import { X, Menu, ChevronRight, Users, Wrench, BookOpen, Newspaper, Briefcase, GraduationCap, Landmark } from "lucide-react";
 
 const solutionItems = [
   {
@@ -43,6 +43,13 @@ const resourceItems = [
     description: "Guides, references, and tutorials for building with Atlantium",
     icon: BookOpen,
     image: "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=400&h=250&fit=crop&q=80",
+  },
+  {
+    to: "/grants",
+    label: "Grants",
+    description: "Atlanta grants, tax credits, and programs — deadline-sorted and verified",
+    icon: Landmark,
+    image: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=250&fit=crop&q=80",
   },
   {
     to: "/blog",

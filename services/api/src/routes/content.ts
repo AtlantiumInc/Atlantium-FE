@@ -8,8 +8,13 @@ import type { Db } from "../db/client";
 import {
   contentCollections,
   contentDocuments,
+  directoryEntries,
+  directoryEntrySources,
+  directorySources,
   funnelEvents,
+  grantDetails,
   profiles,
+  resourceDetails,
   threadMessages,
   threads,
   user,
@@ -18,6 +23,8 @@ import type { Env } from "../env";
 import { getAuthSession } from "../lib/auth";
 import { documentJsonLd, publicAuthor, publicDocumentDetail, publicDocumentSummary } from "../lib/content";
 import { generateCoverImage } from "../lib/cover-image";
+import { publicDirectoryEntry } from "../lib/directory";
+import { syncGrants } from "../lib/grants-sync";
 import { HttpError } from "../lib/http";
 
 export const contentRoutes = new Hono<{ Bindings: Env }>();
@@ -371,12 +378,22 @@ contentRoutes.get("/content/sitemap.xml", async (c) => {
     .orderBy(desc(contentDocuments.updatedAt))
     .limit(5000);
 
-  const staticUrls = ["", "/jobs", "/blog", "/docs", "/training", "/services", "/creator-program"];
+  const directoryRows = await db
+    .select({ kind: directoryEntries.kind, slug: directoryEntries.slug, updatedAt: directoryEntries.updatedAt })
+    .from(directoryEntries)
+    .where(eq(directoryEntries.status, "active"))
+    .limit(2000);
+
+  const staticUrls = ["", "/jobs", "/blog", "/docs", "/grants", "/training", "/services", "/creator-program"];
   const urls = [
     ...staticUrls.map((path) => ({ loc: `${appBase}${path}`, lastmod: null as string | null })),
     ...docs.map((d) => ({
       loc: `${appBase}${d.type === "post" ? "/blog" : "/docs"}/${d.slug}`,
       lastmod: d.updatedAt.toISOString(),
+    })),
+    ...directoryRows.map((e) => ({
+      loc: `${appBase}/directory/${e.kind}/${e.slug}`,
+      lastmod: e.updatedAt.toISOString(),
     })),
   ];
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -571,3 +588,129 @@ contentRoutes.delete("/admin/content/collections/:id", async (c) => {
   if (!deleted.length) throw new HttpError(404, "not_found", "Collection not found.");
   return c.json({ success: true });
 });
+
+// ── Directory: grants & municipal resources (plan §4.1) ─────────────────────
+// Contacts are NEVER joined here — the base repository has no access to them.
+
+contentRoutes.get("/directory", async (c) => {
+  const db = createDb(c.env);
+  const q = c.req.query();
+  const limit = Math.min(Number(q.limit) || 40, 100);
+  const offset = Math.max(Number(q.offset) || 0, 0);
+
+  const where = [eq(directoryEntries.status, (q.status === "expired" ? "expired" : "active") as "active" | "expired")];
+  if (q.kind === "grant" || q.kind === "resource" || q.kind === "company" || q.kind === "person" || q.kind === "investor") {
+    where.push(eq(directoryEntries.kind, q.kind));
+  }
+  if (q.category) where.push(eq(resourceDetails.category, q.category));
+  if (q.tag) where.push(sql`${q.tag} = any(${directoryEntries.tags})`);
+  if (q.q) {
+    const needle = `%${q.q.trim()}%`;
+    const search = or(ilike(directoryEntries.name, needle), ilike(directoryEntries.summary, needle));
+    if (search) where.push(search);
+  }
+
+  const rows = await db
+    .select({ entry: directoryEntries, grant: grantDetails, resource: resourceDetails })
+    .from(directoryEntries)
+    .leftJoin(grantDetails, eq(grantDetails.entryId, directoryEntries.id))
+    .leftJoin(resourceDetails, eq(resourceDetails.entryId, directoryEntries.id))
+    .where(and(...where))
+    // Deadline-sorted: closing soonest first, undated programs last.
+    .orderBy(
+      sql`coalesce(${grantDetails.deadlineAt}, ${grantDetails.deadlineDate}::timestamptz) asc nulls last`,
+      asc(directoryEntries.name),
+    )
+    .limit(limit)
+    .offset(offset);
+
+  const [{ total } = { total: 0 }] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(directoryEntries)
+    .leftJoin(resourceDetails, eq(resourceDetails.entryId, directoryEntries.id))
+    .where(and(...where));
+
+  const counts = await db
+    .select({ kind: directoryEntries.kind, n: sql<number>`count(*)::int` })
+    .from(directoryEntries)
+    .where(eq(directoryEntries.status, "active"))
+    .groupBy(directoryEntries.kind);
+
+  return c.json({
+    entries: rows.map((r) => publicDirectoryEntry(r.entry, { grant: r.grant, resource: r.resource })),
+    total,
+    limit,
+    offset,
+    counts: Object.fromEntries(counts.map((c2) => [c2.kind, c2.n])),
+  });
+});
+
+contentRoutes.get("/directory/:kind/:slug", async (c) => {
+  const kind = c.req.param("kind");
+  if (!["grant", "resource", "company", "person", "investor"].includes(kind)) {
+    throw new HttpError(404, "not_found", "Not found.");
+  }
+  const db = createDb(c.env);
+  const [row] = await db
+    .select({ entry: directoryEntries, grant: grantDetails, resource: resourceDetails })
+    .from(directoryEntries)
+    .leftJoin(grantDetails, eq(grantDetails.entryId, directoryEntries.id))
+    .leftJoin(resourceDetails, eq(resourceDetails.entryId, directoryEntries.id))
+    .where(and(
+      eq(directoryEntries.kind, kind as "grant"),
+      eq(directoryEntries.slug, c.req.param("slug")),
+    ))
+    .limit(1);
+  if (!row || row.entry.status === "hidden") throw new HttpError(404, "not_found", "Not found.");
+
+  const sources = await db
+    .select({ source: directoryEntrySources.source, sourceUrl: directoryEntrySources.sourceUrl, lastSeenAt: directoryEntrySources.lastSeenAt })
+    .from(directoryEntrySources)
+    .where(eq(directoryEntrySources.entryId, row.entry.id));
+
+  return c.json({
+    entry: publicDirectoryEntry(row.entry, { grant: row.grant, resource: row.resource }),
+    provenance: sources.map((s) => ({
+      source: s.source,
+      source_url: s.sourceUrl,
+      last_seen_at: s.lastSeenAt.toISOString(),
+    })),
+  });
+});
+
+// ── Admin: sync + source registry ───────────────────────────────────────────
+
+contentRoutes.post("/admin/directory/sync", async (c) => {
+  await requireAdmin(c);
+  const stats = await syncGrants(c.env);
+  return c.json({ success: true, ...stats });
+});
+
+contentRoutes.get("/admin/directory/sources", async (c) => {
+  const { db } = await requireAdmin(c);
+  const rows = await db.select().from(directorySources).orderBy(asc(directorySources.id));
+  return c.json({
+    sources: rows.map((s) => ({
+      id: s.id,
+      display_name: s.displayName,
+      base_url: s.baseUrl,
+      enabled: s.enabled,
+      last_sync_at: s.lastSyncAt?.toISOString() ?? null,
+    })),
+  });
+});
+
+contentRoutes.patch(
+  "/admin/directory/sources/:id",
+  zValidator("json", z.object({ enabled: z.boolean() })),
+  async (c) => {
+    const { db } = await requireAdmin(c);
+    const [row] = await db
+      .update(directorySources)
+      .set({ enabled: c.req.valid("json").enabled, updatedAt: new Date() })
+      .where(eq(directorySources.id, c.req.param("id")))
+      .returning();
+    if (!row) throw new HttpError(404, "not_found", "Source not found.");
+    return c.json({ id: row.id, enabled: row.enabled });
+  },
+);
