@@ -154,7 +154,9 @@ export function GrantsPage() {
           {[
             { key: "grant", label: "Grants", count: counts.grant ?? 0 },
             { key: "resource", label: "Programs & credits", count: counts.resource ?? 0 },
-          ].map((k) => (
+            { key: "investor", label: "Investors", count: counts.investor ?? 0 },
+            { key: "company", label: "Companies hiring", count: counts.company ?? 0 },
+          ].filter((k) => k.count > 0).map((k) => (
             <button
               key={k.key}
               onClick={() => setKind(k.key)}
@@ -183,6 +185,12 @@ export function GrantsPage() {
             />
           </div>
         </div>
+
+        {activeKind === "company" && (
+          <p className="text-xs text-muted-foreground mb-4">
+            Companies with live roles on our verified job board — the hiring signal is the data.
+          </p>
+        )}
 
         {isLoading ? (
           <div className="flex items-center justify-center py-24 text-muted-foreground">

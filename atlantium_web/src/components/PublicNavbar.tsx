@@ -112,7 +112,9 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
           {/* Left — reading mode swaps the wordmark for the article's identity */}
           {reading ? (
             <div className="flex items-center gap-2.5 min-w-0 mr-3">
-              <Link to="/" className="shrink-0">
+              {/* Dropped on mobile: the title needs the width, and the
+                  hamburger still gets you everywhere. */}
+              <Link to="/" className="shrink-0 hidden sm:block">
                 <img src="/logo.png" alt="Atlantium" className="h-7 w-7" />
               </Link>
               {reading.coverUrl && (

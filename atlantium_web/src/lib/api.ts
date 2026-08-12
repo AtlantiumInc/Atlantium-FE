@@ -326,6 +326,16 @@ export interface DirectoryEntry {
   };
 }
 
+export type ContactState = "none" | "hidden" | "revealable" | "revealed" | "upgrade_required";
+
+export interface DirectoryContact {
+  id: string;
+  contact_type: string;
+  value: string | null;
+  label?: string | null;
+  verified_at?: string | null;
+}
+
 export interface FrontierArticle {
   id: string;
   thread_id: string;
@@ -1511,6 +1521,31 @@ class ApiClient {
     provenance: Array<{ source: string; source_url?: string | null; last_seen_at: string }>;
   }> {
     return this.request(`/directory/${kind}/${slug}`, { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async getContactState(kind: string, slug: string): Promise<{
+    contact_state: ContactState;
+    reveals_available: number | null;
+    refreshes_at: string | null;
+  }> {
+    return this.request(`/directory/${kind}/${slug}/state`, { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async revealContacts(entryId: string): Promise<{
+    contacts: DirectoryContact[];
+    contact_state: ContactState;
+    reveals_available: number | null;
+    refreshes_at?: string | null;
+  }> {
+    return this.request(`/directory/entries/${entryId}/reveal`, { method: "POST" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async getEntryContacts(entryId: string): Promise<{ contacts: DirectoryContact[] }> {
+    return this.request(`/directory/entries/${entryId}/contacts`, { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async adminSyncCompanies(): Promise<Record<string, number>> {
+    return this.request("/admin/directory/sync-companies", { method: "POST" }, ATLANTIUM_API_BASE_URL);
   }
 
   async adminSyncDirectory(): Promise<Record<string, number>> {

@@ -414,6 +414,74 @@ export const directoryEntrySources = pgTable("directory_entry_sources", {
   entryIdx: index("directory_entry_sources_entry_idx").on(table.entryId),
 }));
 
+export const investorDetails = pgTable("investor_details", {
+  entryId: uuid("entry_id").primaryKey().references(() => directoryEntries.id, { onDelete: "cascade" }),
+  firm: text("firm"),
+  checkMinUsd: integer("check_min_usd"),
+  checkMaxUsd: integer("check_max_usd"),
+  stages: text("stages").array().notNull().default(sql`'{}'::text[]`),
+  thesis: text("thesis"),
+});
+
+export const directoryEntryAliases = pgTable("directory_entry_aliases", {
+  entryId: uuid("entry_id").notNull().references(() => directoryEntries.id, { onDelete: "cascade" }),
+  nameNormalized: text("name_normalized").notNull(),
+  verified: boolean("verified").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  nameIdx: index("directory_entry_aliases_name_idx").on(table.nameNormalized),
+}));
+
+export const directoryContacts = pgTable("directory_contacts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  entryId: uuid("entry_id").notNull().references(() => directoryEntries.id, { onDelete: "cascade" }),
+  contactType: text("contact_type").notNull(),
+  value: text("value"),
+  valueHash: text("value_hash").notNull(),
+  label: text("label"),
+  source: text("source").notNull().default("manual"),
+  sourceUrl: text("source_url"),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  suppressedAt: timestamp("suppressed_at", { withTimezone: true }),
+  suppressionReason: text("suppression_reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  entryIdx: index("directory_contacts_entry_idx").on(table.entryId),
+}));
+
+export const directorySuppressions = pgTable("directory_suppressions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  valueHash: text("value_hash").notNull().unique(),
+  reason: text("reason").notNull(),
+  requestedBy: text("requested_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const directoryReveals = pgTable("directory_reveals", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  entryId: uuid("entry_id").notNull().references(() => directoryEntries.id, { onDelete: "cascade" }),
+  revealedAt: timestamp("revealed_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  userTimeIdx: index("directory_reveals_user_time_idx").on(table.userId, table.revealedAt),
+}));
+
+export const directoryRevealBudgets = pgTable("directory_reveal_budgets", {
+  userId: text("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),
+  windowStart: timestamp("window_start", { withTimezone: true }).notNull().defaultNow(),
+  used: integer("used").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const directoryExportEvents = pgTable("directory_export_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  kind: directoryKind("kind"),
+  rowCount: integer("row_count").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const directorySyncRuns = pgTable("directory_sync_runs", {
   id: uuid("id").primaryKey().defaultRandom(),
   kind: directoryKind("kind").notNull(),

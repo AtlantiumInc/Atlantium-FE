@@ -25,6 +25,7 @@ export type Env = {
   ANTHROPIC_API_KEY?: string;
   ATLAS_CLOUD_API_KEY?: string;
   REVIEW_SHARD_LIMIT?: string;
+  DIRECTORY_REVEAL_QUOTA?: string;
   ASSETS_BUCKET: R2Bucket;
 };
 

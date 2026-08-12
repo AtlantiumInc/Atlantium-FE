@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { and, asc, desc, eq, gte, ilike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, isNull, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { z } from "zod";
@@ -8,8 +8,10 @@ import type { Db } from "../db/client";
 import {
   contentCollections,
   contentDocuments,
+  directoryContacts,
   directoryEntries,
   directoryEntrySources,
+  directoryExportEvents,
   directorySources,
   funnelEvents,
   grantDetails,
@@ -24,6 +26,12 @@ import { getAuthSession } from "../lib/auth";
 import { documentJsonLd, publicAuthor, publicDocumentDetail, publicDocumentSummary } from "../lib/content";
 import { generateCoverImage } from "../lib/cover-image";
 import { publicDirectoryEntry } from "../lib/directory";
+import {
+  addContact, burnReveal, countLiveContacts, hasRevealed, nextRefreshAt,
+  readContacts, revealQuota, revealsUsed, suppressContact, type ContactState,
+} from "../lib/contacts";
+import { hasEntitlement } from "../lib/entitlements";
+import { syncCompaniesFromJobs, mergeQueue } from "../lib/companies-sync";
 import { syncGrants } from "../lib/grants-sync";
 import { HttpError } from "../lib/http";
 
@@ -714,3 +722,222 @@ contentRoutes.patch(
     return c.json({ id: row.id, enabled: row.enabled });
   },
 );
+
+// ── Contact metering (plan §5.2–5.3) ────────────────────────────────────────
+// Regular list/detail endpoints above never carry contacts for ANY tier.
+// These three routes are the only paths that can emit contact values.
+
+async function contactStateFor(
+  c: Context<{ Bindings: Env }>,
+  db: Db,
+  entryId: string,
+): Promise<{ state: ContactState; revealsAvailable: number | null; refreshesAt: string | null }> {
+  const liveContacts = await countLiveContacts(db, entryId);
+  if (liveContacts === 0) return { state: "none", revealsAvailable: null, refreshesAt: null };
+
+  const ctx = await sessionUser(c);
+  if (!ctx) return { state: "hidden", revealsAvailable: null, refreshesAt: null };
+
+  if (await hasEntitlement(ctx.db, ctx.authUser.id, "directory.contacts.unlimited")) {
+    return { state: "revealed", revealsAvailable: null, refreshesAt: null };
+  }
+  if (await hasRevealed(ctx.db, ctx.authUser.id, entryId)) {
+    return { state: "revealed", revealsAvailable: null, refreshesAt: null };
+  }
+  const quota = revealQuota(c.env);
+  const used = await revealsUsed(ctx.db, ctx.authUser.id);
+  const available = Math.max(quota - used, 0);
+  return {
+    state: available > 0 ? "revealable" : "upgrade_required",
+    revealsAvailable: available,
+    refreshesAt: available > 0 ? null : await nextRefreshAt(ctx.db, ctx.authUser.id),
+  };
+}
+
+contentRoutes.get("/directory/:kind/:slug/state", async (c) => {
+  const db = createDb(c.env);
+  const [entry] = await db
+    .select()
+    .from(directoryEntries)
+    .where(and(
+      eq(directoryEntries.kind, c.req.param("kind") as "company"),
+      eq(directoryEntries.slug, c.req.param("slug")),
+    ))
+    .limit(1);
+  if (!entry) throw new HttpError(404, "not_found", "Not found.");
+  const state = await contactStateFor(c, db, entry.id);
+  return c.json({
+    contact_state: state.state,
+    reveals_available: state.revealsAvailable,
+    refreshes_at: state.refreshesAt,
+  });
+});
+
+contentRoutes.post("/directory/entries/:id/reveal", async (c) => {
+  const { db, authUser } = await requireMember(c);
+  const entryId = c.req.param("id");
+  const [entry] = await db.select().from(directoryEntries).where(eq(directoryEntries.id, entryId)).limit(1);
+  if (!entry) throw new HttpError(404, "not_found", "Not found.");
+
+  // Entitled members never burn quota.
+  if (await hasEntitlement(db, authUser.id, "directory.contacts.unlimited")) {
+    await captureEvent(db, "directory_reveal_completed", authUser.id, null, {
+      entry_id: entryId, kind: entry.kind, entitled: true,
+    });
+    return c.json({
+      contacts: await readContacts(db, entryId),
+      contact_state: "revealed",
+      reveals_available: null,
+    });
+  }
+
+  const quota = revealQuota(c.env);
+  const outcome = await burnReveal(db, authUser.id, entryId, quota);
+
+  if (outcome === "exhausted") {
+    await captureEvent(db, "reveal_quota_exhausted", authUser.id, null, { entry_id: entryId, kind: entry.kind });
+    return c.json(
+      {
+        code: "quota_exhausted",
+        message: `You've used all ${quota} reveals in the last 30 days.`,
+        upgrade_url: "/pricing",
+        refreshes_at: await nextRefreshAt(db, authUser.id),
+        contact_state: "upgrade_required",
+        reveals_available: 0,
+      },
+      402,
+    );
+  }
+
+  const used = await revealsUsed(db, authUser.id);
+  await captureEvent(db, "directory_reveal_completed", authUser.id, null, {
+    entry_id: entryId,
+    kind: entry.kind,
+    reveals_remaining: Math.max(quota - used, 0),
+    re_reveal: outcome === "already",
+  });
+
+  return c.json({
+    contacts: await readContacts(db, entryId),
+    contact_state: "revealed",
+    reveals_available: Math.max(quota - used, 0),
+    refreshes_at: await nextRefreshAt(db, authUser.id),
+  });
+});
+
+/** Privileged read: entitlement OR a prior reveal. */
+contentRoutes.get("/directory/entries/:id/contacts", async (c) => {
+  const { db, authUser } = await requireMember(c);
+  const entryId = c.req.param("id");
+  const entitled = await hasEntitlement(db, authUser.id, "directory.contacts.unlimited");
+  if (!entitled && !(await hasRevealed(db, authUser.id, entryId))) {
+    throw new HttpError(403, "not_revealed", "Reveal this entry first.");
+  }
+  return c.json({ contacts: await readContacts(db, entryId) });
+});
+
+/** Privileged export: audited, rate-limited, entitlement-gated. */
+contentRoutes.get("/directory/export", async (c) => {
+  const { db, authUser } = await requireMember(c);
+  if (!(await hasEntitlement(db, authUser.id, "directory.contacts.export"))) {
+    throw new HttpError(403, "upgrade_required", "Exporting the directory requires a paid membership.");
+  }
+
+  const [recent] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(directoryExportEvents)
+    .where(sql`${directoryExportEvents.userId} = ${authUser.id} and ${directoryExportEvents.createdAt} > now() - interval '1 day'`);
+  if ((recent?.n ?? 0) >= 4) {
+    throw new HttpError(429, "rate_limited", "Export is limited to 4 downloads per day.");
+  }
+
+  const kindParam = c.req.query("kind");
+  const where = [eq(directoryEntries.status, "active" as const)];
+  if (kindParam === "company" || kindParam === "investor" || kindParam === "grant" || kindParam === "resource" || kindParam === "person") {
+    where.push(eq(directoryEntries.kind, kindParam));
+  }
+
+  const rows = await db
+    .select({ entry: directoryEntries, contact: directoryContacts })
+    .from(directoryEntries)
+    .leftJoin(directoryContacts, and(
+      eq(directoryContacts.entryId, directoryEntries.id),
+      isNull(directoryContacts.suppressedAt),
+    ))
+    .where(and(...where))
+    .limit(5000);
+
+  const csv = [
+    "name,kind,location,website,contact_type,contact_value,contact_label",
+    ...rows.map((r) => [
+      r.entry.name,
+      r.entry.kind,
+      r.entry.location ?? "",
+      r.entry.website ?? "",
+      r.contact?.contactType ?? "",
+      r.contact?.value ?? "",
+      r.contact?.label ?? "",
+    ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")),
+  ].join("\n");
+
+  await db.insert(directoryExportEvents).values({
+    userId: authUser.id,
+    kind: (kindParam as "company") ?? null,
+    rowCount: rows.length,
+  });
+  await captureEvent(db, "upgrade_completed", authUser.id, null, { action: "directory_export", rows: rows.length });
+
+  return c.body(csv, 200, {
+    "content-type": "text/csv; charset=utf-8",
+    "content-disposition": `attachment; filename="atlantium-directory-${kindParam ?? "all"}.csv"`,
+  });
+});
+
+// ── Admin: contacts, suppression, company sync, merge queue ─────────────────
+
+contentRoutes.post(
+  "/admin/directory/entries/:id/contacts",
+  zValidator("json", z.object({
+    contact_type: z.string().trim().min(2).max(32),
+    value: z.string().trim().min(3).max(300),
+    label: z.string().trim().max(80).optional(),
+    source_url: z.string().url().optional(),
+  })),
+  async (c) => {
+    const { db } = await requireAdmin(c);
+    const input = c.req.valid("json");
+    const result = await addContact(db, {
+      entryId: c.req.param("id"),
+      contactType: input.contact_type,
+      value: input.value,
+      label: input.label ?? null,
+      sourceUrl: input.source_url ?? null,
+    });
+    if ("skipped" in result) {
+      throw new HttpError(409, "suppressed", "That contact was suppressed by a takedown and cannot be re-added.");
+    }
+    return c.json({ contact: { id: result.contact.id } }, 201);
+  },
+);
+
+contentRoutes.delete(
+  "/admin/directory/contacts/:id",
+  async (c) => {
+    const { db, authUser } = await requireAdmin(c);
+    const reason = c.req.query("reason") ?? "takedown_request";
+    const hash = await suppressContact(db, c.req.param("id"), reason, authUser.email);
+    if (!hash) throw new HttpError(404, "not_found", "Contact not found.");
+    return c.json({ success: true, suppressed: true });
+  },
+);
+
+contentRoutes.post("/admin/directory/sync-companies", async (c) => {
+  await requireAdmin(c);
+  const stats = await syncCompaniesFromJobs(c.env);
+  return c.json({ success: true, ...stats });
+});
+
+contentRoutes.get("/admin/directory/merge-queue", async (c) => {
+  const { db } = await requireAdmin(c);
+  return c.json({ ambiguous: await mergeQueue(db) });
+});

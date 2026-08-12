@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import Aurora from "@/components/Aurora";
 import { api, type DirectoryEntry } from "@/lib/api";
+import { ContactCard } from "@/components/directory/ContactCard";
+import { JobReportSignupModal, useJobReportSignup } from "@/components/JobReportSignupModal";
 
 function money(min?: number | null, max?: number | null) {
   const fmt = (n: number) => (n >= 1000 ? `$${Math.round(n / 1000)}k` : `$${n}`);
@@ -25,6 +27,7 @@ function formatDate(iso?: string | null) {
 
 export function DirectoryEntryPage() {
   const { kind, slug } = useParams<{ kind: string; slug: string }>();
+  const signup = useJobReportSignup();
   const [entry, setEntry] = useState<DirectoryEntry | null>(null);
   const [provenance, setProvenance] = useState<Array<{ source: string; source_url?: string | null; last_seen_at: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,8 +56,12 @@ export function DirectoryEntryPage() {
       <PublicNavbar />
 
       <main className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 py-8 w-full">
-        <Link to="/grants" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6">
-          <ChevronLeft className="h-4 w-4" /> Back to Grants
+        <Link
+          to={kind === "grant" || kind === "resource" ? "/grants" : `/directory?kind=${kind}`}
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          {kind === "grant" || kind === "resource" ? "Back to Grants" : "Back to Directory"}
         </Link>
 
         {isLoading ? (
@@ -126,6 +133,10 @@ export function DirectoryEntryPage() {
               )}
             </div>
 
+            {entry.id && (kind === "investor" || kind === "company" || kind === "person") && (
+              <ContactCard entryId={entry.id} kind={kind} slug={slug!} onJoin={() => signup.openWithEmail()} />
+            )}
+
             {eligibility.length > 0 && (
               <section className="mb-6">
                 <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-3">Eligibility</h2>
@@ -175,6 +186,13 @@ export function DirectoryEntryPage() {
           </motion.article>
         )}
       </main>
+
+      <JobReportSignupModal
+        open={signup.open}
+        onOpenChange={signup.setOpen}
+        initialEmail={signup.initialEmail}
+        initialStep={signup.initialStep}
+      />
     </div>
   );
 }
