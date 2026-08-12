@@ -6,7 +6,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/lib/api";
 import { AnimatePresence, motion } from "motion/react";
-import { X, Menu, ChevronRight, Users, Wrench, BookOpen, Newspaper, Briefcase, GraduationCap, Landmark } from "lucide-react";
+import { X, Menu, ChevronRight, Users, Wrench, BookOpen, Newspaper, Briefcase, GraduationCap, Landmark, Building2 } from "lucide-react";
 
 const solutionItems = [
   {
@@ -60,6 +60,13 @@ const resourceItems = [
     description: "Atlanta tech, covered — the people, companies, and money moving the scene",
     icon: Newspaper,
     image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=400&h=250&fit=crop&q=80",
+  },
+  {
+    to: "/directory",
+    label: "Directory",
+    description: "Atlanta companies hiring, investors, and the people behind them",
+    icon: Building2,
+    image: "https://images.unsplash.com/photo-1521791136064-7986c2920216?w=400&h=250&fit=crop&q=80",
   },
 ];
 
