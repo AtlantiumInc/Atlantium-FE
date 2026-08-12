@@ -10,7 +10,6 @@ import {
   ArrowRight,
   Loader2,
 } from "lucide-react";
-import { isNewThisWeek } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
@@ -76,9 +75,9 @@ export function AdminDashboardPage() {
       }
     };
     fetchData();
-    api.getJobPostings()
-      .then((jobs) =>
-        setJobStats({ active: jobs.length, newThisWeek: jobs.filter(isNewThisWeek).length }),
+    api.getJobPostingsPaged({ limit: 1 })
+      .then((res) =>
+        setJobStats({ active: res.total, newThisWeek: res.counts.new_this_week }),
       )
       .catch(() => setJobStats(null));
   }, []);

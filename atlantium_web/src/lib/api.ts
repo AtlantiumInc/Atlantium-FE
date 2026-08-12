@@ -1288,6 +1288,30 @@ class ApiClient {
     }, ATLANTIUM_API_BASE_URL);
   }
 
+  async getJobPostingsPaged(params?: {
+    status?: string;
+    workplace_type?: string;
+    seniority?: string;
+    q?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{
+    jobs: JobPosting[];
+    total: number;
+    counts: { remote: number; hybrid: number; new_this_week: number };
+    limit: number;
+    offset: number;
+  }> {
+    const search = new URLSearchParams({ format: "paged" });
+    if (params?.status) search.set("status", params.status);
+    if (params?.workplace_type) search.set("workplace_type", params.workplace_type);
+    if (params?.seniority) search.set("seniority", params.seniority);
+    if (params?.q) search.set("q", params.q);
+    if (params?.limit) search.set("limit", String(params.limit));
+    if (params?.offset) search.set("offset", String(params.offset));
+    return this.request(`/job_postings?${search}`, { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
   async getJobPosting(slug: string): Promise<JobPosting> {
     return this.request<JobPosting>(`/job_postings/${encodeURIComponent(slug)}`, {
       method: "GET",

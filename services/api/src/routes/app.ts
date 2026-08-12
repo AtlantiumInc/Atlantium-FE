@@ -1,6 +1,6 @@
 import { zValidator } from "@hono/zod-validator";
 import { getPartnerStanding, postHandoff, recordReferralClick, recordSignup } from "@boomin/server";
-import { and, asc, desc, eq, gte, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, isNull, lte, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { z } from "zod";
@@ -1003,15 +1003,60 @@ appRoutes.get("/job_postings", async (c) => {
   const status = c.req.query("status") ?? "active";
   const workplaceType = c.req.query("workplace_type");
   const seniority = c.req.query("seniority");
+  const q = c.req.query("q")?.trim();
   const conditions = [eq(jobPostings.status, status)];
   if (workplaceType) conditions.push(eq(jobPostings.workplaceType, workplaceType));
   if (seniority) conditions.push(eq(jobPostings.seniority, seniority));
-  const rows = await db
-    .select()
-    .from(jobPostings)
-    .where(and(...conditions))
-    .orderBy(desc(jobPostings.postedAt));
-  return c.json(rows.map(publicJobPosting));
+  if (q) {
+    const like = `%${q}%`;
+    const search = or(
+      ilike(jobPostings.title, like),
+      ilike(jobPostings.company, like),
+      sql`${jobPostings.content}->>'tech_stack' ILIKE ${like}`,
+    );
+    if (search) conditions.push(search);
+  }
+  const where = and(...conditions);
+  // Stable order: created_at ties within a scrape batch, so id is the tiebreak.
+  const order = [
+    sql`${jobPostings.postedAt} DESC NULLS LAST`,
+    desc(jobPostings.createdAt),
+    asc(jobPostings.id),
+  ];
+
+  if (c.req.query("format") !== "paged") {
+    // Legacy bare-array shape for older bundles/scripts — newest 500.
+    const rows = await db.select().from(jobPostings).where(where).orderBy(...order).limit(500);
+    return c.json(rows.map(publicJobPosting));
+  }
+
+  const limit = Math.min(Math.max(Number(c.req.query("limit")) || 60, 1), 200);
+  const offset = Math.max(Number(c.req.query("offset")) || 0, 0);
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const [rows, totals] = await Promise.all([
+    db.select().from(jobPostings).where(where).orderBy(...order).limit(limit).offset(offset),
+    db
+      .select({
+        total: sql<number>`count(*)::int`,
+        remote: sql<number>`count(*) filter (where ${jobPostings.workplaceType} = 'Remote')::int`,
+        hybrid: sql<number>`count(*) filter (where ${jobPostings.workplaceType} = 'Hybrid')::int`,
+        newThisWeek: sql<number>`count(*) filter (where coalesce(${jobPostings.postedAt}, ${jobPostings.createdAt}) > ${weekAgo})::int`,
+      })
+      .from(jobPostings)
+      .where(where),
+  ]);
+  const t = totals[0];
+  return c.json({
+    jobs: rows.map(publicJobPosting),
+    total: t?.total ?? 0,
+    counts: {
+      remote: t?.remote ?? 0,
+      hybrid: t?.hybrid ?? 0,
+      new_this_week: t?.newThisWeek ?? 0,
+    },
+    limit,
+    offset,
+  });
 });
 
 appRoutes.get("/job_postings/:slug", async (c) => {

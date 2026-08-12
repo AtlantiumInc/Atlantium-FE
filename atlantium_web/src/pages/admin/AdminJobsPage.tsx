@@ -109,12 +109,22 @@ export function AdminJobsPage() {
   const [isRescraping, setIsRescraping] = useState(false);
   const [isSendingDigest, setIsSendingDigest] = useState(false);
   const [formData, setFormData] = useState(emptyForm);
+  const [total, setTotal] = useState(0);
+  const [serverCounts, setServerCounts] = useState({ remote: 0, hybrid: 0, new_this_week: 0 });
+  const [debouncedQuery, setDebouncedQuery] = useState("");
 
-  const fetchJobs = useCallback(async (status: "active" | "expired") => {
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  const fetchJobs = useCallback(async (status: "active" | "expired", q?: string) => {
     setIsFetching(true);
     try {
-      const data = await api.getJobPostings({ status });
-      setJobs(data);
+      const res = await api.getJobPostingsPaged({ status, q: q || undefined, limit: 200 });
+      setJobs(res.jobs);
+      setTotal(res.total);
+      setServerCounts(res.counts);
     } catch {
       toast.error("Failed to load job postings");
     } finally {
@@ -123,25 +133,18 @@ export function AdminJobsPage() {
   }, []);
 
   useEffect(() => {
-    fetchJobs(statusFilter);
-  }, [fetchJobs, statusFilter]);
+    fetchJobs(statusFilter, debouncedQuery);
+  }, [fetchJobs, statusFilter, debouncedQuery]);
 
   const filtered = useMemo(() => {
-    const q = searchQuery.toLowerCase();
-    return jobs.filter((job) => {
-      const matchesSearch =
-        !q ||
-        job.title.toLowerCase().includes(q) ||
-        job.company.toLowerCase().includes(q) ||
-        (job.content?.tech_stack ?? []).some((t) => t.toLowerCase().includes(q));
-      const matchesWorkplace =
+    return jobs.filter(
+      (job) =>
         workplaceFilter === "all" ||
-        job.workplace_type?.toLowerCase() === workplaceFilter.toLowerCase();
-      return matchesSearch && matchesWorkplace;
-    });
-  }, [jobs, searchQuery, workplaceFilter]);
+        job.workplace_type?.toLowerCase() === workplaceFilter.toLowerCase(),
+    );
+  }, [jobs, workplaceFilter]);
 
-  const newThisWeek = useMemo(() => jobs.filter(isNewThisWeek).length, [jobs]);
+  const newThisWeek = serverCounts.new_this_week;
   const companies = useMemo(
     () => new Set(jobs.map((j) => j.company.toLowerCase())).size,
     [jobs],
@@ -317,7 +320,7 @@ export function AdminJobsPage() {
             <Briefcase className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isFetching ? "…" : jobs.length}</div>
+            <div className="text-2xl font-bold">{isFetching ? "…" : total}</div>
           </CardContent>
         </Card>
         <Card>
@@ -345,7 +348,7 @@ export function AdminJobsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-400">
-              {isFetching ? "…" : jobs.filter((j) => j.workplace_type === "Remote").length}
+              {isFetching ? "…" : serverCounts.remote}
             </div>
           </CardContent>
         </Card>
@@ -392,7 +395,8 @@ export function AdminJobsPage() {
       <Card>
         <CardHeader>
           <CardTitle>
-            {statusFilter === "active" ? "Active" : "Expired"} Postings ({filtered.length})
+            {statusFilter === "active" ? "Active" : "Expired"} Postings ({filtered.length}
+            {total > jobs.length ? ` of ${total}` : ""})
           </CardTitle>
         </CardHeader>
         <CardContent>

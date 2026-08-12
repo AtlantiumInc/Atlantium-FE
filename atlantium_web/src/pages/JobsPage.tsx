@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
 import { ExternalLink, MapPin, Briefcase, Search, Building2, Clock, ChevronDown, ChevronUp, Cpu, GraduationCap, Bell, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
@@ -81,7 +82,7 @@ function JobCard({ job, index }: { job: Job; index: number }) {
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: Math.min(index * 0.04, 0.5) }}
+      transition={{ duration: 0.25, delay: Math.min((index % 10) * 0.02, 0.2) }}
       className="group rounded-xl border border-border/50 bg-card/40 backdrop-blur-sm hover:border-cyan-500/30 hover:bg-card/60 transition-all duration-200"
     >
       <div className="p-3 sm:p-5">
@@ -341,46 +342,90 @@ function JobAlertsCard({
   );
 }
 
+const PAGE_SIZE = 60;
+
 export function JobsPage() {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [workplaceFilter, setWorkplaceFilter] = useState("All");
   const [seniorityFilter, setSeniorityFilter] = useState("All");
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [total, setTotal] = useState(0);
+  const [counts, setCounts] = useState({ remote: 0, hybrid: 0, new_this_week: 0 });
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const signup = useJobReportSignup();
+  const listRef = useRef<HTMLDivElement>(null);
+  // Guards against out-of-order responses when filters change mid-flight.
+  const requestSeq = useRef(0);
 
   useEffect(() => {
-    api.getJobPostings()
-      .then((postings) => setJobs(postings.map(toJob)))
-      .catch(() => setError("Failed to load job postings. Please try again."))
-      .finally(() => setIsLoading(false));
-  }, []);
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  const filtered = useMemo(() => {
-    return jobs.filter((job) => {
-      const q = search.toLowerCase();
-      const matchesSearch =
-        !q ||
-        job.title.toLowerCase().includes(q) ||
-        job.company.toLowerCase().includes(q) ||
-        (job.tech_stack ?? []).some((t) => t.toLowerCase().includes(q));
+  const queryParams = useCallback(
+    (offset: number) => ({
+      q: debouncedSearch || undefined,
+      workplace_type: workplaceFilter !== "All" ? workplaceFilter : undefined,
+      seniority: seniorityFilter !== "All" ? seniorityFilter : undefined,
+      limit: PAGE_SIZE,
+      offset,
+    }),
+    [debouncedSearch, workplaceFilter, seniorityFilter],
+  );
 
-      const matchesWorkplace =
-        workplaceFilter === "All" ||
-        job.workplace_type?.toLowerCase() === workplaceFilter.toLowerCase();
+  // First page — refetches whenever search or filters change.
+  useEffect(() => {
+    const seq = ++requestSeq.current;
+    setIsLoading(true);
+    setError(null);
+    api.getJobPostingsPaged(queryParams(0))
+      .then((res) => {
+        if (seq !== requestSeq.current) return;
+        setJobs(res.jobs.map(toJob));
+        setTotal(res.total);
+        setCounts(res.counts);
+      })
+      .catch(() => {
+        if (seq === requestSeq.current) setError("Failed to load job postings. Please try again.");
+      })
+      .finally(() => {
+        if (seq === requestSeq.current) setIsLoading(false);
+      });
+  }, [queryParams]);
 
-      const matchesSeniority =
-        seniorityFilter === "All" ||
-        job.seniority?.toLowerCase() === seniorityFilter.toLowerCase();
+  const loadMore = useCallback(() => {
+    if (isLoading || isLoadingMore || jobs.length >= total) return;
+    const seq = requestSeq.current;
+    setIsLoadingMore(true);
+    api.getJobPostingsPaged(queryParams(jobs.length))
+      .then((res) => {
+        if (seq !== requestSeq.current) return;
+        setJobs((prev) => [...prev, ...res.jobs.map(toJob)]);
+        setTotal(res.total);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoadingMore(false));
+  }, [isLoading, isLoadingMore, jobs.length, total, queryParams]);
 
-      return matchesSearch && matchesWorkplace && matchesSeniority;
-    });
-  }, [jobs, search, workplaceFilter, seniorityFilter]);
+  // Virtual scroll: only ~a screenful of cards lives in the DOM no matter how
+  // many rows are loaded; heights are measured (cards expand).
+  const virtualizer = useWindowVirtualizer({
+    count: jobs.length,
+    estimateSize: () => 190,
+    overscan: 8,
+    scrollMargin: listRef.current?.offsetTop ?? 0,
+    getItemKey: (i) => jobs[i]?.id ?? i,
+  });
+  const virtualItems = virtualizer.getVirtualItems();
 
-  const remoteCount = jobs.filter((j) => j.workplace_type === "Remote").length;
-  const hybridCount = jobs.filter((j) => j.workplace_type === "Hybrid").length;
-  const newThisWeekCount = jobs.filter(isNewThisWeek).length;
+  useEffect(() => {
+    const last = virtualItems[virtualItems.length - 1];
+    if (last && last.index >= jobs.length - 8) loadMore();
+  }, [virtualItems, jobs.length, loadMore]);
+
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -424,15 +469,15 @@ export function JobsPage() {
 
           {/* Stats */}
           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-            <span><span className="text-foreground font-semibold">{jobs.length}</span> open roles</span>
-            <span><span className="text-emerald-400 font-semibold">{remoteCount}</span> remote</span>
-            <span><span className="text-violet-400 font-semibold">{hybridCount}</span> hybrid</span>
-            {newThisWeekCount > 0 && (
-              <span><span className="text-cyan-400 font-semibold">{newThisWeekCount}</span> new this week</span>
+            <span><span className="text-foreground font-semibold">{total}</span> open roles</span>
+            <span><span className="text-emerald-400 font-semibold">{counts.remote}</span> remote</span>
+            <span><span className="text-violet-400 font-semibold">{counts.hybrid}</span> hybrid</span>
+            {counts.new_this_week > 0 && (
+              <span><span className="text-cyan-400 font-semibold">{counts.new_this_week}</span> new this week</span>
             )}
             {jobs.length > 0 && jobs[0].posted_at && (
               <span className="text-xs self-center opacity-60">
-                updated {new Date(Math.max(...jobs.filter((j) => j.posted_at).map((j) => new Date(j.posted_at!).getTime()))).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                updated {jobs[0]?.posted_at ? new Date(jobs[0].posted_at).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : ""}
               </span>
             )}
           </div>
@@ -500,7 +545,7 @@ export function JobsPage() {
         {/* Results count */}
         {(search || workplaceFilter !== "All" || seniorityFilter !== "All") && (
           <p className="text-xs text-muted-foreground mb-4">
-            {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+            {total} result{total !== 1 ? "s" : ""}
             {search && ` for "${search}"`}
           </p>
         )}
@@ -519,7 +564,7 @@ export function JobsPage() {
                 <Briefcase className="h-10 w-10 mx-auto mb-3 opacity-30" />
                 <p>{error}</p>
               </div>
-            ) : filtered.length === 0 ? (
+            ) : jobs.length === 0 ? (
               <div className="text-center py-16 text-muted-foreground">
                 <Briefcase className="h-10 w-10 mx-auto mb-3 opacity-30" />
                 <p>No jobs match your filters.</p>
@@ -531,7 +576,36 @@ export function JobsPage() {
                 </button>
               </div>
             ) : (
-              filtered.map((job, i) => <JobCard key={job.id} job={job} index={i} />)
+              <>
+                <div
+                  ref={listRef}
+                  className="relative w-full"
+                  style={{ height: `${virtualizer.getTotalSize()}px` }}
+                >
+                  {virtualItems.map((vi) => (
+                    <div
+                      key={vi.key}
+                      data-index={vi.index}
+                      ref={virtualizer.measureElement}
+                      className="absolute top-0 left-0 w-full pb-3"
+                      style={{ transform: `translateY(${vi.start - virtualizer.options.scrollMargin}px)` }}
+                    >
+                      <JobCard job={jobs[vi.index]} index={vi.index} />
+                    </div>
+                  ))}
+                </div>
+                {isLoadingMore && (
+                  <div className="flex items-center justify-center py-4 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    <span className="text-sm">Loading more roles...</span>
+                  </div>
+                )}
+                {jobs.length >= total && total > PAGE_SIZE && (
+                  <p className="text-center text-xs text-muted-foreground py-4">
+                    That's all {total} roles.
+                  </p>
+                )}
+              </>
             )}
 
             {/* Footer attribution */}

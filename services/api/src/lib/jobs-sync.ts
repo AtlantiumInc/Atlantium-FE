@@ -20,10 +20,8 @@ const BASE = "https://hiringcafe.com";
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
 
-const MAX_PAGES = 40;
+const MAX_PAGES = 60;
 const PAGE_DELAY_MS = 500;
-const MAX_AGE_DAYS = 30;
-const MAX_JOBS = 500;
 // Abort (no expiry, no inserts) when a scrape looks broken rather than empty.
 const MIN_SANE_JOBS = 50;
 
@@ -170,13 +168,11 @@ export async function syncJobPostings(env: Env): Promise<JobsSyncResult> {
     await new Promise((r) => setTimeout(r, PAGE_DELAY_MS));
   }
 
-  const cutoff = Date.now() - MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
-  const kept = [...byUrl.values()]
-    .filter((j) => j.posted_at && new Date(j.posted_at).getTime() >= cutoff)
-    .sort(
-      (a, b) => new Date(b.posted_at ?? 0).getTime() - new Date(a.posted_at ?? 0).getTime(),
-    )
-    .slice(0, MAX_JOBS);
+  // Keep everything the feed returns — the board is uncapped; the list API
+  // paginates, so table size no longer costs page-load weight.
+  const kept = [...byUrl.values()].sort(
+    (a, b) => new Date(b.posted_at ?? 0).getTime() - new Date(a.posted_at ?? 0).getTime(),
+  );
 
   if (kept.length < MIN_SANE_JOBS) {
     throw new Error(

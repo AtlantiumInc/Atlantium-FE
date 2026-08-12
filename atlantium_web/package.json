@@ -34,6 +34,7 @@
     "@stripe/stripe-js": "^8.6.1",
     "@tailwindcss/typography": "^0.5.19",
     "@tanstack/react-query": "^5.90.12",
+    "@tanstack/react-virtual": "^3.14.9",
     "@xano/js-sdk": "^3.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
