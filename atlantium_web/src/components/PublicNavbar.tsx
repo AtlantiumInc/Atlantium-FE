@@ -254,6 +254,20 @@ export function PublicNavbar() {
                 )}
               </AnimatePresence>
             </div>
+
+            {/* Partners — direct link to the creator program */}
+            <Link to="/creator-program">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`relative text-muted-foreground hover:text-foreground ${pathname === "/creator-program" ? "text-foreground" : ""}`}
+              >
+                Partners
+                {pathname === "/creator-program" && (
+                  <span className="absolute -bottom-1 left-2 right-2 h-[2px] rounded-full bg-foreground/60" />
+                )}
+              </Button>
+            </Link>
           </div>
 
           {/* Right — Auth stacked + theme */}
@@ -413,6 +427,22 @@ export function PublicNavbar() {
                     </motion.div>
                   )}
                 </AnimatePresence>
+              </motion.div>
+
+              {/* Partners */}
+              <motion.div
+                initial={{ opacity: 0, x: -24 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3, duration: 0.3 }}
+              >
+                <Link
+                  to="/creator-program"
+                  onClick={() => setOpen(false)}
+                  className={`w-full flex items-center justify-between py-4 border-b border-white/10 ${pathname === "/creator-program" ? "text-white" : "text-white/90"}`}
+                >
+                  <span className="text-2xl font-semibold tracking-tight">Partners</span>
+                  <ChevronRight className="h-5 w-5 text-white/30" />
+                </Link>
               </motion.div>
 
             </nav>

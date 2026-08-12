@@ -1,5 +1,8 @@
-import { useEffect } from "react";
-import { Clock } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Clock, LogOut, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 /**
  * Full-screen review gate shown over the dashboard for users who have not yet
@@ -9,6 +12,10 @@ import { Clock } from "lucide-react";
  * leaves an empty, non-functional dashboard.
  */
 export function ApprovalOverlay() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
   // Lock background scroll while the gate is up.
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -17,6 +24,16 @@ export function ApprovalOverlay() {
       document.body.style.overflow = prev;
     };
   }, []);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      navigate("/", { replace: true });
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   return (
     <div
@@ -40,6 +57,20 @@ export function ApprovalOverlay() {
         <p className="mt-4 text-xs text-muted-foreground">
           We'll reach out at the email you signed up with once you're in.
         </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-6 gap-2 text-muted-foreground hover:text-foreground"
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+        >
+          {isLoggingOut ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <LogOut className="h-4 w-4" />
+          )}
+          Log out
+        </Button>
       </div>
     </div>
   );
