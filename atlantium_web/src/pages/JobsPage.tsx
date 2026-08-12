@@ -112,6 +112,11 @@ function JobCard({ job, index }: { job: Job; index: number }) {
               New this week
             </Badge>
           )}
+          {(job.review?.degree_required === "not_required" || job.review?.degree_required === "equivalent_accepted") && (
+            <Badge variant="outline" className="text-[9px] sm:text-[10px] font-medium px-2 py-0.5 bg-teal-500/10 border-teal-500/30 text-teal-400">
+              No degree req.
+            </Badge>
+          )}
           {job.workplace_type && (
             <Badge variant="outline" className={`text-[9px] sm:text-[10px] font-medium px-2 py-0.5 ${getWorkplaceColor(job.workplace_type)}`}>
               {job.workplace_type}
@@ -349,9 +354,10 @@ export function JobsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [workplaceFilter, setWorkplaceFilter] = useState("All");
   const [seniorityFilter, setSeniorityFilter] = useState("All");
+  const [noDegreeOnly, setNoDegreeOnly] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [total, setTotal] = useState(0);
-  const [counts, setCounts] = useState({ remote: 0, hybrid: 0, new_this_week: 0 });
+  const [counts, setCounts] = useState({ remote: 0, hybrid: 0, new_this_week: 0, no_degree: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -370,10 +376,11 @@ export function JobsPage() {
       q: debouncedSearch || undefined,
       workplace_type: workplaceFilter !== "All" ? workplaceFilter : undefined,
       seniority: seniorityFilter !== "All" ? seniorityFilter : undefined,
+      no_degree: noDegreeOnly || undefined,
       limit: PAGE_SIZE,
       offset,
     }),
-    [debouncedSearch, workplaceFilter, seniorityFilter],
+    [debouncedSearch, workplaceFilter, seniorityFilter, noDegreeOnly],
   );
 
   // First page — refetches whenever search or filters change.
@@ -475,6 +482,9 @@ export function JobsPage() {
             {counts.new_this_week > 0 && (
               <span><span className="text-cyan-400 font-semibold">{counts.new_this_week}</span> new this week</span>
             )}
+            {counts.no_degree > 0 && (
+              <span><span className="text-teal-400 font-semibold">{counts.no_degree}</span> no degree required</span>
+            )}
             {jobs.length > 0 && jobs[0].posted_at && (
               <span className="text-xs self-center opacity-60">
                 updated {jobs[0]?.posted_at ? new Date(jobs[0].posted_at).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : ""}
@@ -540,10 +550,20 @@ export function JobsPage() {
               {f}
             </button>
           ))}
+          <button
+            onClick={() => setNoDegreeOnly(!noDegreeOnly)}
+            className={`px-2.5 py-1 rounded-md text-[10px] font-medium border transition-all ${
+              noDegreeOnly
+                ? "bg-teal-500/20 border-teal-500/40 text-teal-300"
+                : "bg-card/40 border-border/40 text-muted-foreground hover:border-border hover:text-foreground"
+            }`}
+          >
+            No degree required
+          </button>
         </motion.div>
 
         {/* Results count */}
-        {(search || workplaceFilter !== "All" || seniorityFilter !== "All") && (
+        {(search || workplaceFilter !== "All" || seniorityFilter !== "All" || noDegreeOnly) && (
           <p className="text-xs text-muted-foreground mb-4">
             {total} result{total !== 1 ? "s" : ""}
             {search && ` for "${search}"`}
@@ -570,7 +590,7 @@ export function JobsPage() {
                 <p>No jobs match your filters.</p>
                 <button
                   className="mt-2 text-sm text-cyan-400 hover:underline"
-                  onClick={() => { setSearch(""); setWorkplaceFilter("All"); setSeniorityFilter("All"); }}
+                  onClick={() => { setSearch(""); setWorkplaceFilter("All"); setSeniorityFilter("All"); setNoDegreeOnly(false); }}
                 >
                   Clear filters
                 </button>

@@ -222,13 +222,26 @@ export const jobPostings = pgTable("job_postings", {
   status: text("status").notNull().default("active"),
   postedAt: timestamp("posted_at", { withTimezone: true }),
   content: jsonb("content"),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  review: jsonb("review"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   slugUnique: uniqueIndex("job_postings_slug_unique").on(table.slug),
   applyUrlUnique: uniqueIndex("job_postings_apply_url_unique").on(table.applyUrl),
   statusPostedIdx: index("job_postings_status_posted_idx").on(table.status, table.postedAt),
+  statusReviewedIdx: index("job_postings_status_reviewed_idx").on(table.status, table.reviewedAt),
 }));
+
+export const reviewBatches = pgTable("review_batches", {
+  batchId: text("batch_id").primaryKey(),
+  status: text("status").notNull().default("in_progress"),
+  jobCount: integer("job_count").notNull().default(0),
+  submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  usage: jsonb("usage").$type<Record<string, number>>().notNull().default({}),
+  results: jsonb("results").$type<Record<string, number>>().notNull().default({}),
+});
 
 export const digestSuppressions = pgTable("digest_suppressions", {
   email: text("email").primaryKey(),
@@ -245,6 +258,94 @@ export const digestRuns = pgTable("digest_runs", {
   sections: jsonb("sections").$type<Record<string, number>>().notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ── Content rail (plan §3.1) ────────────────────────────────────────────────
+export const documentType = pgEnum("document_type", ["doc", "post"]);
+export const documentFormat = pgEnum("document_format", ["article", "guide", "reference"]);
+export const documentStatus = pgEnum("document_status", ["draft", "published", "archived"]);
+export const documentGate = pgEnum("document_gate", ["public", "preview", "member"]);
+
+export const contentCollections = pgTable("content_collections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  description: text("description"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const contentDocuments = pgTable("content_documents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  type: documentType("type").notNull(),
+  format: documentFormat("format").notNull().default("article"),
+  slug: text("slug").notNull(),
+  title: text("title").notNull(),
+  excerpt: text("excerpt"),
+  bodyMd: text("body_md").notNull().default(""),
+  coverImageUrl: text("cover_image_url"),
+  tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
+  authorProfileId: uuid("author_profile_id").references(() => profiles.id, { onDelete: "set null" }),
+  collectionId: uuid("collection_id").references(() => contentCollections.id, { onDelete: "set null" }),
+  sortOrder: integer("sort_order").notNull().default(0),
+  status: documentStatus("status").notNull().default("draft"),
+  gate: documentGate("gate").notNull().default("preview"),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  typeSlugUq: uniqueIndex("content_documents_type_slug_uq").on(table.type, table.slug),
+  typeStatusPubIdx: index("content_documents_type_status_pub_idx").on(table.type, table.status, table.publishedAt),
+  collectionIdx: index("content_documents_collection_idx").on(table.collectionId, table.sortOrder),
+}));
+
+// ── Conversation rail (plan §3.3) ───────────────────────────────────────────
+export const threadKind = pgEnum("thread_kind", ["comments", "dm", "group"]);
+export const threadSubjectType = pgEnum("thread_subject_type", ["document", "directory_entry"]);
+
+export const threads = pgTable("threads", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kind: threadKind("kind").notNull(),
+  subjectType: threadSubjectType("subject_type"),
+  subjectId: uuid("subject_id"),
+  title: text("title"),
+  createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const threadParticipants = pgTable("thread_participants", {
+  threadId: uuid("thread_id").notNull().references(() => threads.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  role: text("role").notNull().default("member"),
+  joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const threadMessages = pgTable("thread_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  threadId: uuid("thread_id").notNull().references(() => threads.id, { onDelete: "cascade" }),
+  authorUserId: text("author_user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  body: text("body").notNull(),
+  parentMessageId: uuid("parent_message_id"),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  threadTimeIdx: index("thread_messages_thread_time_idx").on(table.threadId, table.createdAt),
+}));
+
+// ── Funnel instrumentation (plan §7.5) ──────────────────────────────────────
+export const funnelEvents = pgTable("funnel_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  event: text("event").notNull(),
+  userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+  anonId: text("anon_id"),
+  props: jsonb("props").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  eventTimeIdx: index("funnel_events_event_time_idx").on(table.event, table.createdAt),
+}));
 
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),

@@ -14,6 +14,7 @@ import {
   Shield,
   Rocket,
   X,
+  PenLine,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -65,6 +66,12 @@ export function AdminSidebar({
       path: "/admin/jobs",
       icon: <Briefcase size={20} />,
       label: "Jobs",
+    },
+    {
+      id: "content",
+      path: "/admin/content",
+      icon: <PenLine size={20} />,
+      label: "Content",
     },
     {
       id: "users",

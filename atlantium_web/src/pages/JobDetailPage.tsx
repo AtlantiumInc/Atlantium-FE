@@ -228,6 +228,11 @@ export function JobDetailPage() {
                         New this week
                       </Badge>
                     )}
+                    {(job.review?.degree_required === "not_required" || job.review?.degree_required === "equivalent_accepted") && (
+                      <Badge variant="outline" className="text-xs font-medium px-2.5 py-0.5 bg-teal-500/10 border-teal-500/30 text-teal-400">
+                        No degree required
+                      </Badge>
+                    )}
                     {job.workplace_type && (
                       <Badge variant="outline" className={`text-xs px-2.5 py-0.5 ${getWorkplaceColor(job.workplace_type)}`}>
                         {job.workplace_type}
@@ -252,6 +257,17 @@ export function JobDetailPage() {
                       <span className="text-sm font-semibold text-emerald-400">{salary}</span>
                     )}
                   </div>
+
+                  {/* Verified-open line (AI review, fresh within 48h) */}
+                  {job.review?.status === "open" && job.review.verified_at &&
+                    Date.now() - new Date(job.review.verified_at).getTime() < 48 * 60 * 60 * 1000 && (
+                    <div className="flex items-center gap-1.5 mb-2 text-xs text-emerald-400">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      <span>
+                        Verified open — checked {formatPostedDate(job.review.verified_at).toLowerCase()}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Location + date */}
                   <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">

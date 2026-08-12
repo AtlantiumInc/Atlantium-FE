@@ -379,7 +379,7 @@ export function LandingPage() {
 
                 {/* Subhead */}
                 <p className="text-muted-foreground text-lg mb-8 mx-auto">
-                  Where builders get the intel, connections, and tools to ship what's next.
+                  Atlanta's premier technology network — where the city's sharpest technologists connect, level up, and get hired.
                 </p>
 
                 {/* CTAs */}

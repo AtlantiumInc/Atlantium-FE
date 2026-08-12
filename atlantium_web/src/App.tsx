@@ -27,6 +27,7 @@ import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
 import { AdminEventsPage } from "@/pages/admin/AdminEventsPage";
 import { AdminArticlesPage } from "@/pages/admin/AdminArticlesPage";
 import { AdminJobsPage } from "@/pages/admin/AdminJobsPage";
+import { AdminContentPage } from "@/pages/admin/AdminContentPage";
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
 import { AdminApprovalsPage } from "@/pages/admin/AdminApprovalsPage";
 import { AdminGTMPage } from "@/pages/admin/AdminGTMPage";
@@ -40,6 +41,9 @@ import { InvitePage } from "@/pages/InvitePage";
 import { IndexPage } from "@/pages/IndexPage";
 import { JobsPage } from "@/pages/JobsPage";
 import { JobDetailPage } from "@/pages/JobDetailPage";
+import { BlogPage } from "@/pages/BlogPage";
+import { DocsPage } from "@/pages/DocsPage";
+import { ContentDocumentPage } from "@/pages/ContentDocumentPage";
 import { TrainingPage } from "@/pages/TrainingPage";
 import { PricingPage as PublicPricingPage } from "@/pages/PricingPage";
 import { AIEngineerPage } from "@/pages/AIEngineerPage";
@@ -88,6 +92,10 @@ function AppRoutes() {
       <Route path="/index" element={<IndexPage />} />
       <Route path="/jobs" element={<JobsPage />} />
       <Route path="/jobs/:slug" element={<JobDetailPage />} />
+      <Route path="/blog" element={<BlogPage />} />
+      <Route path="/blog/:slug" element={<ContentDocumentPage />} />
+      <Route path="/docs" element={<DocsPage />} />
+      <Route path="/docs/:slug" element={<ContentDocumentPage />} />
       <Route path="/training" element={<TrainingPage />} />
       <Route path="/pricing" element={<PublicPricingPage />} />
       <Route path="/index/:slug" element={<ArticleDetailPage />} />
@@ -148,6 +156,7 @@ function AppRoutes() {
         <Route path="events" element={<AdminEventsPage />} />
         <Route path="articles" element={<AdminArticlesPage />} />
         <Route path="jobs" element={<AdminJobsPage />} />
+        <Route path="content" element={<AdminContentPage />} />
         <Route path="users" element={<AdminUsersPage />} />
         <Route path="approvals" element={<AdminApprovalsPage />} />
         <Route path="partnerships" element={<DashboardPage embedded />} />

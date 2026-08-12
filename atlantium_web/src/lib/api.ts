@@ -232,8 +232,65 @@ export interface JobPosting {
   status: string;
   posted_at?: string | null;
   content?: JobPostingContent;
+  review?: {
+    verified_at: string | null;
+    status: string | null;
+    degree_required: string | null;
+  } | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ContentCollection {
+  id: string;
+  slug: string;
+  title: string;
+  description?: string | null;
+  sort_order: number;
+  published_count: number;
+}
+
+export interface ContentDocumentSummary {
+  id: string;
+  type: "doc" | "post";
+  format: "article" | "guide" | "reference";
+  slug: string;
+  title: string;
+  excerpt?: string | null;
+  cover_image_url?: string | null;
+  tags: string[];
+  collection_slug?: string | null;
+  author?: { profile_id: string; display_name: string; avatar_url?: string | null } | null;
+  meta?: {
+    tldr?: string[];
+    read_time?: number;
+    sources?: string[];
+    guide?: { steps?: number; difficulty?: string; time_to_complete?: string };
+  };
+  published_at?: string | null;
+  updated_at: string;
+}
+
+export interface ContentDocumentDetail extends ContentDocumentSummary {
+  body_md: string;
+  gated: boolean;
+  gate_reason: "signup_required" | null;
+}
+
+export interface ContentComment {
+  id: string;
+  body: string;
+  deleted: boolean;
+  parent_message_id?: string | null;
+  author?: { profile_id: string; display_name: string; avatar_url?: string | null } | null;
+  created_at: string;
+}
+
+export interface AdminContentDocument extends ContentDocumentSummary {
+  status: "draft" | "published" | "archived";
+  gate: "public" | "preview" | "member";
+  collection_id?: string | null;
+  body_md: string;
 }
 
 export interface FrontierArticle {
@@ -1293,12 +1350,13 @@ class ApiClient {
     workplace_type?: string;
     seniority?: string;
     q?: string;
+    no_degree?: boolean;
     limit?: number;
     offset?: number;
   }): Promise<{
     jobs: JobPosting[];
     total: number;
-    counts: { remote: number; hybrid: number; new_this_week: number };
+    counts: { remote: number; hybrid: number; new_this_week: number; no_degree: number };
     limit: number;
     offset: number;
   }> {
@@ -1307,9 +1365,109 @@ class ApiClient {
     if (params?.workplace_type) search.set("workplace_type", params.workplace_type);
     if (params?.seniority) search.set("seniority", params.seniority);
     if (params?.q) search.set("q", params.q);
+    if (params?.no_degree) search.set("no_degree", "1");
     if (params?.limit) search.set("limit", String(params.limit));
     if (params?.offset) search.set("offset", String(params.offset));
     return this.request(`/job_postings?${search}`, { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async runReviewCycle(): Promise<Record<string, unknown>> {
+    return this.request("/admin/review/run", { method: "POST" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  // ── Content platform ──────────────────────────────────────────────
+
+  async getContentCollections(): Promise<{ collections: ContentCollection[] }> {
+    return this.request("/content/collections", { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async getContentDocuments(params?: {
+    type?: "doc" | "post";
+    format?: string;
+    collection?: string;
+    tag?: string;
+    q?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ documents: ContentDocumentSummary[]; total: number; limit: number; offset: number }> {
+    const search = new URLSearchParams();
+    for (const [k, v] of Object.entries(params ?? {})) {
+      if (v !== undefined && v !== null && v !== "") search.set(k, String(v));
+    }
+    return this.request(`/content/documents?${search}`, { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async getContentDocument(type: "doc" | "post", slug: string): Promise<{
+    document: ContentDocumentDetail;
+    json_ld: Record<string, unknown>;
+  }> {
+    return this.request(`/content/documents/${type}/${slug}`, { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async getComments(subjectType: string, subjectId: string): Promise<{ messages: ContentComment[]; total: number }> {
+    return this.request(`/threads/${subjectType}/${subjectId}/messages`, { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async postComment(subjectType: string, subjectId: string, body: string, parentMessageId?: string): Promise<{ message: ContentComment }> {
+    return this.request(`/threads/${subjectType}/${subjectId}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ body, parent_message_id: parentMessageId }),
+    }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async deleteComment(messageId: string): Promise<{ success: boolean }> {
+    return this.request(`/thread_messages/${messageId}`, { method: "DELETE" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async trackEvent(event: string, props?: Record<string, unknown>): Promise<void> {
+    try {
+      let anonId = localStorage.getItem("atl_anon_id");
+      if (!anonId) {
+        anonId = crypto.randomUUID();
+        localStorage.setItem("atl_anon_id", anonId);
+      }
+      await this.request("/events", {
+        method: "POST",
+        body: JSON.stringify({ event, anon_id: anonId, props: props ?? {} }),
+      }, ATLANTIUM_API_BASE_URL);
+    } catch {
+      // analytics must never break the product
+    }
+  }
+
+  async adminListContentDocuments(): Promise<{ documents: AdminContentDocument[] }> {
+    return this.request("/admin/content/documents", { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async adminCreateContentDocument(input: Record<string, unknown>): Promise<{ document: unknown }> {
+    return this.request("/admin/content/documents", { method: "POST", body: JSON.stringify(input) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async adminUpdateContentDocument(id: string, input: Record<string, unknown>): Promise<{ document: unknown }> {
+    return this.request(`/admin/content/documents/${id}`, { method: "PATCH", body: JSON.stringify(input) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async adminDeleteContentDocument(id: string): Promise<{ success: boolean }> {
+    return this.request(`/admin/content/documents/${id}`, { method: "DELETE" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async adminCreateContentCollection(input: Record<string, unknown>): Promise<{ collection: unknown }> {
+    return this.request("/admin/content/collections", { method: "POST", body: JSON.stringify(input) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async getReviewStatus(): Promise<{
+    inflight_batches: Array<{ batch_id: string; job_count: number; submitted_at: string }>;
+    last_24h: {
+      reviewed: number;
+      auto_expired: number;
+      flagged_active: number;
+      batches: number;
+      tokens: { input: number; output: number };
+      est_cost_usd: number;
+    };
+    active_no_degree: number;
+  }> {
+    return this.request("/admin/review/status", { method: "GET" }, ATLANTIUM_API_BASE_URL);
   }
 
   async getJobPosting(slug: string): Promise<JobPosting> {

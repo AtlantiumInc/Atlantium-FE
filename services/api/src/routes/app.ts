@@ -6,6 +6,8 @@ import type { Context } from "hono";
 import { z } from "zod";
 import { createDb } from "../db/client";
 import type { Db } from "../db/client";
+import { captureEvent } from "./content";
+import { runReviewCycle, reviewStatus } from "../lib/jobs-review";
 import { syncJobPostings } from "../lib/jobs-sync";
 import {
   buildSections,
@@ -161,6 +163,9 @@ appRoutes.post(
     // (program, source, event_id) uniqueness makes replays and repeat logins
     // a no-op. Best-effort — attribution must never block auth.
     const isNewSignup = Date.now() - new Date(freshUser.createdAt).getTime() < 10 * 60 * 1000;
+    if (isNewSignup) {
+      await captureEvent(db, "signup_completed", freshUser.id, null, { method: "otp" });
+    }
     if (body.referral_code && isNewSignup) {
       try {
         await recordSignup({
@@ -913,8 +918,20 @@ function publicJobPosting(row: typeof jobPostings.$inferSelect) {
     status: row.status,
     posted_at: row.postedAt?.toISOString() ?? null,
     content: row.content ?? {},
+    review: publicReview(row.review as Record<string, unknown> | null),
     created_at: row.createdAt.toISOString(),
     updated_at: row.updatedAt.toISOString(),
+  };
+}
+
+// Public slice of the AI review — verification signal only, never the
+// internal notes/flags.
+function publicReview(review: Record<string, unknown> | null) {
+  if (!review) return null;
+  return {
+    verified_at: typeof review.verified_at === "string" ? review.verified_at : null,
+    status: typeof review.status === "string" ? review.status : null,
+    degree_required: typeof review.degree_required === "string" ? review.degree_required : null,
   };
 }
 
@@ -930,6 +947,22 @@ appRoutes.post("/admin/jobs/rescrape", async (c) => {
   await requireAdminUser(c);
   const result = await syncJobPostings(c.env);
   return c.json({ success: true, ...result });
+});
+
+// ── AI job review ───────────────────────────────────────────────────────────
+
+// Manually run one review cycle (poll finished batches, submit next shard) —
+// the same code path the 30-min cron runs.
+appRoutes.post("/admin/review/run", async (c) => {
+  await requireAdminUser(c);
+  const result = await runReviewCycle(c.env);
+  return c.json({ success: true, ...result });
+});
+
+appRoutes.get("/admin/review/status", async (c) => {
+  await requireAdminUser(c);
+  const status = await reviewStatus(c.env);
+  return c.json(status);
 });
 
 // ── Weekly digest ───────────────────────────────────────────────────────────
@@ -1016,6 +1049,11 @@ appRoutes.get("/job_postings", async (c) => {
     );
     if (search) conditions.push(search);
   }
+  if (c.req.query("no_degree") === "1") {
+    conditions.push(
+      sql`${jobPostings.review}->>'degree_required' in ('not_required','equivalent_accepted')`,
+    );
+  }
   const where = and(...conditions);
   // Stable order: created_at ties within a scrape batch, so id is the tiebreak.
   const order = [
@@ -1041,6 +1079,7 @@ appRoutes.get("/job_postings", async (c) => {
         remote: sql<number>`count(*) filter (where ${jobPostings.workplaceType} = 'Remote')::int`,
         hybrid: sql<number>`count(*) filter (where ${jobPostings.workplaceType} = 'Hybrid')::int`,
         newThisWeek: sql<number>`count(*) filter (where coalesce(${jobPostings.postedAt}, ${jobPostings.createdAt}) > ${weekAgo})::int`,
+        noDegree: sql<number>`count(*) filter (where ${jobPostings.review}->>'degree_required' in ('not_required','equivalent_accepted'))::int`,
       })
       .from(jobPostings)
       .where(where),
@@ -1053,6 +1092,7 @@ appRoutes.get("/job_postings", async (c) => {
       remote: t?.remote ?? 0,
       hybrid: t?.hybrid ?? 0,
       new_this_week: t?.newThisWeek ?? 0,
+      no_degree: t?.noDegree ?? 0,
     },
     limit,
     offset,

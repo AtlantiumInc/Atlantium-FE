@@ -36,5 +36,6 @@ BOOMIN_HANDOFF_REDIRECT_URI = "https://atlantium.ai/creator-program"
 
 # Daily 10:00 UTC (6am ET): job-board rescrape — src/lib/jobs-sync.ts
 # Mondays 13:00 UTC (9am ET): weekly member digest — src/lib/digest.ts
+# Every 30 min: AI job review cycle (poll + submit) — src/lib/jobs-review.ts
 [triggers]
-crons = ["0 10 * * *", "0 13 * * 1"]
+crons = ["0 10 * * *", "0 13 * * 1", "*/30 * * * *"]

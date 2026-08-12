@@ -16,6 +16,8 @@ import {
   ArchiveRestore,
   Building2,
   Sparkles,
+  Bot,
+  Flag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -110,7 +112,10 @@ export function AdminJobsPage() {
   const [isSendingDigest, setIsSendingDigest] = useState(false);
   const [formData, setFormData] = useState(emptyForm);
   const [total, setTotal] = useState(0);
-  const [serverCounts, setServerCounts] = useState({ remote: 0, hybrid: 0, new_this_week: 0 });
+  const [serverCounts, setServerCounts] = useState({ remote: 0, hybrid: 0, new_this_week: 0, no_degree: 0 });
+  const [isRunningReview, setIsRunningReview] = useState(false);
+  const [flaggedOnly, setFlaggedOnly] = useState(false);
+  const [reviewStatus, setReviewStatus] = useState<Awaited<ReturnType<typeof api.getReviewStatus>> | null>(null);
   const [debouncedQuery, setDebouncedQuery] = useState("");
 
   useEffect(() => {
@@ -136,13 +141,25 @@ export function AdminJobsPage() {
     fetchJobs(statusFilter, debouncedQuery);
   }, [fetchJobs, statusFilter, debouncedQuery]);
 
+  const fetchReviewStatus = useCallback(() => {
+    api.getReviewStatus().then(setReviewStatus).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetchReviewStatus();
+  }, [fetchReviewStatus]);
+
+  const isFlagged = (job: JobPosting) =>
+    Boolean(job.review?.status && !["open", "unreachable"].includes(job.review.status));
+
   const filtered = useMemo(() => {
     return jobs.filter(
       (job) =>
-        workplaceFilter === "all" ||
-        job.workplace_type?.toLowerCase() === workplaceFilter.toLowerCase(),
+        (workplaceFilter === "all" ||
+          job.workplace_type?.toLowerCase() === workplaceFilter.toLowerCase()) &&
+        (!flaggedOnly || isFlagged(job)),
     );
-  }, [jobs, workplaceFilter]);
+  }, [jobs, workplaceFilter, flaggedOnly]);
 
   const newThisWeek = serverCounts.new_this_week;
   const companies = useMemo(
@@ -180,6 +197,34 @@ export function AdminJobsPage() {
       toast.error(error instanceof Error ? error.message : "Rescrape failed");
     } finally {
       setIsRescraping(false);
+    }
+  };
+
+  const handleRunReview = async () => {
+    setIsRunningReview(true);
+    toast.info("Running AI review cycle — polling finished batches, submitting the next shard...");
+    try {
+      const r = (await api.runReviewCycle()) as {
+        submitted?: { batch_id?: string; ai_submitted?: number; deterministic?: Record<string, number> } | null;
+        polled?: Array<Record<string, unknown>>;
+        skipped?: string;
+      };
+      if (r.skipped) {
+        toast.info(`Review cycle skipped: ${r.skipped}`);
+      } else {
+        const sub = r.submitted;
+        toast.success(
+          sub
+            ? `Cycle ran: ${sub.ai_submitted ?? 0} jobs sent to Claude${r.polled?.length ? `, ${r.polled.length} batch(es) polled` : ""}`
+            : `Cycle ran: ${r.polled?.length ?? 0} batch(es) polled, nothing due to submit`,
+        );
+      }
+      fetchReviewStatus();
+      await fetchJobs(statusFilter, debouncedQuery);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Review cycle failed");
+    } finally {
+      setIsRunningReview(false);
     }
   };
 
@@ -303,6 +348,14 @@ export function AdminJobsPage() {
             )}
             {isRescraping ? "Rescraping..." : "Rescrape Now"}
           </Button>
+          <Button variant="outline" onClick={handleRunReview} disabled={isRunningReview}>
+            {isRunningReview ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Bot className="h-4 w-4 mr-2" />
+            )}
+            {isRunningReview ? "Running..." : "Run Review Cycle"}
+          </Button>
           <Button onClick={handleCreate}>
             <Plus className="h-4 w-4 mr-2" />
             New Job
@@ -354,6 +407,50 @@ export function AdminJobsPage() {
         </Card>
       </div>
 
+      {/* AI Review */}
+      {reviewStatus && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Bot className="h-4 w-4 text-violet-400" />
+              AI Review — last 24h
+            </CardTitle>
+            {reviewStatus.inflight_batches.length > 0 && (
+              <Badge variant="outline" className="text-[10px] bg-violet-500/10 border-violet-500/30 text-violet-400">
+                {reviewStatus.inflight_batches.length} batch{reviewStatus.inflight_batches.length > 1 ? "es" : ""} in flight
+                ({reviewStatus.inflight_batches.reduce((n, b) => n + b.job_count, 0)} jobs)
+              </Badge>
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+              <div>
+                <div className="text-2xl font-bold">{reviewStatus.last_24h.reviewed}</div>
+                <div className="text-xs text-muted-foreground">reviewed</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-red-400">{reviewStatus.last_24h.auto_expired}</div>
+                <div className="text-xs text-muted-foreground">auto-expired</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-amber-400">{reviewStatus.last_24h.flagged_active}</div>
+                <div className="text-xs text-muted-foreground">flagged (active)</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-teal-400">{reviewStatus.active_no_degree}</div>
+                <div className="text-xs text-muted-foreground">no degree req.</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold">${reviewStatus.last_24h.est_cost_usd.toFixed(2)}</div>
+                <div className="text-xs text-muted-foreground">
+                  est. spend ({reviewStatus.last_24h.batches} batch{reviewStatus.last_24h.batches === 1 ? "" : "es"})
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
@@ -387,6 +484,14 @@ export function AdminJobsPage() {
                 ))}
               </SelectContent>
             </Select>
+            <Button
+              variant={flaggedOnly ? "default" : "outline"}
+              onClick={() => setFlaggedOnly(!flaggedOnly)}
+              className={flaggedOnly ? "bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30" : ""}
+            >
+              <Flag className="h-4 w-4 mr-2" />
+              Flagged
+            </Button>
           </div>
         </CardContent>
       </Card>

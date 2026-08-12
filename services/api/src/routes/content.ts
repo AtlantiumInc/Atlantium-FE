@@ -1,0 +1,546 @@
+import { zValidator } from "@hono/zod-validator";
+import { and, asc, desc, eq, gte, ilike, or, sql } from "drizzle-orm";
+import { Hono } from "hono";
+import type { Context } from "hono";
+import { z } from "zod";
+import { createDb } from "../db/client";
+import type { Db } from "../db/client";
+import {
+  contentCollections,
+  contentDocuments,
+  funnelEvents,
+  profiles,
+  threadMessages,
+  threads,
+  user,
+} from "../db/schema";
+import type { Env } from "../env";
+import { getAuthSession } from "../lib/auth";
+import { documentJsonLd, publicAuthor, publicDocumentDetail, publicDocumentSummary } from "../lib/content";
+import { HttpError } from "../lib/http";
+
+export const contentRoutes = new Hono<{ Bindings: Env }>();
+
+const FUNNEL_EVENT_NAMES = new Set([
+  "content_gate_viewed",
+  "content_gate_signup_started",
+  "signup_completed",
+  "directory_reveal_clicked",
+  "directory_reveal_completed",
+  "reveal_quota_exhausted",
+  "upgrade_clicked",
+  "upgrade_completed",
+  "comment_posted",
+]);
+
+const COMMENT_RATE_LIMIT_PER_MINUTE = 10;
+
+// ── auth helpers (local to this router; app.ts keeps its own) ───────────────
+
+async function sessionUser(c: Context<{ Bindings: Env }>) {
+  const session = await getAuthSession(c.env, c.req.raw);
+  if (!session?.user?.id) return null;
+  const db = createDb(c.env);
+  const [authUser] = await db.select().from(user).where(eq(user.id, session.user.id)).limit(1);
+  return authUser ? { db, authUser } : null;
+}
+
+async function requireMember(c: Context<{ Bindings: Env }>) {
+  const ctx = await sessionUser(c);
+  if (!ctx) throw new HttpError(401, "unauthorized", "Sign in required.");
+  return ctx;
+}
+
+async function requireAdmin(c: Context<{ Bindings: Env }>) {
+  const ctx = await requireMember(c);
+  if (!ctx.authUser.isAdmin) throw new HttpError(403, "forbidden", "Admin access required.");
+  return ctx;
+}
+
+// ── public: collections ─────────────────────────────────────────────────────
+
+contentRoutes.get("/content/collections", async (c) => {
+  const db = createDb(c.env);
+  const rows = await db
+    .select({
+      id: contentCollections.id,
+      slug: contentCollections.slug,
+      title: contentCollections.title,
+      description: contentCollections.description,
+      sortOrder: contentCollections.sortOrder,
+      publishedCount: sql<number>`count(${contentDocuments.id}) filter (where ${contentDocuments.status} = 'published')::int`,
+    })
+    .from(contentCollections)
+    .leftJoin(contentDocuments, eq(contentDocuments.collectionId, contentCollections.id))
+    .groupBy(contentCollections.id)
+    .orderBy(asc(contentCollections.sortOrder), asc(contentCollections.title));
+  return c.json({
+    collections: rows.map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      title: r.title,
+      description: r.description,
+      sort_order: r.sortOrder,
+      published_count: r.publishedCount,
+    })),
+  });
+});
+
+// ── public: documents list (excerpt-level only, published only) ─────────────
+
+contentRoutes.get("/content/documents", async (c) => {
+  const db = createDb(c.env);
+  const q = c.req.query();
+  const limit = Math.min(Number(q.limit) || 20, 100);
+  const offset = Math.max(Number(q.offset) || 0, 0);
+
+  const where = [eq(contentDocuments.status, "published" as const)];
+  if (q.type === "doc" || q.type === "post") where.push(eq(contentDocuments.type, q.type));
+  if (q.format === "article" || q.format === "guide" || q.format === "reference") {
+    where.push(eq(contentDocuments.format, q.format));
+  }
+  if (q.tag) where.push(sql`${q.tag} = any(${contentDocuments.tags})`);
+  if (q.collection) where.push(eq(contentCollections.slug, q.collection));
+  if (q.q) {
+    const needle = `%${q.q.trim()}%`;
+    const search = or(ilike(contentDocuments.title, needle), ilike(contentDocuments.excerpt, needle));
+    if (search) where.push(search);
+  }
+
+  const rows = await db
+    .select({
+      doc: contentDocuments,
+      author: profiles,
+      collectionSlug: contentCollections.slug,
+    })
+    .from(contentDocuments)
+    .leftJoin(profiles, eq(contentDocuments.authorProfileId, profiles.id))
+    .leftJoin(contentCollections, eq(contentDocuments.collectionId, contentCollections.id))
+    .where(and(...where))
+    .orderBy(
+      asc(contentDocuments.sortOrder),
+      sql`${contentDocuments.publishedAt} desc nulls last`,
+    )
+    .limit(limit)
+    .offset(offset);
+
+  const [{ total } = { total: 0 }] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(contentDocuments)
+    .leftJoin(contentCollections, eq(contentDocuments.collectionId, contentCollections.id))
+    .where(and(...where));
+
+  return c.json({
+    documents: rows.map((r) => publicDocumentSummary(r.doc, r.author, r.collectionSlug)),
+    total,
+    limit,
+    offset,
+  });
+});
+
+// ── public: document detail with the gate applied ───────────────────────────
+
+contentRoutes.get("/content/documents/:type/:slug", async (c) => {
+  const type = c.req.param("type");
+  if (type !== "doc" && type !== "post") {
+    throw new HttpError(404, "not_found", "Document not found.");
+  }
+  const db = createDb(c.env);
+  const session = await getAuthSession(c.env, c.req.raw);
+  const hasSession = Boolean(session?.user?.id);
+
+  const [row] = await db
+    .select({ doc: contentDocuments, author: profiles, collectionSlug: contentCollections.slug })
+    .from(contentDocuments)
+    .leftJoin(profiles, eq(contentDocuments.authorProfileId, profiles.id))
+    .leftJoin(contentCollections, eq(contentDocuments.collectionId, contentCollections.id))
+    .where(and(
+      eq(contentDocuments.type, type),
+      eq(contentDocuments.slug, c.req.param("slug")),
+      eq(contentDocuments.status, "published"),
+    ))
+    .limit(1);
+  if (!row) throw new HttpError(404, "not_found", "Document not found.");
+
+  return c.json({
+    document: publicDocumentDetail(row.doc, hasSession, row.author, row.collectionSlug),
+    json_ld: documentJsonLd(row.doc, row.author, c.env.APP_BASE_URL || "https://atlantium.ai"),
+  });
+});
+
+// ── comments: subject visibility first, always (plan §4.4) ──────────────────
+
+async function resolveVisibleSubject(db: Db, subjectType: string, subjectId: string) {
+  if (subjectType !== "document") {
+    // directory_entry comments are deliberately not enabled at launch (§7.6)
+    throw new HttpError(404, "not_found", "Not found.");
+  }
+  if (!/^[0-9a-f-]{36}$/i.test(subjectId)) throw new HttpError(404, "not_found", "Not found.");
+  const [doc] = await db
+    .select()
+    .from(contentDocuments)
+    .where(and(eq(contentDocuments.id, subjectId), eq(contentDocuments.status, "published")))
+    .limit(1);
+  // 404, not 403: invisible subjects don't exist (tenant-wall convention)
+  if (!doc) throw new HttpError(404, "not_found", "Not found.");
+  return doc;
+}
+
+function publicComment(
+  message: typeof threadMessages.$inferSelect,
+  author: typeof profiles.$inferSelect | null,
+) {
+  const deleted = Boolean(message.deletedAt);
+  return {
+    id: message.id,
+    body: deleted ? "[removed]" : message.body,
+    deleted,
+    parent_message_id: message.parentMessageId,
+    author: deleted ? null : publicAuthor(author),
+    created_at: message.createdAt.toISOString(),
+  };
+}
+
+contentRoutes.get("/threads/:subjectType/:subjectId/messages", async (c) => {
+  const db = createDb(c.env);
+  await resolveVisibleSubject(db, c.req.param("subjectType"), c.req.param("subjectId"));
+
+  const [thread] = await db
+    .select()
+    .from(threads)
+    .where(and(
+      eq(threads.kind, "comments"),
+      eq(threads.subjectType, "document"),
+      eq(threads.subjectId, c.req.param("subjectId")),
+    ))
+    .limit(1);
+  if (!thread) return c.json({ messages: [], total: 0 });
+
+  const rows = await db
+    .select({ message: threadMessages, author: profiles })
+    .from(threadMessages)
+    .leftJoin(user, eq(threadMessages.authorUserId, user.id))
+    .leftJoin(profiles, eq(profiles.ownerUserId, user.id))
+    .where(eq(threadMessages.threadId, thread.id))
+    .orderBy(asc(threadMessages.createdAt))
+    .limit(500);
+
+  return c.json({
+    messages: rows.map((r) => publicComment(r.message, r.author)),
+    total: rows.length,
+  });
+});
+
+contentRoutes.post(
+  "/threads/:subjectType/:subjectId/messages",
+  zValidator("json", z.object({
+    body: z.string().trim().min(1).max(5000),
+    parent_message_id: z.string().uuid().optional(),
+  })),
+  async (c) => {
+    const { db, authUser } = await requireMember(c);
+    const subject = await resolveVisibleSubject(db, c.req.param("subjectType"), c.req.param("subjectId"));
+    const input = c.req.valid("json");
+
+    const [{ recent } = { recent: 0 }] = await db
+      .select({ recent: sql<number>`count(*)::int` })
+      .from(threadMessages)
+      .where(and(
+        eq(threadMessages.authorUserId, authUser.id),
+        gte(threadMessages.createdAt, sql`now() - interval '1 minute'`),
+      ));
+    if (recent >= COMMENT_RATE_LIMIT_PER_MINUTE) {
+      throw new HttpError(429, "rate_limited", "Too many comments — slow down a little.");
+    }
+
+    // auto-create the comments thread (partial unique index makes this race-safe)
+    let [thread] = await db
+      .insert(threads)
+      .values({ kind: "comments", subjectType: "document", subjectId: subject.id, createdBy: authUser.id })
+      .onConflictDoNothing()
+      .returning();
+    if (!thread) {
+      [thread] = await db
+        .select()
+        .from(threads)
+        .where(and(
+          eq(threads.kind, "comments"),
+          eq(threads.subjectType, "document"),
+          eq(threads.subjectId, subject.id),
+        ))
+        .limit(1);
+    }
+    if (!thread) throw new HttpError(500, "thread_create_failed", "Could not open the discussion.");
+
+    if (input.parent_message_id) {
+      const [parent] = await db
+        .select()
+        .from(threadMessages)
+        .where(and(eq(threadMessages.id, input.parent_message_id), eq(threadMessages.threadId, thread.id)))
+        .limit(1);
+      if (!parent) throw new HttpError(400, "bad_parent", "Reply target not found in this discussion.");
+      if (parent.parentMessageId) {
+        throw new HttpError(400, "too_deep", "Replies are one level deep — reply to the top-level comment.");
+      }
+    }
+
+    const [message] = await db
+      .insert(threadMessages)
+      .values({
+        threadId: thread.id,
+        authorUserId: authUser.id,
+        body: input.body,
+        parentMessageId: input.parent_message_id ?? null,
+      })
+      .returning();
+
+    await captureEvent(db, "comment_posted", authUser.id, null, { subject_type: "document", subject_id: subject.id });
+
+    const [profile] = await db.select().from(profiles).where(eq(profiles.ownerUserId, authUser.id)).limit(1);
+    return c.json({ message: publicComment(message, profile ?? null) }, 201);
+  },
+);
+
+contentRoutes.delete("/thread_messages/:id", async (c) => {
+  const { db, authUser } = await requireMember(c);
+  const [message] = await db
+    .select()
+    .from(threadMessages)
+    .where(eq(threadMessages.id, c.req.param("id")))
+    .limit(1);
+  if (!message) throw new HttpError(404, "not_found", "Not found.");
+  if (message.authorUserId !== authUser.id && !authUser.isAdmin) {
+    throw new HttpError(403, "forbidden", "You can only remove your own comments.");
+  }
+  await db
+    .update(threadMessages)
+    .set({ deletedAt: new Date(), updatedAt: new Date() })
+    .where(eq(threadMessages.id, message.id));
+  return c.json({ success: true });
+});
+
+// ── funnel events (client capture; server events call captureEvent directly) ─
+
+export async function captureEvent(
+  db: Db,
+  event: string,
+  userId: string | null,
+  anonId: string | null,
+  props: Record<string, unknown>,
+) {
+  try {
+    await db.insert(funnelEvents).values({ event, userId, anonId, props });
+  } catch (error) {
+    console.error("funnel event capture failed", event, error);
+  }
+}
+
+contentRoutes.post(
+  "/events",
+  zValidator("json", z.object({
+    event: z.string(),
+    anon_id: z.string().max(64).optional(),
+    props: z.record(z.string(), z.unknown()).optional(),
+  })),
+  async (c) => {
+    const input = c.req.valid("json");
+    if (!FUNNEL_EVENT_NAMES.has(input.event)) {
+      throw new HttpError(400, "unknown_event", "Unknown event name.");
+    }
+    const session = await getAuthSession(c.env, c.req.raw);
+    const db = createDb(c.env);
+    await captureEvent(db, input.event, session?.user?.id ?? null, input.anon_id ?? null, input.props ?? {});
+    return c.json({ ok: true });
+  },
+);
+
+// ── sitemap (proxied to atlantium.ai/sitemap.xml by the meta worker) ────────
+
+contentRoutes.get("/content/sitemap.xml", async (c) => {
+  const db = createDb(c.env);
+  const appBase = c.env.APP_BASE_URL || "https://atlantium.ai";
+  const docs = await db
+    .select({
+      type: contentDocuments.type,
+      slug: contentDocuments.slug,
+      updatedAt: contentDocuments.updatedAt,
+    })
+    .from(contentDocuments)
+    .where(eq(contentDocuments.status, "published"))
+    .orderBy(desc(contentDocuments.updatedAt))
+    .limit(5000);
+
+  const staticUrls = ["", "/jobs", "/blog", "/docs", "/training", "/services", "/creator-program"];
+  const urls = [
+    ...staticUrls.map((path) => ({ loc: `${appBase}${path}`, lastmod: null as string | null })),
+    ...docs.map((d) => ({
+      loc: `${appBase}${d.type === "post" ? "/blog" : "/docs"}/${d.slug}`,
+      lastmod: d.updatedAt.toISOString(),
+    })),
+  ];
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.map((u) => `  <url><loc>${u.loc}</loc>${u.lastmod ? `<lastmod>${u.lastmod}</lastmod>` : ""}</url>`).join("\n")}
+</urlset>`;
+  return c.body(xml, 200, { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" });
+});
+
+// ── admin CRUD ──────────────────────────────────────────────────────────────
+
+const documentInput = z.object({
+  type: z.enum(["doc", "post"]),
+  format: z.enum(["article", "guide", "reference"]).default("article"),
+  slug: z.string().trim().regex(/^[a-z0-9-]+$/).min(3).max(120),
+  title: z.string().trim().min(1).max(300),
+  excerpt: z.string().trim().max(500).optional().nullable(),
+  body_md: z.string().default(""),
+  cover_image_url: z.string().url().optional().nullable(),
+  tags: z.array(z.string().trim().min(1)).default([]),
+  collection_id: z.string().uuid().optional().nullable(),
+  sort_order: z.number().int().default(0),
+  status: z.enum(["draft", "published", "archived"]).default("draft"),
+  gate: z.enum(["public", "preview", "member"]).default("preview"),
+  meta: z.record(z.string(), z.unknown()).default({}),
+});
+
+contentRoutes.get("/admin/content/documents", async (c) => {
+  const { db } = await requireAdmin(c);
+  const rows = await db
+    .select({ doc: contentDocuments, collectionSlug: contentCollections.slug })
+    .from(contentDocuments)
+    .leftJoin(contentCollections, eq(contentDocuments.collectionId, contentCollections.id))
+    .orderBy(desc(contentDocuments.updatedAt))
+    .limit(500);
+  return c.json({
+    documents: rows.map((r) => ({
+      ...publicDocumentSummary(r.doc, null, r.collectionSlug),
+      status: r.doc.status,
+      gate: r.doc.gate,
+      collection_id: r.doc.collectionId,
+      body_md: r.doc.bodyMd,
+      author_profile_id: r.doc.authorProfileId,
+    })),
+  });
+});
+
+contentRoutes.post("/admin/content/documents", zValidator("json", documentInput), async (c) => {
+  const { db, authUser } = await requireAdmin(c);
+  const input = c.req.valid("json");
+  const [authorProfile] = await db.select().from(profiles).where(eq(profiles.ownerUserId, authUser.id)).limit(1);
+  const [doc] = await db
+    .insert(contentDocuments)
+    .values({
+      type: input.type,
+      format: input.format,
+      slug: input.slug,
+      title: input.title,
+      excerpt: input.excerpt ?? null,
+      bodyMd: input.body_md,
+      coverImageUrl: input.cover_image_url ?? null,
+      tags: input.tags,
+      authorProfileId: authorProfile?.id ?? null,
+      collectionId: input.collection_id ?? null,
+      sortOrder: input.sort_order,
+      status: input.status,
+      gate: input.gate,
+      publishedAt: input.status === "published" ? new Date() : null,
+      meta: input.meta,
+    })
+    .returning();
+  return c.json({ document: doc }, 201);
+});
+
+contentRoutes.patch("/admin/content/documents/:id", zValidator("json", documentInput.partial()), async (c) => {
+  const { db } = await requireAdmin(c);
+  const input = c.req.valid("json");
+  const [existing] = await db
+    .select()
+    .from(contentDocuments)
+    .where(eq(contentDocuments.id, c.req.param("id")))
+    .limit(1);
+  if (!existing) throw new HttpError(404, "not_found", "Document not found.");
+
+  const [doc] = await db
+    .update(contentDocuments)
+    .set({
+      ...(input.type !== undefined ? { type: input.type } : {}),
+      ...(input.format !== undefined ? { format: input.format } : {}),
+      ...(input.slug !== undefined ? { slug: input.slug } : {}),
+      ...(input.title !== undefined ? { title: input.title } : {}),
+      ...(input.excerpt !== undefined ? { excerpt: input.excerpt } : {}),
+      ...(input.body_md !== undefined ? { bodyMd: input.body_md } : {}),
+      ...(input.cover_image_url !== undefined ? { coverImageUrl: input.cover_image_url } : {}),
+      ...(input.tags !== undefined ? { tags: input.tags } : {}),
+      ...(input.collection_id !== undefined ? { collectionId: input.collection_id } : {}),
+      ...(input.sort_order !== undefined ? { sortOrder: input.sort_order } : {}),
+      ...(input.status !== undefined ? { status: input.status } : {}),
+      ...(input.gate !== undefined ? { gate: input.gate } : {}),
+      ...(input.meta !== undefined ? { meta: input.meta } : {}),
+      // first transition to published stamps published_at; re-publishing keeps the original date
+      ...(input.status === "published" && !existing.publishedAt ? { publishedAt: new Date() } : {}),
+      updatedAt: new Date(),
+    })
+    .where(eq(contentDocuments.id, existing.id))
+    .returning();
+  return c.json({ document: doc });
+});
+
+contentRoutes.delete("/admin/content/documents/:id", async (c) => {
+  const { db } = await requireAdmin(c);
+  const deleted = await db
+    .delete(contentDocuments)
+    .where(eq(contentDocuments.id, c.req.param("id")))
+    .returning({ id: contentDocuments.id });
+  if (!deleted.length) throw new HttpError(404, "not_found", "Document not found.");
+  return c.json({ success: true });
+});
+
+const collectionInput = z.object({
+  slug: z.string().trim().regex(/^[a-z0-9-]+$/).min(2).max(80),
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(500).optional().nullable(),
+  sort_order: z.number().int().default(0),
+});
+
+contentRoutes.post("/admin/content/collections", zValidator("json", collectionInput), async (c) => {
+  const { db } = await requireAdmin(c);
+  const input = c.req.valid("json");
+  const [collection] = await db
+    .insert(contentCollections)
+    .values({
+      slug: input.slug,
+      title: input.title,
+      description: input.description ?? null,
+      sortOrder: input.sort_order,
+    })
+    .returning();
+  return c.json({ collection }, 201);
+});
+
+contentRoutes.patch("/admin/content/collections/:id", zValidator("json", collectionInput.partial()), async (c) => {
+  const { db } = await requireAdmin(c);
+  const input = c.req.valid("json");
+  const [collection] = await db
+    .update(contentCollections)
+    .set({
+      ...(input.slug !== undefined ? { slug: input.slug } : {}),
+      ...(input.title !== undefined ? { title: input.title } : {}),
+      ...(input.description !== undefined ? { description: input.description } : {}),
+      ...(input.sort_order !== undefined ? { sortOrder: input.sort_order } : {}),
+      updatedAt: new Date(),
+    })
+    .where(eq(contentCollections.id, c.req.param("id")))
+    .returning();
+  if (!collection) throw new HttpError(404, "not_found", "Collection not found.");
+  return c.json({ collection });
+});
+
+contentRoutes.delete("/admin/content/collections/:id", async (c) => {
+  const { db } = await requireAdmin(c);
+  const deleted = await db
+    .delete(contentCollections)
+    .where(eq(contentCollections.id, c.req.param("id")))
+    .returning({ id: contentCollections.id });
+  if (!deleted.length) throw new HttpError(404, "not_found", "Collection not found.");
+  return c.json({ success: true });
+});
