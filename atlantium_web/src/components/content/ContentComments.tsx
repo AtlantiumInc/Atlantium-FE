@@ -62,8 +62,18 @@ function CommentBody({
   );
 }
 
-export function ContentComments({ subjectId, onJoin }: { subjectId: string; onJoin: () => void }) {
+export function ContentComments({
+  subjectId,
+  onJoin,
+  variant = "section",
+}: {
+  subjectId: string;
+  onJoin: () => void;
+  /** "sidebar" is the compact rail form: composer on top, list scrolls. */
+  variant?: "section" | "sidebar";
+}) {
   const { user } = useAuth();
+  const isSidebar = variant === "sidebar";
   const [comments, setComments] = useState<ContentComment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [draft, setDraft] = useState("");
@@ -119,21 +129,49 @@ export function ContentComments({ subjectId, onJoin }: { subjectId: string; onJo
   const canDelete = (c: ContentComment) =>
     Boolean(user && (user.is_admin || (c.author?.display_name && c.author.display_name === user.display_name)));
 
+  const composer = (
+    <div>
+      <Textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        placeholder="Add to the discussion..."
+        className={isSidebar ? "min-h-[64px] text-sm" : "min-h-[80px] text-sm"}
+      />
+      <Button size="sm" className="mt-2" onClick={submit} disabled={isPosting || !draft.trim()}>
+        {isPosting ? "Posting..." : "Post comment"}
+      </Button>
+    </div>
+  );
+
+  const joinPrompt = (
+    <div className="rounded-xl border border-border/40 bg-card/40 p-4 text-sm text-muted-foreground flex items-center justify-between gap-3 flex-wrap">
+      <span>Join Atlantium free to comment.</span>
+      <Button size="sm" variant="outline" onClick={onJoin}>Sign in to join</Button>
+    </div>
+  );
+
   return (
-    <section className="mt-10 pt-8 border-t border-border/40">
-      <h2 className="flex items-center gap-2 text-lg font-semibold mb-5">
+    <section className={isSidebar ? "rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-4" : "mt-10 pt-8 border-t border-border/40"}>
+      <h2 className={`flex items-center gap-2 font-semibold ${isSidebar ? "text-sm mb-3" : "text-lg mb-5"}`}>
         <MessageSquare className="h-4 w-4 text-cyan-400" />
         Discussion {comments.length > 0 && <span className="text-muted-foreground text-sm font-normal">({comments.filter((c) => !c.deleted).length})</span>}
       </h2>
+
+      {/* Rail: the box to type in comes first, so it's never a scroll away. */}
+      {isSidebar && (
+        <div className="mb-4">
+          {user ? (replyTo === null ? composer : null) : joinPrompt}
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading discussion...
         </div>
       ) : topLevel.length === 0 ? (
-        <p className="text-sm text-muted-foreground mb-6">No comments yet — start the conversation.</p>
+        <p className={`text-sm text-muted-foreground ${isSidebar ? "" : "mb-6"}`}>No comments yet — start the conversation.</p>
       ) : (
-        <div className="space-y-5 mb-8">
+        <div className={isSidebar ? "space-y-4 max-h-[46vh] overflow-y-auto pr-1" : "space-y-5 mb-8"}>
           {topLevel.map((c) => (
             <div key={c.id}>
               <CommentBody comment={c} canDelete={canDelete(c)} onDelete={remove} onReply={user ? setReplyTo : undefined} />
@@ -165,26 +203,7 @@ export function ContentComments({ subjectId, onJoin }: { subjectId: string; onJo
         </div>
       )}
 
-      {user ? (
-        replyTo === null && (
-          <div>
-            <Textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="Add to the discussion..."
-              className="min-h-[80px] text-sm"
-            />
-            <Button size="sm" className="mt-2" onClick={submit} disabled={isPosting || !draft.trim()}>
-              {isPosting ? "Posting..." : "Post comment"}
-            </Button>
-          </div>
-        )
-      ) : (
-        <div className="rounded-xl border border-border/40 bg-card/40 p-4 text-sm text-muted-foreground flex items-center justify-between gap-3 flex-wrap">
-          <span>Join Atlantium free to comment.</span>
-          <Button size="sm" variant="outline" onClick={onJoin}>Sign in to join</Button>
-        </div>
-      )}
+      {!isSidebar && (user ? (replyTo === null && composer) : joinPrompt)}
     </section>
   );
 }

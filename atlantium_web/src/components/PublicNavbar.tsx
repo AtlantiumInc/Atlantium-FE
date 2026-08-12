@@ -62,7 +62,10 @@ const resourceItems = [
 
 const missionLink = { to: "/mission", label: "Mission" };
 
-export function PublicNavbar() {
+/** When `reading` is set the bar collapses to hamburger + article identity —
+ *  used by the blog reader once the header scrolls away. Other pages pass
+ *  nothing and render exactly as before. */
+export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?: string | null; meta?: string | null } | null } = {}) {
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const [solutionsOpen, setSolutionsOpen] = useState(false);
@@ -106,28 +109,49 @@ export function PublicNavbar() {
     <>
       <nav className="sticky top-0 z-50 bg-background/70 backdrop-blur-xl border-b border-border/30">
         <div className="w-full px-6 h-16 flex items-center">
-          {/* Left — Logo + Mission badge */}
-          <div className="flex items-center gap-3 shrink-0">
-            <Link to="/" className="flex items-center gap-2 sm:gap-3">
-              <img src="/logo.png" alt="Atlantium" className="h-7 w-7 sm:h-8 sm:w-8" />
-              <div>
-                <span className="text-lg sm:text-xl font-bold tracking-tight">Atlantium</span>
-                <p className="hidden sm:block text-[10px] text-muted-foreground tracking-wide">Citizen Technology Lab</p>
+          {/* Left — reading mode swaps the wordmark for the article's identity */}
+          {reading ? (
+            <div className="flex items-center gap-2.5 min-w-0 mr-3">
+              <Link to="/" className="shrink-0">
+                <img src="/logo.png" alt="Atlantium" className="h-7 w-7" />
+              </Link>
+              {reading.coverUrl && (
+                <img
+                  src={reading.coverUrl}
+                  alt=""
+                  className="h-8 w-12 rounded object-cover border border-border/40 shrink-0"
+                />
+              )}
+              <div className="min-w-0">
+                <p className="text-sm font-semibold leading-tight truncate">{reading.title}</p>
+                {reading.meta && (
+                  <p className="text-[10px] text-muted-foreground leading-tight truncate">{reading.meta}</p>
+                )}
               </div>
-            </Link>
-            <Link to={missionLink.to} className="hidden sm:inline-flex">
-              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider border transition-colors ${
-                pathname === missionLink.to
-                  ? "bg-primary/15 border-primary/30 text-primary"
-                  : "bg-muted/50 border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
-              }`}>
-                Our Mission
-              </span>
-            </Link>
-          </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 shrink-0">
+              <Link to="/" className="flex items-center gap-2 sm:gap-3">
+                <img src="/logo.png" alt="Atlantium" className="h-7 w-7 sm:h-8 sm:w-8" />
+                <div>
+                  <span className="text-lg sm:text-xl font-bold tracking-tight">Atlantium</span>
+                  <p className="hidden sm:block text-[10px] text-muted-foreground tracking-wide">Citizen Technology Lab</p>
+                </div>
+              </Link>
+              <Link to={missionLink.to} className="hidden sm:inline-flex">
+                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider border transition-colors ${
+                  pathname === missionLink.to
+                    ? "bg-primary/15 border-primary/30 text-primary"
+                    : "bg-muted/50 border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
+                }`}>
+                  Our Mission
+                </span>
+              </Link>
+            </div>
+          )}
 
-          {/* Nav links — pushed right */}
-          <div className="hidden md:flex items-center gap-1 ml-auto mr-3">
+          {/* Nav links — pushed right; reading mode drops them for the hamburger */}
+          <div className={reading ? "hidden" : "hidden md:flex items-center gap-1 ml-auto mr-3"}>
             {/* Solutions dropdown trigger */}
             <div
               ref={solutionsRef}
@@ -271,7 +295,7 @@ export function PublicNavbar() {
           </div>
 
           {/* Right — Auth stacked + theme */}
-          <div className="hidden md:flex items-center gap-3 shrink-0">
+          <div className={reading ? "hidden" : "hidden md:flex items-center gap-3 shrink-0"}>
             <div className="flex flex-col items-center">
               <Link to="/signup" className="cursor-pointer">
                 <Button size="sm" className="gap-1.5 bg-white text-black hover:bg-gray-100 border-0 h-7 text-xs px-3 cursor-pointer">
@@ -285,8 +309,8 @@ export function PublicNavbar() {
             <ThemeToggle />
           </div>
 
-          {/* Mobile right: Join Lab + hamburger */}
-          <div className="flex md:hidden items-center gap-2 ml-auto">
+          {/* Right: Join Lab + hamburger. Reading mode keeps this at every width. */}
+          <div className={`items-center gap-2 ml-auto shrink-0 ${reading ? "flex" : "flex md:hidden"}`}>
             <Link to="/signup">
               <Button size="sm" className="gap-1.5 bg-white text-black hover:bg-gray-100 border-0 text-xs h-8 px-3">
                 Join Lab

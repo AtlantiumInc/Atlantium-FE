@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { motion } from "motion/react";
 import { ChevronLeft, Clock, Loader2, FileText, GraduationCap, Gauge, BookOpen, Scale } from "lucide-react";
@@ -30,6 +30,27 @@ export function ContentDocumentPage() {
   const [doc, setDoc] = useState<ContentDocumentDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  // Once the article header scrolls past, the navbar becomes the article's.
+  const [headerPassed, setHeaderPassed] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+
+  // Measured off the header's own bottom rather than a fixed offset, so posts
+  // with and without a cover image both hand over at the right moment.
+  useEffect(() => {
+    const onScroll = () => {
+      const el = headerRef.current;
+      if (!el) return;
+      const passed = el.getBoundingClientRect().bottom < 64;
+      setHeaderPassed((prev) => (prev === passed ? prev : passed));
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [doc?.id]);
 
   useEffect(() => {
     if (doc?.gated && doc.type === "doc") {
@@ -63,8 +84,20 @@ export function ContentDocumentPage() {
       <div className="fixed inset-0 z-0 opacity-20 dark:opacity-30">
         <Aurora colorStops={["#0ea5e9", "#6366f1", "#334155"]} amplitude={0.7} blend={0.5} speed={0.3} />
       </div>
-      <PublicNavbar />
-      <main className={`relative z-10 mx-auto px-4 sm:px-6 py-8 w-full ${presentation === "howto" || presentation === "comparison" || presentation === "document" ? "max-w-5xl" : "max-w-3xl"}`}>
+      <PublicNavbar
+        reading={
+          headerPassed && doc && doc.type === "post"
+            ? {
+                title: doc.title,
+                coverUrl: doc.cover_image_url,
+                meta: [doc.author?.display_name, doc.meta?.read_time ? `${doc.meta.read_time} min read` : null]
+                  .filter(Boolean)
+                  .join(" · "),
+              }
+            : null
+        }
+      />
+      <main className={`relative z-10 mx-auto px-4 py-6 w-full ${doc?.type === "post" ? "max-w-6xl" : presentation === "howto" || presentation === "comparison" || presentation === "document" ? "max-w-5xl" : "max-w-3xl"}`}>
         <Link to={backLink.to} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6">
           <ChevronLeft className="h-4 w-4" /> {backLink.label}
         </Link>
@@ -80,7 +113,8 @@ export function ContentDocumentPage() {
             <p className="text-sm">This page may have moved or been unpublished.</p>
           </div>
         ) : (
-          <motion.article initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+          <div className={doc.type === "post" ? "grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-8 items-start" : ""}>
+          <motion.article initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="min-w-0">
             {/* Cover hero — image first, header sits beneath it */}
             {doc.cover_image_url && (
               <div className="relative rounded-2xl overflow-hidden border border-border/30 mb-6 aspect-[16/7]">
@@ -90,7 +124,7 @@ export function ContentDocumentPage() {
             )}
 
             {/* Header — eyebrow / title / standfirst / byline rule */}
-            <header className="mb-8">
+            <header ref={headerRef} className="mb-8">
               {/* Eyebrow: kind · collection */}
               <div className="flex flex-wrap items-center gap-2 mb-2.5 text-[11px] font-semibold uppercase tracking-widest">
                 {presentation && (
@@ -154,20 +188,29 @@ export function ContentDocumentPage() {
               <ContentGate slug={doc.slug} type={doc.type} onJoin={() => signup.openWithEmail()} />
             )}
 
-            {doc.type === "post" && (
+          </motion.article>
+
+          {/* Sidebar: share + discussion. Sticky beside the article on desktop,
+              stacked underneath it on mobile — same single instance either way. */}
+          {doc.type === "post" && (
+            <aside className="lg:sticky lg:top-20 space-y-4">
               <PostShareCta
                 slug={doc.slug}
                 title={doc.title}
                 gated={Boolean(doc.gated)}
                 onJoin={() => signup.openWithEmail()}
               />
-            )}
-
-            {/* Comments: blog posts only at launch (plan §7.6), and only under full reads */}
-            {doc.type === "post" && !doc.gated && (
-              <ContentComments subjectId={doc.id} onJoin={() => signup.openWithEmail()} />
-            )}
-          </motion.article>
+              {/* Comments: blog posts only at launch (plan §7.6), and only under full reads */}
+              {!doc.gated && (
+                <ContentComments
+                  subjectId={doc.id}
+                  onJoin={() => signup.openWithEmail()}
+                  variant="sidebar"
+                />
+              )}
+            </aside>
+          )}
+          </div>
         )}
       </main>
 

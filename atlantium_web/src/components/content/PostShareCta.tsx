@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { ArrowRight, Check, Copy, Share2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -97,16 +96,17 @@ export function PostShareCta({
 
   if (!user) {
     return (
-      <div className="mt-12 rounded-2xl border border-cyan-500/20 bg-card/70 backdrop-blur p-6 text-center">
-        <div className="h-10 w-10 mx-auto mb-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-          <Sparkles className="h-5 w-5 text-cyan-400" />
+      <div className="rounded-2xl border border-cyan-500/20 bg-card/70 backdrop-blur p-4 text-center">
+        <div className="h-9 w-9 mx-auto mb-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+          <Sparkles className="h-4 w-4 text-cyan-400" />
         </div>
-        <h3 className="text-lg font-semibold mb-1">Join Atlantium — free</h3>
-        <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
+        <h3 className="font-semibold mb-1">Join Atlantium — free</h3>
+        <p className="text-xs text-muted-foreground mb-3">
           Get the Weekly Job Report, the full guide library, and the community behind it.
         </p>
         <Button
-          className="gap-2 bg-white text-black hover:bg-gray-100"
+          size="sm"
+          className="gap-2 w-full bg-white text-black hover:bg-gray-100"
           onClick={() => {
             api.trackEvent("content_join_cta_clicked", { slug, surface: "blog" });
             onJoin();
@@ -119,28 +119,21 @@ export function PostShareCta({
     );
   }
 
-  // Rendered twice: an inline block under the post on small screens, and a
-  // rail floating beside the article column from xl up. Ids must stay unique.
-  const card = (variant: "inline" | "rail") => (
-    <div className={variant === "rail" ? "" : "flex flex-wrap items-center justify-between gap-3"}>
-      <div className="min-w-0">
-        <h3 className="font-semibold leading-tight">Share this post</h3>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          {earn && canEarn ? "Your link is tagged — signups from it credit you." : "Send it to someone who needs it."}
-        </p>
-      </div>
-      <Button
-        onClick={handleShare}
-        className={`gap-2 flex-shrink-0 ${variant === "rail" ? "w-full mt-3" : ""}`}
-      >
+  return (
+    <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-4">
+      <h3 className="font-semibold leading-tight text-sm">Share this post</h3>
+      <p className="text-xs text-muted-foreground mt-0.5">
+        {earn && canEarn ? "Your link is tagged — signups from it credit you." : "Send it to someone who needs it."}
+      </p>
+      <Button onClick={handleShare} className="gap-2 w-full mt-3">
         {copied ? <Check className="h-4 w-4" /> : canNativeShare ? <Share2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
         {copied ? "Link copied" : "Share"}
       </Button>
 
-      <div className={`pt-4 border-t border-border/40 ${variant === "rail" ? "mt-4 w-full" : "mt-1 basis-full"}`}>
+      <div className="mt-4 pt-4 border-t border-border/40">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <label htmlFor={`share-earn-${variant}`} className="text-sm font-medium cursor-pointer">
+            <label htmlFor="share-earn" className="text-sm font-medium cursor-pointer">
               Earn if anyone joins the lab
             </label>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -152,7 +145,7 @@ export function PostShareCta({
             </p>
           </div>
           <Switch
-            id={`share-earn-${variant}`}
+            id="share-earn"
             checked={earn && canEarn}
             disabled={!canEarn}
             onCheckedChange={toggleEarn}
@@ -175,25 +168,5 @@ export function PostShareCta({
         )}
       </div>
     </div>
-  );
-
-  return (
-    <>
-      <div className="mt-12 rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-5 xl:hidden">
-        {card("inline")}
-      </div>
-
-      {/* Floating rail, right of the max-w-3xl article column from xl up.
-          Portaled to <body>: the article's motion transform would otherwise
-          become the containing block and position:fixed would resolve to it. */}
-      {createPortal(
-        <aside className="hidden xl:block fixed top-1/2 -translate-y-1/2 right-[max(1.5rem,calc(50%-39rem))] w-56 z-20">
-          <div className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur p-4 shadow-lg shadow-black/20">
-            {card("rail")}
-          </div>
-        </aside>,
-        document.body,
-      )}
-    </>
   );
 }
