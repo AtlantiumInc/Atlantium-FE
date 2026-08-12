@@ -262,7 +262,7 @@ export const digestRuns = pgTable("digest_runs", {
 
 // ── Content rail (plan §3.1) ────────────────────────────────────────────────
 export const documentType = pgEnum("document_type", ["doc", "post"]);
-export const documentFormat = pgEnum("document_format", ["article", "guide", "reference"]);
+export const documentFormat = pgEnum("document_format", ["article", "guide", "reference", "document"]);
 export const documentStatus = pgEnum("document_status", ["draft", "published", "archived"]);
 export const documentGate = pgEnum("document_gate", ["public", "preview", "member"]);
 

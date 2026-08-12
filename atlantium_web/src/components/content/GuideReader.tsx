@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ContentMarkdown } from "@/components/content/ContentMarkdown";
 import type { ContentDocumentDetail } from "@/lib/api";
 
-export type GuidePresentation = "howto" | "ebook" | "comparison";
+export type GuidePresentation = "howto" | "ebook" | "comparison" | "document";
 
 /** Resolve how a doc wants to be read. meta.guide.presentation overrides;
  *  format supplies the default (guide→howto, reference→comparison). */
@@ -17,9 +17,10 @@ export function resolvePresentation(doc: {
   meta?: { guide?: { presentation?: string } };
 }): GuidePresentation | null {
   const explicit = doc.meta?.guide?.presentation;
-  if (explicit === "howto" || explicit === "ebook" || explicit === "comparison") return explicit;
+  if (explicit === "howto" || explicit === "ebook" || explicit === "comparison" || explicit === "document") return explicit;
   if (doc.format === "guide") return "howto";
   if (doc.format === "reference") return "comparison";
+  if (doc.format === "document") return "document";
   return null;
 }
 
@@ -27,6 +28,7 @@ export const PRESENTATION_LABELS: Record<GuidePresentation, string> = {
   howto: "How-to",
   ebook: "eBook",
   comparison: "Comparison",
+  document: "Document",
 };
 
 interface Section {
@@ -362,8 +364,93 @@ export function ComparisonReader({ doc, onGateCta }: ReaderProps) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// DOCUMENT: formal paper — numbered sections, sticky outline, scroll-spy
+// ---------------------------------------------------------------------------
+
+export function DocumentReader({ doc, onGateCta }: ReaderProps) {
+  const { intro, sections } = useMemo(() => parseSections(doc.body_md), [doc.body_md]);
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (visible) setActive(Number(visible.target.getAttribute("data-idx")));
+      },
+      { rootMargin: "-96px 0px -65% 0px" },
+    );
+    sections.forEach((_, i) => {
+      const el = document.getElementById(`sec-${i}`);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, [sections]);
+
+  return (
+    <div className="lg:grid lg:grid-cols-[1fr_220px] lg:gap-10">
+      <div className="min-w-0 order-2 lg:order-1">
+        {intro && (
+          <div className="pb-6 mb-8 border-b border-border/40">
+            <ContentMarkdown markdown={intro} />
+          </div>
+        )}
+        {sections.map((s, i) => (
+          <section key={s.title} id={`sec-${i}`} data-idx={i} className="scroll-mt-24 mb-10">
+            <h2 className="flex items-baseline gap-3 text-lg font-semibold tracking-tight mb-3">
+              <span className="font-mono text-xs text-cyan-400/80 pt-0.5">{String(i + 1).padStart(2, "0")}</span>
+              {s.title}
+            </h2>
+            <div className="pl-0 sm:pl-8">
+              <ContentMarkdown markdown={s.body} />
+            </div>
+          </section>
+        ))}
+        {doc.gated && (
+          <div className="pl-0 sm:pl-8">
+            <Button className="gap-1 bg-white text-black hover:bg-gray-100" onClick={onGateCta}>
+              Read the full document <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Outline */}
+      <aside className="order-1 lg:order-2 mb-6 lg:mb-0">
+        <div className="lg:sticky lg:top-24">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Contents</p>
+          <nav className="flex lg:flex-col gap-1 overflow-x-auto pb-2 lg:pb-0 lg:border-l lg:border-border/40">
+            {sections.map((s, i) => (
+              <button
+                key={s.title}
+                onClick={() => document.getElementById(`sec-${i}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className={`text-left text-xs px-3 py-1.5 whitespace-nowrap lg:whitespace-normal transition-colors lg:-ml-px lg:border-l-2 ${
+                  active === i
+                    ? "text-cyan-300 lg:border-cyan-400/60"
+                    : "text-muted-foreground hover:text-foreground lg:border-transparent"
+                }`}
+              >
+                <span className="font-mono text-[10px] opacity-60 mr-2">{String(i + 1).padStart(2, "0")}</span>
+                {s.title}
+              </button>
+            ))}
+            {doc.gated && (
+              <span className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-muted-foreground/60">
+                <Lock className="h-3 w-3" /> More sections
+              </span>
+            )}
+          </nav>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 export function GuideReader({ doc, presentation, onGateCta }: ReaderProps & { presentation: GuidePresentation }) {
   if (presentation === "howto") return <HowToReader doc={doc} onGateCta={onGateCta} />;
   if (presentation === "ebook") return <EbookReader doc={doc} onGateCta={onGateCta} />;
+  if (presentation === "document") return <DocumentReader doc={doc} onGateCta={onGateCta} />;
   return <ComparisonReader doc={doc} onGateCta={onGateCta} />;
 }

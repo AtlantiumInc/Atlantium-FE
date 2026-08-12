@@ -57,7 +57,7 @@ export function DocsPage() {
           <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-cyan-400 mb-2">
             <BookOpen className="h-3.5 w-3.5" /> Docs & Guides
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Learn to build with AI.</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Learn to build with AI.</h1>
           <p className="text-muted-foreground mt-2 max-w-xl">
             How-tos and walkthroughs from the team that teaches Atlanta's AI engineers.
             The first section of every guide is free — membership unlocks the rest.

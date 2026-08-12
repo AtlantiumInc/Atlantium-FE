@@ -23,6 +23,7 @@ export type Env = {
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
   ANTHROPIC_API_KEY?: string;
+  ATLAS_CLOUD_API_KEY?: string;
   REVIEW_SHARD_LIMIT?: string;
   ASSETS_BUCKET: R2Bucket;
 };

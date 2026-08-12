@@ -17,6 +17,7 @@ import {
 import type { Env } from "../env";
 import { getAuthSession } from "../lib/auth";
 import { documentJsonLd, publicAuthor, publicDocumentDetail, publicDocumentSummary } from "../lib/content";
+import { generateCoverImage } from "../lib/cover-image";
 import { HttpError } from "../lib/http";
 
 export const contentRoutes = new Hono<{ Bindings: Env }>();
@@ -96,7 +97,7 @@ contentRoutes.get("/content/documents", async (c) => {
 
   const where = [eq(contentDocuments.status, "published" as const)];
   if (q.type === "doc" || q.type === "post") where.push(eq(contentDocuments.type, q.type));
-  if (q.format === "article" || q.format === "guide" || q.format === "reference") {
+  if (q.format === "article" || q.format === "guide" || q.format === "reference" || q.format === "document") {
     where.push(eq(contentDocuments.format, q.format));
   }
   if (q.tag) where.push(sql`${q.tag} = any(${contentDocuments.tags})`);
@@ -389,7 +390,7 @@ ${urls.map((u) => `  <url><loc>${u.loc}</loc>${u.lastmod ? `<lastmod>${u.lastmod
 
 const documentInput = z.object({
   type: z.enum(["doc", "post"]),
-  format: z.enum(["article", "guide", "reference"]).default("article"),
+  format: z.enum(["article", "guide", "reference", "document"]).default("article"),
   slug: z.string().trim().regex(/^[a-z0-9-]+$/).min(3).max(120),
   title: z.string().trim().min(1).max(300),
   excerpt: z.string().trim().max(500).optional().nullable(),
@@ -494,6 +495,32 @@ contentRoutes.delete("/admin/content/documents/:id", async (c) => {
   if (!deleted.length) throw new HttpError(404, "not_found", "Document not found.");
   return c.json({ success: true });
 });
+
+contentRoutes.post(
+  "/admin/content/documents/:id/cover",
+  zValidator("json", z.object({ subject: z.string().trim().min(3).max(400).optional() })),
+  async (c) => {
+    const { db } = await requireAdmin(c);
+    const [doc] = await db
+      .select()
+      .from(contentDocuments)
+      .where(eq(contentDocuments.id, c.req.param("id")))
+      .limit(1);
+    if (!doc) throw new HttpError(404, "not_found", "Document not found.");
+
+    const subject = c.req.valid("json").subject
+      ?? `${doc.title}. ${doc.excerpt ?? ""}`.trim();
+    const url = await generateCoverImage(c.env, new URL(c.req.url).origin, subject, doc.slug);
+    if (!url) throw new HttpError(502, "cover_failed", "Image generation failed — try again.");
+
+    const [updated] = await db
+      .update(contentDocuments)
+      .set({ coverImageUrl: url, updatedAt: new Date() })
+      .where(eq(contentDocuments.id, doc.id))
+      .returning();
+    return c.json({ cover_image_url: updated.coverImageUrl });
+  },
+);
 
 const collectionInput = z.object({
   slug: z.string().trim().regex(/^[a-z0-9-]+$/).min(2).max(80),

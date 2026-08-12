@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-  PenLine, Plus, Search, Pencil, Trash2, Loader2, Eye, BookOpen, Scissors,
+  PenLine, Plus, Search, Pencil, Trash2, Loader2, Eye, BookOpen, Scissors, Image as ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,7 @@ import { api, type AdminContentDocument, type ContentCollection } from "@/lib/ap
 
 const emptyForm = {
   type: "post" as "post" | "doc",
-  format: "article" as "article" | "guide" | "reference",
+  format: "article" as "article" | "guide" | "reference" | "document",
   slug: "",
   title: "",
   excerpt: "",
@@ -33,7 +33,7 @@ const emptyForm = {
   collection_id: "",
   status: "draft" as "draft" | "published" | "archived",
   gate: "preview" as "public" | "preview" | "member",
-  presentation: "" as "" | "howto" | "ebook" | "comparison",
+  presentation: "" as "" | "howto" | "ebook" | "comparison" | "document",
 };
 
 const statusColors: Record<string, string> = {
@@ -55,6 +55,7 @@ export function AdminContentPage() {
   const [showPreview, setShowPreview] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<AdminContentDocument | null>(null);
   const [newCollection, setNewCollection] = useState("");
+  const [isGeneratingCover, setIsGeneratingCover] = useState(false);
 
   const fetchAll = useCallback(async () => {
     setIsFetching(true);
@@ -94,7 +95,7 @@ export function AdminContentPage() {
       collection_id: d.collection_id ?? "",
       status: d.status,
       gate: d.gate,
-      presentation: (d.meta?.guide?.presentation as "" | "howto" | "ebook" | "comparison") ?? "",
+      presentation: (d.meta?.guide?.presentation as "" | "howto" | "ebook" | "comparison" | "document") ?? "",
     });
     setShowPreview(false);
     setIsFormOpen(true);
@@ -163,6 +164,25 @@ export function AdminContentPage() {
       toast.success(`Collection "${title}" created`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not create collection");
+    }
+  };
+
+  const generateCover = async () => {
+    if (!editing) {
+      toast.error("Save the document first — covers attach to a saved document");
+      return;
+    }
+    setIsGeneratingCover(true);
+    toast.info("Generating cover art — about 20 seconds...");
+    try {
+      const r = await api.adminGenerateCover(editing.id);
+      setForm((f) => ({ ...f, cover_image_url: r.cover_image_url }));
+      toast.success("Cover generated");
+      await fetchAll();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Cover generation failed");
+    } finally {
+      setIsGeneratingCover(false);
     }
   };
 
@@ -322,6 +342,7 @@ export function AdminContentPage() {
                     <SelectItem value="article">Article</SelectItem>
                     <SelectItem value="guide">Guide</SelectItem>
                     <SelectItem value="reference">Reference</SelectItem>
+                    <SelectItem value="document">Document</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -376,6 +397,7 @@ export function AdminContentPage() {
                       <SelectItem value="howto">How-to (steps)</SelectItem>
                       <SelectItem value="ebook">Native eBook</SelectItem>
                       <SelectItem value="comparison">SaaS comparison</SelectItem>
+                      <SelectItem value="document">Formal document</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -395,8 +417,14 @@ export function AdminContentPage() {
                 <Input value={form.tags} onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))} />
               </div>
               <div>
-                <Label className="text-xs">Cover image URL</Label>
-                <Input value={form.cover_image_url} onChange={(e) => setForm((f) => ({ ...f, cover_image_url: e.target.value }))} />
+                <div className="flex items-center justify-between mb-1">
+                  <Label className="text-xs">Cover image</Label>
+                  <Button type="button" variant="outline" size="sm" className="h-6 text-[11px] px-2" onClick={generateCover} disabled={isGeneratingCover}>
+                    {isGeneratingCover ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <ImageIcon className="h-3 w-3 mr-1" />}
+                    {isGeneratingCover ? "Generating..." : "Generate"}
+                  </Button>
+                </div>
+                <Input value={form.cover_image_url} onChange={(e) => setForm((f) => ({ ...f, cover_image_url: e.target.value }))} placeholder="https://... or generate" />
               </div>
             </div>
 

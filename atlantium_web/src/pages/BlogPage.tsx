@@ -37,7 +37,7 @@ function PostCard({ post, featured }: { post: ContentDocumentSummary; featured?:
             <Badge key={t} variant="outline" className="text-[10px] px-1.5 py-0 border-border/40 text-muted-foreground">{t}</Badge>
           ))}
         </div>
-        <h2 className={`font-semibold leading-snug group-hover:text-cyan-300 transition-colors ${featured ? "text-xl" : "text-base"}`}>
+        <h2 className={`font-semibold leading-snug group-hover:text-cyan-300 transition-colors ${featured ? "text-lg" : "text-[0.95rem]"}`}>
           {post.title}
         </h2>
         {post.excerpt && (
@@ -73,7 +73,7 @@ export function BlogPage() {
           <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-cyan-400 mb-2">
             <PenLine className="h-3.5 w-3.5" /> The Atlantium Blog
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Atlanta tech, covered.</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Atlanta tech, covered.</h1>
           <p className="text-muted-foreground mt-2 max-w-xl">
             The people, companies, and money moving Atlanta's technology scene — written from inside it.
           </p>

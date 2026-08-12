@@ -253,7 +253,7 @@ export interface ContentCollection {
 export interface ContentDocumentSummary {
   id: string;
   type: "doc" | "post";
-  format: "article" | "guide" | "reference";
+  format: "article" | "guide" | "reference" | "document";
   slug: string;
   title: string;
   excerpt?: string | null;
@@ -1449,6 +1449,13 @@ class ApiClient {
 
   async adminDeleteContentDocument(id: string): Promise<{ success: boolean }> {
     return this.request(`/admin/content/documents/${id}`, { method: "DELETE" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async adminGenerateCover(id: string, subject?: string): Promise<{ cover_image_url: string }> {
+    return this.request(`/admin/content/documents/${id}/cover`, {
+      method: "POST",
+      body: JSON.stringify({ subject }),
+    }, ATLANTIUM_API_BASE_URL);
   }
 
   async adminCreateContentCollection(input: Record<string, unknown>): Promise<{ collection: unknown }> {
