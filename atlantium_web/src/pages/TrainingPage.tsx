@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "motion/react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { PublicNavbar } from "@/components/PublicNavbar";
 import SpotlightCard from "@/components/ui/SpotlightCard";
 import ShinyText from "@/components/ui/ShinyText";
 import Aurora from "@/components/Aurora";
+import { api, type JobPosting } from "@/lib/api";
 import rawJobs from "@/data/jobs.json";
 import {
   ArrowRight,
@@ -40,7 +41,6 @@ interface Job {
   salary_max: number | null;
   tech_stack: string[];
   apply_url: string;
-  hiring_cafe_url: string;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -76,9 +76,9 @@ function FadeIn({ children, delay = 0, className = "" }: { children: React.React
   );
 }
 
-// ── Featured Jobs (hand-picked from jobs.json) ───────────────────────────────
+// ── Featured Jobs (live from the API, bundled jobs.json as offline fallback) ─
 const allJobs = rawJobs as Job[];
-const FEATURED_JOB_IDS = [
+const FALLBACK_FEATURED = [
   // GEI Consultants AI Engineer (has salary)
   allJobs.find(j => j.company === "GEI Consultants" && j.title === "AI Engineer"),
   // Troutman AI Engineer (hybrid Atlanta)
@@ -88,6 +88,51 @@ const FEATURED_JOB_IDS = [
   // GEI Full Stack
   allJobs.find(j => j.title === "Full Stack Engineer" && j.company === "GEI Consultants"),
 ].filter(Boolean).slice(0, 4) as Job[];
+
+function toCardJob(j: JobPosting): Job {
+  return {
+    id: j.id,
+    title: j.title,
+    company: j.company,
+    location: j.location,
+    workplace_type: j.workplace_type ?? "",
+    seniority: j.seniority ?? "",
+    salary_min: j.salary_min ?? null,
+    salary_max: j.salary_max ?? null,
+    tech_stack: j.content?.tech_stack ?? [],
+    apply_url: j.apply_url,
+  };
+}
+
+// Rank live jobs for the training audience: entry-level and no-degree first,
+// then local (Georgia) or remote to match the "hiring in Atlanta" copy.
+function trainingScore(j: JobPosting): number {
+  let score = 0;
+  const seniority = (j.seniority ?? "").toLowerCase();
+  if (seniority.includes("no prior") || seniority.includes("entry")) score += 3;
+  else if (seniority.includes("mid")) score += 1;
+  else if (seniority.includes("senior")) score -= 2;
+  if (j.review?.degree_required === "not_required" || j.review?.degree_required === "equivalent_accepted") score += 2;
+  const location = (j.location ?? "").toLowerCase();
+  if (location.includes("georgia") || location.includes("atlanta")) score += 2;
+  else if ((j.workplace_type ?? "").toLowerCase() === "remote") score += 1;
+  if (j.salary_min || j.salary_max) score += 1;
+  return score;
+}
+
+// Greedy pick: best-scored first, one job per company for variety.
+function pickFeatured(jobs: JobPosting[], count: number): Job[] {
+  const sorted = [...jobs].sort((a, b) => trainingScore(b) - trainingScore(a));
+  const picked: JobPosting[] = [];
+  const companies = new Set<string>();
+  for (const j of sorted) {
+    if (companies.has(j.company)) continue;
+    companies.add(j.company);
+    picked.push(j);
+    if (picked.length >= count) break;
+  }
+  return picked.map(toCardJob);
+}
 
 // ── Curriculum ───────────────────────────────────────────────────────────────
 const curriculum = [
@@ -160,6 +205,22 @@ const outcomes = [
 
 // ── Component ────────────────────────────────────────────────────────────────
 export function TrainingPage() {
+  const [featuredJobs, setFeaturedJobs] = useState<Job[]>(FALLBACK_FEATURED);
+  const [totalJobs, setTotalJobs] = useState(allJobs.length);
+
+  useEffect(() => {
+    api.getJobPostingsPaged({ status: "active", limit: 30 })
+      .then((r) => {
+        // skip anything the AI review has marked dead-but-flagged
+        const live = r.jobs
+          .filter((j) => !j.review?.status || ["open", "unreachable"].includes(j.review.status));
+        const picked = pickFeatured(live, 4);
+        if (picked.length >= 2) setFeaturedJobs(picked);
+        if (r.total > 0) setTotalJobs(r.total);
+      })
+      .catch(() => { /* bundled fallback already showing */ });
+  }, []);
+
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Background */}
@@ -306,7 +367,7 @@ export function TrainingPage() {
         </FadeIn>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          {FEATURED_JOB_IDS.map((job, i) => {
+          {featuredJobs.map((job, i) => {
             const salary = formatSalary(job.salary_min, job.salary_max);
             return (
               <FadeIn key={job.id} delay={i * 0.07}>
@@ -368,7 +429,7 @@ export function TrainingPage() {
           <div className="text-center">
             <Link to="/jobs">
               <Button variant="outline" className="gap-2">
-                View all {allJobs.length} open AI roles in Atlanta
+                View all {totalJobs} open AI roles in Atlanta
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
