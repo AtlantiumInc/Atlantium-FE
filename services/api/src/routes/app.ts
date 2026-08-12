@@ -1071,6 +1071,8 @@ appRoutes.get("/job_postings", async (c) => {
   const limit = Math.min(Math.max(Number(c.req.query("limit")) || 60, 1), 200);
   const offset = Math.max(Number(c.req.query("offset")) || 0, 0);
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  // 48h, not 24h: the daily scrape can slip and a 24h window would read empty.
+  const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
   const [rows, totals] = await Promise.all([
     db.select().from(jobPostings).where(where).orderBy(...order).limit(limit).offset(offset),
     db
@@ -1079,6 +1081,7 @@ appRoutes.get("/job_postings", async (c) => {
         remote: sql<number>`count(*) filter (where ${jobPostings.workplaceType} = 'Remote')::int`,
         hybrid: sql<number>`count(*) filter (where ${jobPostings.workplaceType} = 'Hybrid')::int`,
         newThisWeek: sql<number>`count(*) filter (where coalesce(${jobPostings.postedAt}, ${jobPostings.createdAt}) > ${weekAgo})::int`,
+        new48h: sql<number>`count(*) filter (where coalesce(${jobPostings.postedAt}, ${jobPostings.createdAt}) > ${twoDaysAgo})::int`,
         noDegree: sql<number>`count(*) filter (where ${jobPostings.review}->>'degree_required' in ('not_required','equivalent_accepted'))::int`,
       })
       .from(jobPostings)
@@ -1092,6 +1095,7 @@ appRoutes.get("/job_postings", async (c) => {
       remote: t?.remote ?? 0,
       hybrid: t?.hybrid ?? 0,
       new_this_week: t?.newThisWeek ?? 0,
+      new_48h: t?.new48h ?? 0,
       no_degree: t?.noDegree ?? 0,
     },
     limit,

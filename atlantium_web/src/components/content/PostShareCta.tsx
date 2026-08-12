@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { ArrowRight, Check, Copy, Share2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -118,26 +119,29 @@ export function PostShareCta({
     );
   }
 
-  return (
-    <div className="mt-12 rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="font-semibold leading-tight">Share this post</h3>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {earn && canEarn ? "Your link is tagged — signups from it credit you." : "Send it to someone who needs it."}
-          </p>
-        </div>
-        <Button onClick={handleShare} className="gap-2 flex-shrink-0">
-          {copied ? <Check className="h-4 w-4" /> : canNativeShare ? <Share2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-          {copied ? "Link copied" : "Share"}
-        </Button>
+  // Rendered twice: an inline block under the post on small screens, and a
+  // rail floating beside the article column from xl up. Ids must stay unique.
+  const card = (variant: "inline" | "rail") => (
+    <div className={variant === "rail" ? "" : "flex flex-wrap items-center justify-between gap-3"}>
+      <div className="min-w-0">
+        <h3 className="font-semibold leading-tight">Share this post</h3>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          {earn && canEarn ? "Your link is tagged — signups from it credit you." : "Send it to someone who needs it."}
+        </p>
       </div>
+      <Button
+        onClick={handleShare}
+        className={`gap-2 flex-shrink-0 ${variant === "rail" ? "w-full mt-3" : ""}`}
+      >
+        {copied ? <Check className="h-4 w-4" /> : canNativeShare ? <Share2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+        {copied ? "Link copied" : "Share"}
+      </Button>
 
-      <div className="mt-4 pt-4 border-t border-border/40">
-        <div className="flex items-start justify-between gap-4">
+      <div className={`pt-4 border-t border-border/40 ${variant === "rail" ? "mt-4 w-full" : "mt-1 basis-full"}`}>
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <label htmlFor="share-earn" className="text-sm font-medium cursor-pointer">
-              Earn if anyone joins the membership
+            <label htmlFor={`share-earn-${variant}`} className="text-sm font-medium cursor-pointer">
+              Earn if anyone joins the lab
             </label>
             <p className="text-xs text-muted-foreground mt-0.5">
               {canEarn
@@ -148,11 +152,14 @@ export function PostShareCta({
             </p>
           </div>
           <Switch
-            id="share-earn"
+            id={`share-earn-${variant}`}
             checked={earn && canEarn}
             disabled={!canEarn}
             onCheckedChange={toggleEarn}
-            className="mt-0.5 flex-shrink-0"
+            // The default unchecked track is near-invisible on this dark bg —
+            // give it a real fill and border so "off" still reads as a control.
+            // The dark: variant is needed to beat the base component's own.
+            className="mt-0.5 flex-shrink-0 data-[state=unchecked]:bg-muted dark:data-[state=unchecked]:bg-white/20 data-[state=unchecked]:border-border"
           />
         </div>
 
@@ -168,5 +175,25 @@ export function PostShareCta({
         )}
       </div>
     </div>
+  );
+
+  return (
+    <>
+      <div className="mt-12 rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-5 xl:hidden">
+        {card("inline")}
+      </div>
+
+      {/* Floating rail, right of the max-w-3xl article column from xl up.
+          Portaled to <body>: the article's motion transform would otherwise
+          become the containing block and position:fixed would resolve to it. */}
+      {createPortal(
+        <aside className="hidden xl:block fixed top-1/2 -translate-y-1/2 right-[max(1.5rem,calc(50%-39rem))] w-56 z-20">
+          <div className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur p-4 shadow-lg shadow-black/20">
+            {card("rail")}
+          </div>
+        </aside>,
+        document.body,
+      )}
+    </>
   );
 }

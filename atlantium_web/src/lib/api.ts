@@ -1356,7 +1356,7 @@ class ApiClient {
   }): Promise<{
     jobs: JobPosting[];
     total: number;
-    counts: { remote: number; hybrid: number; new_this_week: number; no_degree: number };
+    counts: { remote: number; hybrid: number; new_this_week: number; new_48h?: number; no_degree: number };
     limit: number;
     offset: number;
   }> {

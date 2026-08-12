@@ -71,7 +71,7 @@ const FEATURED_EVENTS: Event[] = [
 
 
 
-function AutoScrollingJobsFeed() {
+function AutoScrollingJobsFeed({ onFreshCount }: { onFreshCount?: (n: number) => void }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollY, setScrollY] = useState(0);
   const fallbackJobs = jobsData as Array<{ id: string; title: string; company: string; seniority: string }>;
@@ -86,8 +86,11 @@ function AutoScrollingJobsFeed() {
           .slice(0, 12)
           .map((j) => ({ id: j.id, title: j.title, company: j.company, seniority: j.seniority ?? "" }));
         if (live.length >= 3) setJobs(live);
+        // Board-wide, not a count of the 30 rows fetched here.
+        if (r.counts?.new_48h) onFreshCount?.(r.counts.new_48h);
       })
       .catch(() => { /* bundled fallback already showing */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useAnimationFrame(() => {
@@ -323,6 +326,8 @@ function FocusGroupsCard() {
 }
 
 export function LandingPage() {
+  const [freshJobCount, setFreshJobCount] = useState(0);
+
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Aurora Background */}
@@ -568,14 +573,25 @@ export function LandingPage() {
                     <Briefcase className="h-5 w-5 text-cyan-500" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white">Tech Job Postings</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-bold text-white">Tech Job Postings</h3>
+                      {freshJobCount > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          </span>
+                          {freshJobCount} new · 48h
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground">Latest opportunities in tech</p>
                   </div>
                 </div>
               </div>
 
               {/* Auto-scrolling jobs feed */}
-              <AutoScrollingJobsFeed />
+              <AutoScrollingJobsFeed onFreshCount={setFreshJobCount} />
 
               {/* Button */}
               <Link to="/jobs" className="block mt-4">
