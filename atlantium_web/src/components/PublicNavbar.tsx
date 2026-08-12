@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useAuth } from "@/contexts/AuthContext";
+import { api } from "@/lib/api";
 import { AnimatePresence, motion } from "motion/react";
 import { X, Menu, ChevronRight, Users, Wrench, BookOpen, Newspaper, Briefcase, GraduationCap, Landmark } from "lucide-react";
 
@@ -56,18 +59,37 @@ const resourceItems = [
     label: "Blog",
     description: "Atlanta tech, covered — the people, companies, and money moving the scene",
     icon: Newspaper,
-    image: "https://images.unsplash.com/photo-1504711434969-e33886168d4c?w=400&h=250&fit=crop&q=80",
+    image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=400&h=250&fit=crop&q=80",
   },
 ];
 
 const missionLink = { to: "/mission", label: "Mission" };
+
+/** An uploaded picture lives on the profile record, not on the auth user, so
+ *  the navbar has to look in both. Cached for the session: this runs on every
+ *  public page and the answer doesn't change mid-visit. */
+const PROFILE_AVATAR_KEY = "atlantium_profile_avatar";
+
+function getInitials(name?: string, email?: string): string {
+  if (name) {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return name.slice(0, 2).toUpperCase();
+  }
+  if (email) return email.charAt(0).toUpperCase();
+  return "U";
+}
 
 /** When `reading` is set the bar collapses to hamburger + article identity —
  *  used by the blog reader once the header scrolls away. Other pages pass
  *  nothing and render exactly as before. */
 export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?: string | null; meta?: string | null } | null } = {}) {
   const { pathname } = useLocation();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(
+    () => sessionStorage.getItem(PROFILE_AVATAR_KEY),
+  );
   const [solutionsOpen, setSolutionsOpen] = useState(false);
   const [resourcesOpen, setResourcesOpen] = useState(false);
   // Mobile accordion state
@@ -102,8 +124,33 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
     return () => { document.body.style.overflow = ""; };
   }, [open]);
 
+  useEffect(() => {
+    if (!user || user.avatar || profileAvatar !== null) return;
+    let cancelled = false;
+    api.getProfile()
+      .then((p) => {
+        if (cancelled) return;
+        const url = p.avatar_url ?? "";
+        sessionStorage.setItem(PROFILE_AVATAR_KEY, url);
+        setProfileAvatar(url);
+      })
+      .catch(() => { /* initials are a fine fallback */ });
+    return () => { cancelled = true; };
+  }, [user?.id, user?.avatar, profileAvatar]);
+
   const isSolutionsActive = solutionItems.some(s => pathname === s.to);
   const isResourcesActive = resourceItems.some(r => pathname === r.to);
+
+  const avatarLink = user ? (
+    <Link to="/dashboard" aria-label="Your profile" className="shrink-0">
+      <Avatar className="h-8 w-8 border border-border/50 hover:border-cyan-500/40 transition-colors">
+        <AvatarImage src={user.avatar || profileAvatar || undefined} alt={user.display_name ?? user.email} />
+        <AvatarFallback className="text-[11px] font-medium">
+          {getInitials(user.display_name ?? user.first_name, user.email)}
+        </AvatarFallback>
+      </Avatar>
+    </Link>
+  ) : null;
 
   return (
     <>
@@ -244,10 +291,10 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.96 }}
                     transition={{ duration: 0.2, ease: "easeOut" }}
-                    className="fixed left-6 right-6 top-[72px] mx-auto w-[780px] max-w-[calc(100vw-3rem)] rounded-2xl border border-border/50 bg-background shadow-2xl shadow-black/25 p-4 z-[60]"
+                    className="fixed left-6 right-6 top-[72px] mx-auto w-[980px] max-w-[calc(100vw-3rem)] rounded-2xl border border-border/50 bg-background shadow-2xl shadow-black/25 p-4 z-[60]"
                   >
                     <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">Resources</p>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                       {resourceItems.map(({ to, label, description, icon: Icon, image }) => (
                         <Link
                           key={to}
@@ -298,26 +345,41 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
 
           {/* Right — Auth stacked + theme */}
           <div className={reading ? "hidden" : "hidden md:flex items-center gap-3 shrink-0"}>
-            <div className="flex flex-col items-center">
-              <Link to="/signup" className="cursor-pointer">
-                <Button size="sm" className="gap-1.5 bg-white text-black hover:bg-gray-100 border-0 h-7 text-xs px-3 cursor-pointer">
-                  Join Lab
-                </Button>
-              </Link>
-              <Link to="/login" className="text-[10px] text-muted-foreground hover:text-foreground transition-colors mt-0.5">
-                Sign In
-              </Link>
-            </div>
+            {user ? (
+              <>
+                <Link to="/dashboard">
+                  <Button size="sm" className="gap-1.5 bg-white text-black hover:bg-gray-100 border-0 h-8 text-xs px-3">
+                    Enter Lab
+                  </Button>
+                </Link>
+                {avatarLink}
+              </>
+            ) : (
+              <div className="flex flex-col items-center">
+                <Link to="/signup" className="cursor-pointer">
+                  <Button size="sm" className="gap-1.5 bg-white text-black hover:bg-gray-100 border-0 h-7 text-xs px-3 cursor-pointer">
+                    Join Lab
+                  </Button>
+                </Link>
+                <Link to="/login" className="text-[10px] text-muted-foreground hover:text-foreground transition-colors mt-0.5">
+                  Sign In
+                </Link>
+              </div>
+            )}
             <ThemeToggle />
           </div>
 
           {/* Right: Join Lab + hamburger. Reading mode keeps this at every width. */}
           <div className={`items-center gap-2 ml-auto shrink-0 ${reading ? "flex" : "flex md:hidden"}`}>
-            <Link to="/signup">
-              <Button size="sm" className="gap-1.5 bg-white text-black hover:bg-gray-100 border-0 text-xs h-8 px-3">
-                Join Lab
-              </Button>
-            </Link>
+            {/* Signed in, the avatar carries both jobs at this width: it says
+                who you are and it's the way in. Keeps the title room back. */}
+            {user ? avatarLink : (
+              <Link to="/signup">
+                <Button size="sm" className="gap-1.5 bg-white text-black hover:bg-gray-100 border-0 text-xs h-8 px-3">
+                  Join Lab
+                </Button>
+              </Link>
+            )}
             <button
               onClick={() => setOpen(true)}
               className="h-8 w-8 flex items-center justify-center rounded-md text-foreground hover:bg-muted/50 transition-colors"
@@ -480,16 +542,26 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
               transition={{ delay: 0.35, duration: 0.3 }}
               className="px-6 pb-10 pt-4 flex flex-col gap-3 border-t border-white/10"
             >
-              <Link to="/signup" onClick={() => setOpen(false)}>
-                <Button className="w-full gap-2 bg-white text-black hover:bg-gray-100 border-0 h-12 text-base">
-                  Join Lab
-                </Button>
-              </Link>
-              <Link to="/login" onClick={() => setOpen(false)}>
-                <Button variant="ghost" className="w-full h-12 text-base text-white/60 hover:text-white hover:bg-white/10">
-                  Sign In
-                </Button>
-              </Link>
+              {user ? (
+                <Link to="/dashboard" onClick={() => setOpen(false)}>
+                  <Button className="w-full gap-2 bg-white text-black hover:bg-gray-100 border-0 h-12 text-base">
+                    Enter Lab
+                  </Button>
+                </Link>
+              ) : (
+                <>
+                  <Link to="/signup" onClick={() => setOpen(false)}>
+                    <Button className="w-full gap-2 bg-white text-black hover:bg-gray-100 border-0 h-12 text-base">
+                      Join Lab
+                    </Button>
+                  </Link>
+                  <Link to="/login" onClick={() => setOpen(false)}>
+                    <Button variant="ghost" className="w-full h-12 text-base text-white/60 hover:text-white hover:bg-white/10">
+                      Sign In
+                    </Button>
+                  </Link>
+                </>
+              )}
             </motion.div>
           </motion.div>
         )}
