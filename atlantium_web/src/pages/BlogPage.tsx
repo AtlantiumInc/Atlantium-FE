@@ -226,6 +226,9 @@ export function BlogPage() {
           </p>
         </div>
 
+        {/* Featured story — above the category rail */}
+        {!isLoading && headline && <HeadlinePost post={headline} />}
+
         {/* Category rail */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
           {CATEGORIES.map((c) => {
@@ -290,8 +293,7 @@ export function BlogPage() {
           </div>
         ) : (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-            {headline && <HeadlinePost post={headline} />}
-            {rest.length > 0 && (
+            {rest.length > 0 ? (
               <>
                 {headline && (
                   <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
@@ -302,7 +304,7 @@ export function BlogPage() {
                   {rest.map((p) => <PostCard key={p.id} post={p} />)}
                 </div>
               </>
-            )}
+            ) : null}
           </motion.div>
         )}
 
