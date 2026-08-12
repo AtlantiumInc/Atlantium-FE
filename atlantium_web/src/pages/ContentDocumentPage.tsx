@@ -188,6 +188,17 @@ export function ContentDocumentPage() {
               <ContentGate slug={doc.slug} type={doc.type} onJoin={() => signup.openWithEmail()} />
             )}
 
+            {/* Logged-out join CTA lands here, at the end of the read */}
+            {doc.type === "post" && (
+              <PostShareCta
+                slug={doc.slug}
+                title={doc.title}
+                gated={Boolean(doc.gated)}
+                onJoin={() => signup.openWithEmail()}
+                placement="inline"
+              />
+            )}
+
           </motion.article>
 
           {/* Sidebar: share + discussion. Sticky beside the article on desktop,
@@ -199,6 +210,7 @@ export function ContentDocumentPage() {
                 title={doc.title}
                 gated={Boolean(doc.gated)}
                 onJoin={() => signup.openWithEmail()}
+                placement="sidebar"
               />
               {/* Comments: blog posts only at launch (plan §7.6), and only under full reads */}
               {!doc.gated && (

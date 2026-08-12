@@ -24,11 +24,15 @@ export function PostShareCta({
   title,
   gated,
   onJoin,
+  placement,
 }: {
   slug: string;
   title: string;
   gated: boolean;
   onJoin: () => void;
+  /** The join card reads better inline under the post; share belongs in the
+   *  rail. The page renders both and exactly one of them returns markup. */
+  placement: "inline" | "sidebar";
 }) {
   const { user } = useAuth();
   const [refCode, setRefCode] = useState<string | null>(null);
@@ -95,18 +99,19 @@ export function PostShareCta({
   if (!user && gated) return null;
 
   if (!user) {
+    // End-of-article slot: full width, and the rail stays share-only.
+    if (placement !== "inline") return null;
     return (
-      <div className="rounded-2xl border border-cyan-500/20 bg-card/70 backdrop-blur p-4 text-center">
-        <div className="h-9 w-9 mx-auto mb-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-          <Sparkles className="h-4 w-4 text-cyan-400" />
+      <div className="mt-12 rounded-2xl border border-cyan-500/20 bg-card/70 backdrop-blur p-6 text-center">
+        <div className="h-10 w-10 mx-auto mb-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+          <Sparkles className="h-5 w-5 text-cyan-400" />
         </div>
-        <h3 className="font-semibold mb-1">Join Atlantium — free</h3>
-        <p className="text-xs text-muted-foreground mb-3">
+        <h3 className="text-lg font-semibold mb-1">Join Atlantium — free</h3>
+        <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
           Get the Weekly Job Report, the full guide library, and the community behind it.
         </p>
         <Button
-          size="sm"
-          className="gap-2 w-full bg-white text-black hover:bg-gray-100"
+          className="gap-2 bg-white text-black hover:bg-gray-100"
           onClick={() => {
             api.trackEvent("content_join_cta_clicked", { slug, surface: "blog" });
             onJoin();
@@ -118,6 +123,8 @@ export function PostShareCta({
       </div>
     );
   }
+
+  if (placement !== "sidebar") return null;
 
   return (
     <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-4">

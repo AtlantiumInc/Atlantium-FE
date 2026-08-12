@@ -143,10 +143,26 @@ export function ContentComments({
     </div>
   );
 
+  const startJoin = () => {
+    api.trackEvent("comment_join_cta_clicked", { subject_id: subjectId, surface: variant });
+    onJoin();
+  };
+
+  // A logged-out reader who wants to reply is the warmest signup we get, so the
+  // composer stays visible and clicking it opens the join flow instead.
   const joinPrompt = (
-    <div className="rounded-xl border border-border/40 bg-card/40 p-4 text-sm text-muted-foreground flex items-center justify-between gap-3 flex-wrap">
-      <span>Join Atlantium free to comment.</span>
-      <Button size="sm" variant="outline" onClick={onJoin}>Sign in to join</Button>
+    <div>
+      <button
+        type="button"
+        onClick={startJoin}
+        className="w-full text-left rounded-md border border-input bg-transparent px-3 py-2 text-sm text-muted-foreground hover:border-cyan-500/40 hover:text-foreground transition-colors min-h-[64px]"
+      >
+        Add to the discussion...
+      </button>
+      <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
+        <span className="text-xs text-muted-foreground">Free to join.</span>
+        <Button size="sm" onClick={startJoin}>Join to comment</Button>
+      </div>
     </div>
   );
 
