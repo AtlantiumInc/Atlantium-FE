@@ -9,6 +9,7 @@ import { ContentMarkdown } from "@/components/content/ContentMarkdown";
 import { ContentGate } from "@/components/content/ContentGate";
 import { GuideReader, resolvePresentation, PRESENTATION_LABELS } from "@/components/content/GuideReader";
 import { ContentComments } from "@/components/content/ContentComments";
+import { PostShareCta } from "@/components/content/PostShareCta";
 import { JobReportSignupModal, useJobReportSignup } from "@/components/JobReportSignupModal";
 import { api, type ContentDocumentDetail } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -58,7 +59,7 @@ export function ContentDocumentPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
+    <div className="min-h-screen bg-background relative overflow-x-clip">
       <div className="fixed inset-0 z-0 opacity-20 dark:opacity-30">
         <Aurora colorStops={["#0ea5e9", "#6366f1", "#334155"]} amplitude={0.7} blend={0.5} speed={0.3} />
       </div>
@@ -151,6 +152,15 @@ export function ContentDocumentPage() {
 
             {doc.gated && !presentation && (
               <ContentGate slug={doc.slug} type={doc.type} onJoin={() => signup.openWithEmail()} />
+            )}
+
+            {doc.type === "post" && (
+              <PostShareCta
+                slug={doc.slug}
+                title={doc.title}
+                gated={Boolean(doc.gated)}
+                onJoin={() => signup.openWithEmail()}
+              />
             )}
 
             {/* Comments: blog posts only at launch (plan §7.6), and only under full reads */}

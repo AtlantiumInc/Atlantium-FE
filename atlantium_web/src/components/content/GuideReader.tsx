@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import {
   Check, ChevronLeft, ChevronRight, ListOrdered, BookOpen, Scale, Lock,
@@ -58,6 +58,17 @@ function parseSections(md: string): { intro: string; sections: Section[] } {
   return { intro: intro.join("\n").trim(), sections };
 }
 
+/** Step/chapter changes must not yank the page. Only scroll when the reader's
+ *  top edge has drifted above the viewport (i.e. the reader is out of view). */
+function keepReaderInView(el: HTMLElement | null) {
+  if (!el) return;
+  const top = el.getBoundingClientRect().top;
+  const headerOffset = 88;
+  if (top < headerOffset) {
+    window.scrollTo({ top: window.scrollY + top - headerOffset, behavior: "auto" });
+  }
+}
+
 function useStoredProgress(slug: string) {
   const key = `guide-progress:${slug}`;
   const [state, setState] = useState<{ current: number; done: number[] }>(() => {
@@ -85,6 +96,7 @@ interface ReaderProps {
 export function HowToReader({ doc, onGateCta }: ReaderProps) {
   const { intro, sections } = useMemo(() => parseSections(doc.body_md), [doc.body_md]);
   const [progress, setProgress] = useStoredProgress(doc.slug);
+  const bodyRef = useRef<HTMLDivElement>(null);
   // step 0 = intro/overview; steps 1..n = sections
   const stepCount = sections.length + 1;
   const current = Math.min(progress.current, stepCount - 1);
@@ -92,7 +104,7 @@ export function HowToReader({ doc, onGateCta }: ReaderProps) {
 
   const goTo = (i: number) => {
     setProgress((p) => ({ ...p, current: i }));
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    keepReaderInView(bodyRef.current);
   };
   const next = () => {
     if (current > 0) {
@@ -104,7 +116,7 @@ export function HowToReader({ doc, onGateCta }: ReaderProps) {
       setProgress((p) => ({ ...p, current: 1 }));
     }
     if (current === stepCount - 1 && doc.gated) onGateCta();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    keepReaderInView(bodyRef.current);
   };
 
   const atEnd = current === stepCount - 1;
@@ -143,7 +155,7 @@ export function HowToReader({ doc, onGateCta }: ReaderProps) {
       </aside>
 
       {/* Current step */}
-      <div className="min-w-0">
+      <div className="min-w-0" ref={bodyRef}>
         <motion.div key={current} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
           {current === 0 ? (
             <ContentMarkdown markdown={intro || "*This guide starts at Step 1.*"} />
@@ -204,6 +216,7 @@ function StepButton({ index, label, active, done, onClick }: {
 export function EbookReader({ doc, onGateCta }: ReaderProps) {
   const { intro, sections } = useMemo(() => parseSections(doc.body_md), [doc.body_md]);
   const [progress, setProgress] = useStoredProgress(doc.slug);
+  const bookRef = useRef<HTMLDivElement>(null);
   // page -1 = cover/TOC; 0..n-1 = chapters
   const [page, setPage] = useState(() => (progress.current > 0 ? progress.current - 1 : -1));
   const pct = sections.length ? Math.round(((page + 1) / sections.length) * 100) : 0;
@@ -211,12 +224,12 @@ export function EbookReader({ doc, onGateCta }: ReaderProps) {
   const open = (i: number) => {
     setPage(i);
     setProgress((p) => ({ ...p, current: i + 1 }));
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    keepReaderInView(bookRef.current);
   };
 
   if (page === -1) {
     return (
-      <div className="rounded-2xl border border-border/40 bg-card/30 p-8 sm:p-10">
+      <div ref={bookRef} className="rounded-2xl border border-border/40 bg-card/30 p-8 sm:p-10">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-violet-400 mb-6">
           <BookOpen className="h-3.5 w-3.5" /> Atlantium Press
         </div>
@@ -252,7 +265,7 @@ export function EbookReader({ doc, onGateCta }: ReaderProps) {
   const isLast = page === sections.length - 1;
 
   return (
-    <div>
+    <div ref={bookRef}>
       <button onClick={() => setPage(-1)} className="text-xs text-muted-foreground hover:text-foreground mb-6 inline-flex items-center gap-1">
         <ListOrdered className="h-3.5 w-3.5" /> Contents
       </button>

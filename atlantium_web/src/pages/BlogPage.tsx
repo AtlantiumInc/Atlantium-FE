@@ -63,7 +63,7 @@ export function BlogPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
+    <div className="min-h-screen bg-background relative overflow-x-clip">
       <div className="fixed inset-0 z-0 opacity-20 dark:opacity-30">
         <Aurora colorStops={["#0ea5e9", "#6366f1", "#334155"]} amplitude={0.7} blend={0.5} speed={0.3} />
       </div>
