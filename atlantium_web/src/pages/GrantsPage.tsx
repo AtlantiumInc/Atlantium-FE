@@ -11,6 +11,13 @@ import { PublicNavbar } from "@/components/PublicNavbar";
 import Aurora from "@/components/Aurora";
 import { api, type DirectoryEntry } from "@/lib/api";
 
+function primaryLocation(location?: string | null) {
+  if (!location) return null;
+  const parts = location.split(/\s+or\s+/i).map((p) => p.trim()).filter(Boolean);
+  if (parts.length <= 1) return location;
+  return `${parts[0]} +${parts.length - 1} more`;
+}
+
 function money(min?: number | null, max?: number | null) {
   const fmt = (n: number) => (n >= 1000 ? `$${Math.round(n / 1000)}k` : `$${n}`);
   if (min && max) return `${fmt(min)} – ${fmt(max)}`;
@@ -69,11 +76,19 @@ function EntryCard({ entry }: { entry: DirectoryEntry }) {
         </div>
         {isGrant ? (
           <DeadlinePill days={entry.grant?.days_until_close} recurring={entry.grant?.recurring} />
-        ) : (
-          <Badge variant="outline" className="text-[10px] bg-violet-500/10 border-violet-500/30 text-violet-300 capitalize">
-            {entry.resource?.category.replace(/_/g, " ")}
+        ) : entry.resource?.category ? (
+          <Badge variant="outline" className="text-[10px] bg-violet-500/10 border-violet-500/30 text-violet-300 capitalize flex-shrink-0">
+            {entry.resource.category.replace(/_/g, " ")}
           </Badge>
-        )}
+        ) : entry.kind === "company" ? (
+          <Badge variant="outline" className="text-[10px] bg-emerald-500/10 border-emerald-500/30 text-emerald-400 flex-shrink-0">
+            Hiring
+          </Badge>
+        ) : entry.kind === "investor" ? (
+          <Badge variant="outline" className="text-[10px] bg-cyan-500/10 border-cyan-500/30 text-cyan-300 flex-shrink-0">
+            Investor
+          </Badge>
+        ) : null}
       </div>
 
       {entry.summary && (
@@ -82,7 +97,7 @@ function EntryCard({ entry }: { entry: DirectoryEntry }) {
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 pt-3 border-t border-border/30 text-[11px] text-muted-foreground">
         {amount && <span className="text-cyan-400 font-medium">{amount}</span>}
-        {entry.location && <span>{entry.location}</span>}
+        {entry.location && <span className="truncate max-w-[60%]">{primaryLocation(entry.location)}</span>}
         {entry.verified_at && (
           <span className="ml-auto inline-flex items-center gap-1 text-emerald-400/80">
             <Clock className="h-3 w-3" /> verified

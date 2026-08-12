@@ -6,7 +6,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/lib/api";
 import { AnimatePresence, motion } from "motion/react";
-import { X, Menu, ChevronRight, Users, Wrench, BookOpen, Newspaper, Briefcase, GraduationCap, Landmark, Building2 } from "lucide-react";
+import { X, Menu, ChevronRight, Users, Wrench, BookOpen, Newspaper, Briefcase, GraduationCap, Building2 } from "lucide-react";
 
 const solutionItems = [
   {
@@ -43,16 +43,16 @@ const resourceItems = [
   {
     to: "/docs",
     label: "Docs",
-    description: "Guides, references, and tutorials for building with Atlantium",
+    description: "Guides, reports, and long reads for building with AI",
     icon: BookOpen,
     image: "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=400&h=250&fit=crop&q=80",
   },
   {
-    to: "/grants",
-    label: "Grants",
-    description: "Atlanta grants, tax credits, and programs — deadline-sorted and verified",
-    icon: Landmark,
-    image: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=250&fit=crop&q=80",
+    to: "/directory",
+    label: "Directory",
+    description: "Grants, investors, and Atlanta companies hiring — verified and deadline-sorted",
+    icon: Building2,
+    image: "https://images.unsplash.com/photo-1521791136064-7986c2920216?w=400&h=250&fit=crop&q=80",
   },
   {
     to: "/blog",
@@ -60,13 +60,6 @@ const resourceItems = [
     description: "Atlanta tech, covered — the people, companies, and money moving the scene",
     icon: Newspaper,
     image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=400&h=250&fit=crop&q=80",
-  },
-  {
-    to: "/directory",
-    label: "Directory",
-    description: "Atlanta companies hiring, investors, and the people behind them",
-    icon: Building2,
-    image: "https://images.unsplash.com/photo-1521791136064-7986c2920216?w=400&h=250&fit=crop&q=80",
   },
 ];
 
@@ -298,10 +291,10 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.96 }}
                     transition={{ duration: 0.2, ease: "easeOut" }}
-                    className="fixed left-6 right-6 top-[72px] mx-auto w-[980px] max-w-[calc(100vw-3rem)] rounded-2xl border border-border/50 bg-background shadow-2xl shadow-black/25 p-4 z-[60]"
+                    className="fixed left-6 right-6 top-[72px] mx-auto w-[820px] max-w-[calc(100vw-3rem)] rounded-2xl border border-border/50 bg-background shadow-2xl shadow-black/25 p-4 z-[60]"
                   >
                     <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">Resources</p>
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {resourceItems.map(({ to, label, description, icon: Icon, image }) => (
                         <Link
                           key={to}
