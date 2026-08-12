@@ -240,6 +240,14 @@ async function submitShard(env: Env, db: Db, result: ReviewCycleResult): Promise
   }
 
   const staleCutoff = new Date(Date.now() - REVIEW_STALE_HOURS * 60 * 60 * 1000);
+  // Exclude jobs already sitting in an in-flight batch: overlapping cron
+  // ticks while Anthropic's queue is slow must not resubmit (re-pay for)
+  // the same jobs.
+  const inflightRows = await db
+    .select({ jobIds: reviewBatches.jobIds })
+    .from(reviewBatches)
+    .where(eq(reviewBatches.status, "in_progress"));
+  const inflightIds = inflightRows.flatMap((r) => (Array.isArray(r.jobIds) ? r.jobIds : []));
   const due = await db
     .select({
       id: jobPostings.id,
@@ -252,6 +260,9 @@ async function submitShard(env: Env, db: Db, result: ReviewCycleResult): Promise
       and(
         eq(jobPostings.status, "active"),
         or(isNull(jobPostings.reviewedAt), lt(jobPostings.reviewedAt, staleCutoff)),
+        inflightIds.length > 0
+          ? sql`${jobPostings.id} not in (select jsonb_array_elements_text(${reviewBatches.jobIds})::uuid from ${reviewBatches} where ${reviewBatches.status} = 'in_progress')`
+          : undefined,
       ),
     )
     .orderBy(sql`${jobPostings.reviewedAt} ASC NULLS FIRST`)
@@ -328,6 +339,7 @@ async function submitShard(env: Env, db: Db, result: ReviewCycleResult): Promise
     batchId: batch.id,
     status: "in_progress",
     jobCount: batchRequests.length,
+    jobIds: batchRequests.map((r) => String(r.custom_id)),
   });
   result.submitted = batchRequests.length;
 }

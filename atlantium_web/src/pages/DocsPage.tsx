@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import Aurora from "@/components/Aurora";
 import { api, type ContentCollection, type ContentDocumentSummary } from "@/lib/api";
+import { resolvePresentation, PRESENTATION_LABELS } from "@/components/content/GuideReader";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function DocsPage() {
@@ -124,9 +125,14 @@ export function DocsPage() {
                             <p className="text-sm font-medium group-hover:text-cyan-300 transition-colors truncate">{d.title}</p>
                             {d.excerpt && <p className="text-xs text-muted-foreground truncate">{d.excerpt}</p>}
                           </div>
-                          {d.format === "guide" && (
-                            <Badge variant="outline" className="hidden sm:inline-flex text-[10px] bg-violet-500/10 border-violet-500/30 text-violet-400">Guide</Badge>
-                          )}
+                          {(() => {
+                            const pres = resolvePresentation(d);
+                            return pres ? (
+                              <Badge variant="outline" className="hidden sm:inline-flex text-[10px] bg-violet-500/10 border-violet-500/30 text-violet-400">
+                                {PRESENTATION_LABELS[pres]}
+                              </Badge>
+                            ) : null;
+                          })()}
                           {!user && (
                             <Lock className="h-3.5 w-3.5 text-muted-foreground/50 flex-shrink-0" />
                           )}

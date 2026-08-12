@@ -265,7 +265,7 @@ export interface ContentDocumentSummary {
     tldr?: string[];
     read_time?: number;
     sources?: string[];
-    guide?: { steps?: number; difficulty?: string; time_to_complete?: string };
+    guide?: { steps?: number; difficulty?: string; time_to_complete?: string; presentation?: string };
   };
   published_at?: string | null;
   updated_at: string;

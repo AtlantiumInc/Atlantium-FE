@@ -7,6 +7,7 @@ import { PublicNavbar } from "@/components/PublicNavbar";
 import Aurora from "@/components/Aurora";
 import { ContentMarkdown } from "@/components/content/ContentMarkdown";
 import { ContentGate } from "@/components/content/ContentGate";
+import { GuideReader, resolvePresentation } from "@/components/content/GuideReader";
 import { ContentComments } from "@/components/content/ContentComments";
 import { JobReportSignupModal, useJobReportSignup } from "@/components/JobReportSignupModal";
 import { api, type ContentDocumentDetail } from "@/lib/api";
@@ -30,6 +31,13 @@ export function ContentDocumentPage() {
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
+    if (doc?.gated && doc.type === "doc") {
+      api.trackEvent("content_gate_viewed", { slug: doc.slug, type: doc.type, surface: "docs" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doc?.id]);
+
+  useEffect(() => {
     if (!slug) return;
     setIsLoading(true);
     setNotFound(false);
@@ -42,6 +50,12 @@ export function ContentDocumentPage() {
 
   const backLink = type === "post" ? { to: "/blog", label: "Back to Blog" } : { to: "/docs", label: "Back to Docs" };
   const guide = doc?.format === "guide" ? doc.meta?.guide : undefined;
+  const presentation = doc && doc.type === "doc" ? resolvePresentation(doc) : null;
+
+  const openGateSignup = () => {
+    api.trackEvent("content_gate_signup_started", { slug: doc?.slug, surface: "docs" });
+    signup.openWithEmail();
+  };
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -49,7 +63,7 @@ export function ContentDocumentPage() {
         <Aurora colorStops={["#0ea5e9", "#6366f1", "#334155"]} amplitude={0.7} blend={0.5} speed={0.3} />
       </div>
       <PublicNavbar />
-      <main className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 py-8 w-full">
+      <main className={`relative z-10 mx-auto px-4 sm:px-6 py-8 w-full ${presentation === "howto" || presentation === "comparison" ? "max-w-5xl" : "max-w-3xl"}`}>
         <Link to={backLink.to} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6">
           <ChevronLeft className="h-4 w-4" /> {backLink.label}
         </Link>
@@ -100,9 +114,13 @@ export function ContentDocumentPage() {
               <img src={doc.cover_image_url} alt="" className="w-full rounded-2xl mb-8 border border-border/30" />
             )}
 
-            <ContentMarkdown markdown={doc.body_md} />
+            {presentation ? (
+              <GuideReader doc={doc} presentation={presentation} onGateCta={openGateSignup} />
+            ) : (
+              <ContentMarkdown markdown={doc.body_md} />
+            )}
 
-            {doc.gated && (
+            {doc.gated && !presentation && (
               <ContentGate slug={doc.slug} type={doc.type} onJoin={() => signup.openWithEmail()} />
             )}
 

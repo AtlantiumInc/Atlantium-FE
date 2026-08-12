@@ -33,6 +33,7 @@ const emptyForm = {
   collection_id: "",
   status: "draft" as "draft" | "published" | "archived",
   gate: "preview" as "public" | "preview" | "member",
+  presentation: "" as "" | "howto" | "ebook" | "comparison",
 };
 
 const statusColors: Record<string, string> = {
@@ -93,6 +94,7 @@ export function AdminContentPage() {
       collection_id: d.collection_id ?? "",
       status: d.status,
       gate: d.gate,
+      presentation: (d.meta?.guide?.presentation as "" | "howto" | "ebook" | "comparison") ?? "",
     });
     setShowPreview(false);
     setIsFormOpen(true);
@@ -110,6 +112,13 @@ export function AdminContentPage() {
     collection_id: form.collection_id || null,
     status: form.status,
     gate: form.gate,
+    meta: {
+      ...(editing?.meta ?? {}),
+      guide: {
+        ...(editing?.meta?.guide ?? {}),
+        ...(form.presentation ? { presentation: form.presentation } : { presentation: undefined }),
+      },
+    },
   });
 
   const save = async () => {
@@ -357,6 +366,20 @@ export function AdminContentPage() {
             </div>
 
             <div className="grid sm:grid-cols-3 gap-3">
+              {form.type === "doc" && (
+                <div>
+                  <Label className="text-xs">Reader style (docs)</Label>
+                  <Select value={form.presentation || "auto"} onValueChange={(v) => setForm((f) => ({ ...f, presentation: (v === "auto" ? "" : v) as typeof f.presentation }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Auto (from format)</SelectItem>
+                      <SelectItem value="howto">How-to (steps)</SelectItem>
+                      <SelectItem value="ebook">Native eBook</SelectItem>
+                      <SelectItem value="comparison">SaaS comparison</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div>
                 <Label className="text-xs">Collection (docs)</Label>
                 <Select value={form.collection_id || "none"} onValueChange={(v) => setForm((f) => ({ ...f, collection_id: v === "none" ? "" : v }))}>

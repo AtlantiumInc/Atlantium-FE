@@ -237,6 +237,7 @@ export const reviewBatches = pgTable("review_batches", {
   batchId: text("batch_id").primaryKey(),
   status: text("status").notNull().default("in_progress"),
   jobCount: integer("job_count").notNull().default(0),
+  jobIds: jsonb("job_ids").$type<string[]>().notNull().default([]),
   submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
   completedAt: timestamp("completed_at", { withTimezone: true }),
   usage: jsonb("usage").$type<Record<string, number>>().notNull().default({}),
