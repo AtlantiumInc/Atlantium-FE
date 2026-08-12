@@ -19,8 +19,9 @@ import {
   Radio,
 } from "lucide-react";
 import { motion, useAnimationFrame } from "motion/react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import jobsData from "@/data/jobs.json";
+import { api } from "@/lib/api";
 
 
 interface Event {
@@ -73,7 +74,21 @@ const FEATURED_EVENTS: Event[] = [
 function AutoScrollingJobsFeed() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollY, setScrollY] = useState(0);
-  const jobs = jobsData as Array<{ id: string; title: string; company: string; seniority: string }>;
+  const fallbackJobs = jobsData as Array<{ id: string; title: string; company: string; seniority: string }>;
+  const [jobs, setJobs] = useState<Array<{ id: string; title: string; company: string; seniority: string }>>(fallbackJobs.slice(0, 12));
+
+  useEffect(() => {
+    api.getJobPostingsPaged({ status: "active", limit: 30 })
+      .then((r) => {
+        // freshest first, and skip anything the AI review has marked dead-but-flagged
+        const live = r.jobs
+          .filter((j) => !j.review?.status || ["open", "unreachable"].includes(j.review.status))
+          .slice(0, 12)
+          .map((j) => ({ id: j.id, title: j.title, company: j.company, seniority: j.seniority ?? "" }));
+        if (live.length >= 3) setJobs(live);
+      })
+      .catch(() => { /* bundled fallback already showing */ });
+  }, []);
 
   useAnimationFrame(() => {
     setScrollY((prev) => {
@@ -565,7 +580,7 @@ export function LandingPage() {
               {/* Button */}
               <Link to="/jobs" className="block mt-4">
                 <Button size="sm" variant="outline" className="w-full gap-2 border-cyan-500/30 bg-transparent text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-400 dark:bg-transparent dark:border-cyan-500/30 dark:hover:bg-cyan-500/10 dark:hover:text-cyan-300">
-                  View All Jobs
+                  Open Board
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
               </Link>
