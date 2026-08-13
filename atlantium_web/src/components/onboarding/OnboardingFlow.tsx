@@ -133,10 +133,10 @@ export function OnboardingFlow({ onComplete, render }: Props) {
   const stepNode = (() => {
     switch (currentStep) {
       case 1: return <StepName {...stepProps} />;
-      case 2: return <StepTimezone {...stepProps} />;
-      case 3: return <StepPrimaryGoal {...stepProps} />;
-      case 4: return <StepInterests {...stepProps} />;
-      case 5: return <StepPricing {...stepProps} />;
+      case 2: return <StepPricing {...stepProps} />;
+      case 3: return <StepTimezone {...stepProps} />;
+      case 4: return <StepPrimaryGoal {...stepProps} />;
+      case 5: return <StepInterests {...stepProps} />;
       case 6: return <StepProjectStatus {...stepProps} />;
       case 7: return <StepProjectDescription {...stepProps} />;
       case 8: return <StepTechnicalLevel {...stepProps} />;

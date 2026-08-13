@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { motion } from "motion/react";
 import { Check, Crown, Calendar, Star } from "lucide-react";
 import { cn } from "../../../lib/utils";
@@ -158,20 +157,15 @@ function PricingCard({
   );
 }
 
-export function StepPricing({ formData, onUpdate }: StepPricingProps) {
-  const selectedPlan = (formData.membership_tier as PlanTier) || "club";
+export function StepPricing({ formData, errors, onUpdate }: StepPricingProps) {
+  // Deliberately no default: an auto-selected tier tells us nothing. The
+  // member declares one — including "free for now" — and that declaration is
+  // the signal. No charge or entitlement is applied here; the tier is stored
+  // on registration_details for follow-up.
+  const selectedPlan = formData.membership_tier as PlanTier | undefined;
 
   const paidPlans = PRICING_PLANS.filter((p) => p.id !== "free");
   const freePlan = PRICING_PLANS.find((p) => p.id === "free")!;
-
-  // Record a default selection so the wizard's Continue always has a value,
-  // even if the user doesn't tap a card. No charge or entitlement is applied —
-  // the tier is persisted to registration_details for later follow-up.
-  useEffect(() => {
-    if (!formData.membership_tier) {
-      onUpdate("membership_tier" as keyof OnboardingFormData, "club");
-    }
-  }, [formData.membership_tier, onUpdate]);
 
   const handlePlanSelect = (planId: PlanTier) => {
     onUpdate("membership_tier" as keyof OnboardingFormData, planId);
@@ -187,11 +181,15 @@ export function StepPricing({ formData, onUpdate }: StepPricingProps) {
     >
       <div className="space-y-2 text-center">
         <h2 className="text-2xl font-bold tracking-tight">
-          Choose your membership
+          How are you joining Atlantium?
         </h2>
         <p className="text-muted-foreground">
-          Select the plan that fits your journey. You can change anytime.
+          Atlantium is a paid community with a free tier — tell us where you're
+          starting. Nothing is charged today, and you can change this anytime.
         </p>
+        {errors?.membership_tier && (
+          <p className="text-sm text-red-400 pt-1">{errors.membership_tier}</p>
+        )}
       </div>
 
       {/* Club & Annual side by side */}

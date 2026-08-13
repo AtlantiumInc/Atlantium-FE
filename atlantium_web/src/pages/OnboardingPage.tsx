@@ -29,7 +29,7 @@ export function OnboardingPage() {
       }}
       render={({ step, nav, progress, formData, currentStep }) => (
         <OnboardingLayout
-          wide={currentStep === 5}
+          wide={currentStep === 2}
           progress={progress}
           preview={<ProfilePreview formData={formData} email={user?.email} currentStep={currentStep} />}
           onLogout={logout}

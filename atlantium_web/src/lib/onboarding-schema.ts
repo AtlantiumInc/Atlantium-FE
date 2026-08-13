@@ -76,7 +76,9 @@ export const interestsSchema = z.object({
 });
 
 export const membershipTierSchema = z.object({
-  membership_tier: z.enum(["free", "club", "club_annual"]).optional(),
+  membership_tier: z.enum(["free", "club", "club_annual"], {
+    message: "Pick how you're joining — Club, Annual, or free for now",
+  }),
 });
 
 export const projectStatusSchema = z.object({
@@ -192,10 +194,10 @@ export function validateStep(
 ): { success: boolean; errors?: z.ZodError } {
   const schemas: Record<number, z.ZodSchema> = {
     1: nameSchema,
-    2: timezoneSchema,
-    3: primaryGoalSchema,
-    4: interestsSchema,
-    5: membershipTierSchema,
+    2: membershipTierSchema,
+    3: timezoneSchema,
+    4: primaryGoalSchema,
+    5: interestsSchema,
     6: projectStatusSchema,
     7: projectDescriptionSchema,
     8: technicalLevelSchema,
