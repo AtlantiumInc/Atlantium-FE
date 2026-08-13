@@ -8,6 +8,11 @@ export type Env = {
   RESEND_API_KEY?: string;
   RESEND_FROM?: string;
   DEBUG_AUTH_CODES?: string;
+  /** Billing (P1b). Set with `wrangler secret put` — never committed. */
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+  STRIPE_PRICE_CLUB_MONTHLY?: string;
+  STRIPE_PRICE_CLUB_ANNUAL?: string;
   ADMIN_EMAILS?: string;
   BOOMIN_CONNECT_PUBLIC_KEY?: string;
   BOOMIN_CONNECT_PROGRAM_ID?: string;

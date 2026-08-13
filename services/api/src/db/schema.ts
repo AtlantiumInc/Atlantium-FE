@@ -125,6 +125,10 @@ export const memberships = pgTable("memberships", {
   cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
   gracePeriodEnd: timestamp("grace_period_end", { withTimezone: true }),
   paymentMethod: jsonb("payment_method").$type<Record<string, unknown> | null>(),
+  /** Stripe is the source of truth; these tie our projection back to it. */
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  stripePriceId: text("stripe_price_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
@@ -710,3 +714,16 @@ export const dmRequests = pgTable("dm_requests", {
   toIdx: index("dm_requests_to_idx").on(table.toProfileId, table.status),
   fromIdx: index("dm_requests_from_created_idx").on(table.fromProfileId),
 }));
+
+/**
+ * Webhook idempotency. Stripe retries on any slow or failed response, so every
+ * event is recorded before it is acted on; the primary key makes replay a no-op.
+ */
+export const billingEvents = pgTable("billing_events", {
+  id: text("id").primaryKey(),
+  type: text("type").notNull(),
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+  error: text("error"),
+});

@@ -7,6 +7,16 @@ import { z } from "zod";
 import { sendOtpEmail } from "../lib/email";
 import { grantVerification } from "../lib/verification";
 import { canInitiate, outreachStatus } from "../lib/outreach";
+import { entitlementsFor } from "../lib/entitlements";
+import {
+  createCheckoutSession,
+  createPortalSession,
+  getSubscription,
+  normalizeStatus,
+  tierForPrice,
+  verifyWebhookSignature,
+  type StripeSubscription,
+} from "../lib/stripe";
 import {
   CODE_TTL_MINUTES,
   MAX_ATTEMPTS,
@@ -47,6 +57,7 @@ import {
   memberBlocks,
   dmPolicies,
   dmRequests,
+  billingEvents,
   threads,
   threadParticipants,
   threadMessages,
@@ -995,6 +1006,170 @@ appRoutes.get("/dm/requests", async (c) => {
       id: r.id, purpose: r.purpose, body: r.body, created_at: r.createdAt.toISOString(),
     })),
   });
+});
+
+
+// ── P1b: billing (plan §6.5) ────────────────────────────────────────────────
+// Stripe is the source of truth. `memberships` is a projection written ONLY
+// from verified webhooks — never from a checkout redirect, which anyone can
+// forge by visiting the success URL directly.
+
+async function membershipFor(db: Db, userId: string) {
+  const [row] = await db.select().from(memberships).where(eq(memberships.userId, userId)).limit(1);
+  return row ?? null;
+}
+
+appRoutes.get("/billing/status", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const row = await membershipFor(db, authUser.id);
+  const entitlements = [...(await entitlementsFor(db, authUser.id))];
+  return c.json({
+    tier: row?.tier ?? "free",
+    status: row?.status ?? null,
+    current_period_end: row?.currentPeriodEnd?.toISOString() ?? null,
+    cancel_at_period_end: row?.cancelAtPeriodEnd ?? false,
+    has_billing_account: Boolean(row?.stripeCustomerId),
+    entitlements,
+  });
+});
+
+appRoutes.post(
+  "/billing/checkout",
+  zValidator("json", z.object({ plan: z.enum(["club", "club_annual"]) })),
+  async (c) => {
+    const { db, authUser } = await requireAppUser(c);
+    const plan = c.req.valid("json").plan;
+    const priceId = plan === "club_annual" ? c.env.STRIPE_PRICE_CLUB_ANNUAL : c.env.STRIPE_PRICE_CLUB_MONTHLY;
+    if (!priceId || !c.env.STRIPE_SECRET_KEY) {
+      throw new HttpError(503, "billing_unavailable", "Billing isn't configured yet.");
+    }
+
+    const existing = await membershipFor(db, authUser.id);
+    const base = c.env.APP_BASE_URL || "https://atlantium.ai";
+    const session = await createCheckoutSession(c.env, {
+      priceId,
+      userId: authUser.id,
+      email: authUser.email,
+      customerId: existing?.stripeCustomerId ?? null,
+      successUrl: `${base}/dashboard?checkout=success`,
+      cancelUrl: `${base}/pricing?checkout=cancelled`,
+    });
+    return c.json({ checkout_url: session.url });
+  },
+);
+
+appRoutes.post("/billing/portal", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const row = await membershipFor(db, authUser.id);
+  if (!row?.stripeCustomerId) throw new HttpError(404, "no_billing_account", "No billing account yet.");
+  const base = c.env.APP_BASE_URL || "https://atlantium.ai";
+  const session = await createPortalSession(c.env, {
+    customerId: row.stripeCustomerId,
+    returnUrl: `${base}/dashboard`,
+  });
+  return c.json({ portal_url: session.url });
+});
+
+/** Applies a subscription's state to our projection. */
+async function applySubscription(
+  db: Db,
+  env: Env,
+  userId: string,
+  sub: StripeSubscription,
+) {
+  const priceId = sub.items?.data?.[0]?.price?.id ?? null;
+  const tier = tierForPrice(env, priceId);
+  const status = normalizeStatus(sub.status);
+  const live = status === "active" || status === "trialing" || status === "past_due";
+
+  const values = {
+    // An unknown price grants nothing rather than defaulting to a paid tier —
+    // the same positive-capability rule entitlements use.
+    tier: live && tier ? tier : ("free" as const),
+    status,
+    stripeCustomerId: typeof sub.customer === "string" ? sub.customer : null,
+    stripeSubscriptionId: sub.id,
+    stripePriceId: priceId,
+    cancelAtPeriodEnd: Boolean(sub.cancel_at_period_end),
+    currentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
+    updatedAt: new Date(),
+  };
+
+  await db
+    .insert(memberships)
+    .values({ userId, ...values })
+    .onConflictDoUpdate({ target: memberships.userId, set: values });
+}
+
+appRoutes.post("/billing/webhook", async (c) => {
+  const secret = c.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) throw new HttpError(503, "billing_unavailable", "Billing isn't configured yet.");
+
+  // The signature covers the RAW bytes — parsing and re-serializing would
+  // change them and break verification.
+  const rawBody = await c.req.text();
+  const verified = await verifyWebhookSignature(secret, rawBody, c.req.header("stripe-signature") ?? null);
+  if (!verified.ok) throw new HttpError(400, "invalid_signature", `Webhook rejected: ${verified.reason}`);
+
+  const event = JSON.parse(rawBody) as {
+    id: string;
+    type: string;
+    data: { object: Record<string, unknown> };
+  };
+  const db = createDb(c.env);
+
+  // Record before acting. If this insert conflicts, the event is a retry of one
+  // we already handled and must not be applied twice.
+  const inserted = await db
+    .insert(billingEvents)
+    .values({ id: event.id, type: event.type, payload: event as unknown as Record<string, unknown> })
+    .onConflictDoNothing()
+    .returning({ id: billingEvents.id });
+  if (inserted.length === 0) return c.json({ received: true, duplicate: true });
+
+  try {
+    const object = event.data.object;
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const userId = (object.client_reference_id ?? (object.metadata as Record<string, string>)?.user_id) as string | undefined;
+        const subscriptionId = object.subscription as string | undefined;
+        if (userId && subscriptionId) {
+          const sub = await getSubscription(c.env, subscriptionId);
+          await applySubscription(db, c.env, userId, sub);
+        }
+        break;
+      }
+      case "customer.subscription.created":
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted": {
+        const sub = object as unknown as StripeSubscription;
+        // metadata.user_id is set at checkout; fall back to the customer we
+        // already recorded so subscription edits made in Stripe still land.
+        let userId = sub.metadata?.user_id;
+        if (!userId && typeof sub.customer === "string") {
+          const [row] = await db.select({ userId: memberships.userId }).from(memberships)
+            .where(eq(memberships.stripeCustomerId, sub.customer)).limit(1);
+          userId = row?.userId;
+        }
+        if (userId) {
+          await applySubscription(db, c.env, userId, {
+            ...sub,
+            status: event.type === "customer.subscription.deleted" ? "canceled" : sub.status,
+          });
+        }
+        break;
+      }
+      default:
+        break;
+    }
+    await db.update(billingEvents).set({ processedAt: new Date() }).where(eq(billingEvents.id, event.id));
+    return c.json({ received: true });
+  } catch (error) {
+    // Record the failure and 500 so Stripe retries; the event row stays
+    // unprocessed, and the retry re-enters via the conflict path below.
+    await db.delete(billingEvents).where(eq(billingEvents.id, event.id));
+    throw error;
+  }
 });
 
 appRoutes.post(
