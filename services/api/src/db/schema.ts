@@ -10,6 +10,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 
 export const profileType = pgEnum("profile_type", ["personal", "child", "team"]);
@@ -651,3 +652,61 @@ export const workEmailVerifications = pgTable("work_email_verifications", {
   consumedAt: timestamp("consumed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ── P1: the network loop (plan §8, §8A) ─────────────────────────────────────
+
+export const connectionStatus = pgEnum("connection_status", ["pending", "accepted", "declined", "removed"]);
+export const connectionSource = pgEnum("connection_source", ["direct", "atlantium_intro", "member_intro"]);
+export const dmRequestStatus = pgEnum("dm_request_status", ["pending", "accepted", "declined", "expired"]);
+
+/** A relationship two members acknowledge — NOT the fact that they talked. */
+export const memberConnections = pgTable("member_connections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  requesterProfileId: uuid("requester_profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  recipientProfileId: uuid("recipient_profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  status: connectionStatus("status").notNull().default("pending"),
+  /** Provenance: how this relationship came to exist (§8A.7). */
+  source: connectionSource("source").notNull().default("direct"),
+  introducedByProfileId: uuid("introduced_by_profile_id").references(() => profiles.id, { onDelete: "set null" }),
+  message: text("message"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  removedAt: timestamp("removed_at", { withTimezone: true }),
+}, (table) => ({
+  requesterIdx: index("member_connections_requester_idx").on(table.requesterProfileId, table.status),
+  recipientIdx: index("member_connections_recipient_idx").on(table.recipientProfileId, table.status),
+}));
+
+/** Standalone primitive: blockable without ever having been connected. */
+export const memberBlocks = pgTable("member_blocks", {
+  blockerProfileId: uuid("blocker_profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  blockedProfileId: uuid("blocked_profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  reason: text("reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.blockerProfileId, table.blockedProfileId] }),
+}));
+
+export const dmPolicies = pgTable("dm_policies", {
+  profileId: uuid("profile_id").primaryKey().references(() => profiles.id, { onDelete: "cascade" }),
+  accepts: text("accepts").notNull().default("members"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const dmRequests = pgTable("dm_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  fromProfileId: uuid("from_profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  toProfileId: uuid("to_profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  /** Which persona the sender is acting as — rights come only from this. */
+  actingRoleId: uuid("acting_role_id").references(() => memberRoles.id, { onDelete: "set null" }),
+  actingOrgId: uuid("acting_org_id").references(() => directoryEntries.id, { onDelete: "set null" }),
+  purpose: text("purpose").notNull(),
+  body: text("body").notNull(),
+  status: dmRequestStatus("status").notNull().default("pending"),
+  threadId: uuid("thread_id").references(() => threads.id, { onDelete: "set null" }),
+  decidedAt: timestamp("decided_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  toIdx: index("dm_requests_to_idx").on(table.toProfileId, table.status),
+  fromIdx: index("dm_requests_from_created_idx").on(table.fromProfileId),
+}));

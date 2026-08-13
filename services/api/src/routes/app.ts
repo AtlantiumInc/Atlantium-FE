@@ -1,11 +1,12 @@
 import { zValidator } from "@hono/zod-validator";
 import { getPartnerStanding, postHandoff, recordReferralClick, recordSignup } from "@boomin/server";
-import { and, asc, desc, eq, gte, ilike, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { z } from "zod";
 import { sendOtpEmail } from "../lib/email";
 import { grantVerification } from "../lib/verification";
+import { canInitiate, outreachStatus } from "../lib/outreach";
 import {
   CODE_TTL_MINUTES,
   MAX_ATTEMPTS,
@@ -42,6 +43,13 @@ import {
   memberRoles,
   orgMemberships,
   workEmailVerifications,
+  memberConnections,
+  memberBlocks,
+  dmPolicies,
+  dmRequests,
+  threads,
+  threadParticipants,
+  threadMessages,
   professionalPreferences,
   directoryEntries,
   user,
@@ -712,6 +720,282 @@ appRoutes.post(
     });
   },
 );
+
+
+/** A connection as the viewer sees it — never exposes the other side's blocks. */
+function publicConnection(row: typeof memberConnections.$inferSelect, viewerProfileId: string) {
+  return {
+    id: row.id,
+    status: row.status,
+    source: row.source,
+    direction: row.requesterProfileId === viewerProfileId ? "outgoing" : "incoming",
+    other_profile_id: row.requesterProfileId === viewerProfileId ? row.recipientProfileId : row.requesterProfileId,
+    message: row.message,
+    created_at: row.createdAt.toISOString(),
+    accepted_at: row.acceptedAt?.toISOString() ?? null,
+  };
+}
+
+// ── P1: connections, blocks and DM requests (plan §8, §8A) ──────────────────
+
+const PURPOSES = ["hiring", "fundraising", "advice", "peer", "intro"] as const;
+
+/** Connection requests and DM requests share one door and one budget. */
+async function resolveTargetProfile(db: Db, profileId: string) {
+  const [row] = await db.select().from(profiles).where(eq(profiles.id, profileId)).limit(1);
+  // 404 rather than 403 for anything the caller may not see.
+  if (!row) throw new HttpError(404, "not_found", "Member not found.");
+  return row;
+}
+
+appRoutes.get("/me/outreach", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const profile = await ensureDefaultProfile(db, authUser);
+  return c.json(await outreachStatus(db, profile.id, authUser.id));
+});
+
+appRoutes.post(
+  "/connections/requests",
+  zValidator("json", z.object({
+    profile_id: z.string().uuid(),
+    message: z.string().trim().max(600).optional(),
+    acting_role_id: z.string().uuid().optional(),
+    purpose: z.enum(PURPOSES).default("peer"),
+  })),
+  async (c) => {
+    const { db, authUser } = await requireAppUser(c);
+    const me = await ensureDefaultProfile(db, authUser);
+    const input = c.req.valid("json");
+    const target = await resolveTargetProfile(db, input.profile_id);
+
+    const decision = await canInitiate(db, {
+      actorProfileId: me.id,
+      actorUserId: authUser.id,
+      actingRoleId: input.acting_role_id ?? null,
+      purpose: input.purpose,
+      recipientProfileId: target.id,
+    });
+    if (!decision.allowed) throw new HttpError(403, decision.reason, decision.message);
+
+    // A reciprocal request is mutual intent — accept rather than stack a second
+    // pending row, which the pair-unique index would reject anyway.
+    const [reciprocal] = await db.select().from(memberConnections)
+      .where(and(
+        eq(memberConnections.requesterProfileId, target.id),
+        eq(memberConnections.recipientProfileId, me.id),
+        eq(memberConnections.status, "pending"),
+      )).limit(1);
+    if (reciprocal) {
+      const [accepted] = await db.update(memberConnections)
+        .set({ status: "accepted", acceptedAt: new Date() })
+        .where(eq(memberConnections.id, reciprocal.id))
+        .returning();
+      return c.json({ connection: publicConnection(accepted, me.id), mutual: true });
+    }
+
+    try {
+      const [row] = await db.insert(memberConnections).values({
+        requesterProfileId: me.id,
+        recipientProfileId: target.id,
+        message: input.message ?? null,
+        source: "direct",
+      }).returning();
+      return c.json({ connection: publicConnection(row, me.id), mutual: false });
+    } catch {
+      throw new HttpError(409, "already_connected", "You already have a live connection with this member.");
+    }
+  },
+);
+
+appRoutes.post(
+  "/connections/requests/:id/decide",
+  zValidator("json", z.object({ accept: z.boolean() })),
+  async (c) => {
+    const { db, authUser } = await requireAppUser(c);
+    const me = await ensureDefaultProfile(db, authUser);
+    const accept = c.req.valid("json").accept;
+
+    const [row] = await db.select().from(memberConnections)
+      .where(and(
+        eq(memberConnections.id, c.req.param("id")),
+        eq(memberConnections.recipientProfileId, me.id),
+        eq(memberConnections.status, "pending"),
+      )).limit(1);
+    if (!row) throw new HttpError(404, "not_found", "Request not found.");
+
+    const [updated] = await db.update(memberConnections)
+      .set(accept
+        ? { status: "accepted", acceptedAt: new Date() }
+        : { status: "declined" })
+      .where(eq(memberConnections.id, row.id))
+      .returning();
+    return c.json({ connection: publicConnection(updated, me.id) });
+  },
+);
+
+appRoutes.get("/me/connections", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const me = await ensureDefaultProfile(db, authUser);
+  const rows = await db.select().from(memberConnections)
+    .where(and(
+      or(eq(memberConnections.requesterProfileId, me.id), eq(memberConnections.recipientProfileId, me.id)),
+      inArray(memberConnections.status, ["pending", "accepted"]),
+    ));
+  return c.json({ connections: rows.map((r) => publicConnection(r, me.id)) });
+});
+
+appRoutes.delete("/connections/:id", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const me = await ensureDefaultProfile(db, authUser);
+  const removed = await db.update(memberConnections)
+    .set({ status: "removed", removedAt: new Date() })
+    .where(and(
+      eq(memberConnections.id, c.req.param("id")),
+      or(eq(memberConnections.requesterProfileId, me.id), eq(memberConnections.recipientProfileId, me.id)),
+      inArray(memberConnections.status, ["pending", "accepted"]),
+    ))
+    .returning();
+  if (removed.length === 0) throw new HttpError(404, "not_found", "Connection not found.");
+  // Kept as a removed row, not deleted: provenance survives (§8A.7).
+  return c.json({ success: true });
+});
+
+appRoutes.post(
+  "/blocks",
+  zValidator("json", z.object({ profile_id: z.string().uuid(), reason: z.string().trim().max(300).optional() })),
+  async (c) => {
+    const { db, authUser } = await requireAppUser(c);
+    const me = await ensureDefaultProfile(db, authUser);
+    const input = c.req.valid("json");
+    if (input.profile_id === me.id) throw new HttpError(400, "self_block", "You can't block yourself.");
+    await resolveTargetProfile(db, input.profile_id);
+
+    // Works with no prior connection — that's the whole point of a standalone
+    // primitive (§8A.3).
+    await db.insert(memberBlocks)
+      .values({ blockerProfileId: me.id, blockedProfileId: input.profile_id, reason: input.reason ?? null })
+      .onConflictDoNothing();
+    // Any live edge is torn down, but its history is kept.
+    await db.update(memberConnections)
+      .set({ status: "removed", removedAt: new Date() })
+      .where(and(
+        inArray(memberConnections.status, ["pending", "accepted"]),
+        or(
+          and(eq(memberConnections.requesterProfileId, me.id), eq(memberConnections.recipientProfileId, input.profile_id)),
+          and(eq(memberConnections.requesterProfileId, input.profile_id), eq(memberConnections.recipientProfileId, me.id)),
+        ),
+      ));
+    return c.json({ success: true });
+  },
+);
+
+appRoutes.post(
+  "/dm/requests",
+  zValidator("json", z.object({
+    profile_id: z.string().uuid(),
+    body: z.string().trim().min(1).max(2000),
+    purpose: z.enum(PURPOSES),
+    acting_role_id: z.string().uuid().optional(),
+    acting_org_id: z.string().uuid().optional(),
+  })),
+  async (c) => {
+    const { db, authUser } = await requireAppUser(c);
+    const me = await ensureDefaultProfile(db, authUser);
+    const input = c.req.valid("json");
+    const target = await resolveTargetProfile(db, input.profile_id);
+
+    const decision = await canInitiate(db, {
+      actorProfileId: me.id,
+      actorUserId: authUser.id,
+      actingRoleId: input.acting_role_id ?? null,
+      purpose: input.purpose,
+      recipientProfileId: target.id,
+    });
+    if (!decision.allowed) throw new HttpError(403, decision.reason, decision.message);
+
+    if (decision.connected) {
+      // Connected members skip the request flow entirely (§8A.5) — the
+      // restriction checks above still ran.
+      const [thread] = await db.insert(threads)
+        .values({ kind: "dm", createdBy: authUser.id }).returning();
+      await db.insert(threadParticipants).values([
+        { threadId: thread.id, userId: authUser.id },
+        { threadId: thread.id, userId: target.ownerUserId },
+      ]);
+      await db.insert(threadMessages).values({
+        threadId: thread.id, authorUserId: authUser.id, body: input.body,
+      });
+      return c.json({ direct: true, thread_id: thread.id });
+    }
+
+    try {
+      const [row] = await db.insert(dmRequests).values({
+        fromProfileId: me.id,
+        toProfileId: target.id,
+        actingRoleId: input.acting_role_id ?? null,
+        actingOrgId: input.acting_org_id ?? null,
+        purpose: input.purpose,
+        body: input.body,
+      }).returning();
+      return c.json({ direct: false, request_id: row.id, status: row.status });
+    } catch {
+      throw new HttpError(409, "already_pending", "You already have a pending request to this member.");
+    }
+  },
+);
+
+appRoutes.post(
+  "/dm/requests/:id/decide",
+  zValidator("json", z.object({ accept: z.boolean() })),
+  async (c) => {
+    const { db, authUser } = await requireAppUser(c);
+    const me = await ensureDefaultProfile(db, authUser);
+    const accept = c.req.valid("json").accept;
+
+    const [row] = await db.select().from(dmRequests)
+      .where(and(
+        eq(dmRequests.id, c.req.param("id")),
+        eq(dmRequests.toProfileId, me.id),
+        eq(dmRequests.status, "pending"),
+      )).limit(1);
+    if (!row) throw new HttpError(404, "not_found", "Request not found.");
+
+    if (!accept) {
+      await db.update(dmRequests).set({ status: "declined", decidedAt: new Date() })
+        .where(eq(dmRequests.id, row.id));
+      // A decline does not refund the sender's budget — that is the deterrent.
+      return c.json({ accepted: false });
+    }
+
+    const [sender] = await db.select().from(profiles).where(eq(profiles.id, row.fromProfileId)).limit(1);
+    const [thread] = await db.insert(threads).values({ kind: "dm", createdBy: authUser.id }).returning();
+    await db.insert(threadParticipants).values([
+      { threadId: thread.id, userId: authUser.id },
+      { threadId: thread.id, userId: sender.ownerUserId },
+    ]);
+    await db.insert(threadMessages).values({
+      threadId: thread.id, authorUserId: sender.ownerUserId, body: row.body,
+    });
+    await db.update(dmRequests)
+      .set({ status: "accepted", decidedAt: new Date(), threadId: thread.id })
+      .where(eq(dmRequests.id, row.id));
+
+    // Accepting a conversation is NOT a connection (§8A.4).
+    return c.json({ accepted: true, thread_id: thread.id });
+  },
+);
+
+appRoutes.get("/dm/requests", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const me = await ensureDefaultProfile(db, authUser);
+  const rows = await db.select().from(dmRequests)
+    .where(and(eq(dmRequests.toProfileId, me.id), eq(dmRequests.status, "pending")));
+  return c.json({
+    requests: rows.map((r) => ({
+      id: r.id, purpose: r.purpose, body: r.body, created_at: r.createdAt.toISOString(),
+    })),
+  });
+});
 
 appRoutes.post(
   "/profile/edit",

@@ -10,12 +10,16 @@ import { memberships } from "../db/schema";
  */
 export type Entitlement =
   | "directory.contacts.unlimited"
-  | "directory.contacts.export";
+  | "directory.contacts.export"
+  /** Cold outreach — DM and connection requests share one budget (§8.4). */
+  | "dm.send"
+  | "dm.send.unlimited";
 
 const TIER_GRANTS: Record<string, Entitlement[]> = {
+  // Free members RECEIVE requests but never initiate them (§8.4).
   free: [],
-  club: ["directory.contacts.unlimited", "directory.contacts.export"],
-  club_annual: ["directory.contacts.unlimited", "directory.contacts.export"],
+  club: ["directory.contacts.unlimited", "directory.contacts.export", "dm.send"],
+  club_annual: ["directory.contacts.unlimited", "directory.contacts.export", "dm.send"],
 };
 
 /** Statuses that keep a paid membership's capabilities alive. */
