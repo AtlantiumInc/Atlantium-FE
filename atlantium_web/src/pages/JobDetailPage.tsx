@@ -27,6 +27,7 @@ import SpotlightCard from "@/components/ui/SpotlightCard";
 import ShinyText from "@/components/ui/ShinyText";
 import Aurora from "@/components/Aurora";
 import { api, type JobPosting } from "@/lib/api";
+import { toast } from "sonner";
 import { isNewThisWeek } from "@/lib/utils";
 import { JobReportSignupModal, useJobReportSignup } from "@/components/JobReportSignupModal";
 
@@ -141,7 +142,7 @@ export function JobDetailPage() {
   useEffect(() => {
     if (!job || !slug) return;
     if (job.apply_url) { setApplyUrl(job.apply_url); return; }
-    if (!signup.isMember) { setApplyUrl(null); return; }
+    if (!signup.isMember || !signup.isOnboarded) { setApplyUrl(null); return; }
     api.getJobApplyUrl(slug).then((r) => setApplyUrl(r.apply_url)).catch(() => {});
   }, [job, slug, signup.isMember]);
 
@@ -172,11 +173,19 @@ export function JobDetailPage() {
             signup.openWithEmail();
             return;
           }
+          if (!signup.isOnboarded) {
+            signup.openQuestionnaire();
+            return;
+          }
           setIsUnlocking(true);
           try {
             const r = await api.getJobApplyUrl(slug!);
             setApplyUrl(r.apply_url);
             window.open(r.apply_url, "_blank", "noopener,noreferrer");
+          } catch (err) {
+            // The server is the authority on standing; honour its verdict.
+            if (err instanceof Error && /onboarding/i.test(err.message)) signup.openQuestionnaire();
+            else toast.error("Could not open the application link.");
           } finally {
             setIsUnlocking(false);
           }
@@ -184,7 +193,7 @@ export function JobDetailPage() {
         className="gap-2 bg-white text-black hover:bg-gray-100 w-full sm:w-auto flex-shrink-0"
       >
         <Lock className="h-4 w-4" />
-        {isUnlocking ? "Opening..." : "Join free to apply"}
+        {isUnlocking ? "Opening..." : signup.isMember ? "Finish signup to apply" : "Join free to apply"}
       </Button>
     );
   };

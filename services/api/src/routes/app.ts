@@ -50,20 +50,28 @@ import {
 
 export const appRoutes = new Hono<{ Bindings: Env }>();
 
-// New users must be approved by an admin before they can use the community /
-// dashboard. This is enforced SERVER-SIDE (not just a UI overlay): unapproved
-// users get 403 from every data endpoint below. Auth, profile, upload and
-// billing endpoints stay open so pending users can still sign in and pay.
-// Admins always bypass.
-async function ensureApproved(c: Context<{ Bindings: Env }>) {
-  const { authUser } = await requireAppUser(c);
-  if (!authUser.isApproved && !authUser.isAdmin) {
-    throw new HttpError(403, "pending_approval", "Your account is pending review.");
+// Membership is open — signups are auto-approved. Two server-side conditions
+// still guard member surfaces:
+//   1. suspension (is_approved flipped off by an admin after the fact)
+//   2. the questionnaire — every member completes onboarding before they get
+//      member value (the lab, apply links, contact reveals).
+// Admins bypass both.
+export async function ensureMemberInGoodStanding(c: Context<{ Bindings: Env }>) {
+  const { db, authUser } = await requireAppUser(c);
+  if (authUser.isAdmin) return;
+  if (!authUser.isApproved) {
+    throw new HttpError(403, "account_suspended", "This account has been suspended.");
+  }
+  const profile = await ensureDefaultProfile(db, authUser);
+  const reg = (profile.registrationDetails ?? {}) as Record<string, unknown>;
+  const done = Boolean(profile.onboardingCompletedAt) || reg.is_completed === true;
+  if (!done) {
+    throw new HttpError(403, "onboarding_required", "Complete your member questionnaire to continue.");
   }
 }
 for (const pattern of ["/lobby", "/lobby/*", "/realtime/*", "/dashboard/*"]) {
   appRoutes.use(pattern, async (c, next) => {
-    await ensureApproved(c);
+    await ensureMemberInGoodStanding(c);
     await next();
   });
 }
@@ -1120,6 +1128,7 @@ appRoutes.get("/job_postings/:slug", async (c) => {
 // The official application link — the one thing on a job page that needs a
 // free account. Everything else stays public so the posting is shareable.
 appRoutes.get("/job_postings/:slug/apply", async (c) => {
+  await ensureMemberInGoodStanding(c);
   const { db, authUser } = await requireAppUser(c);
   const row = await db.query.jobPostings.findFirst({
     where: eq(jobPostings.slug, c.req.param("slug")),

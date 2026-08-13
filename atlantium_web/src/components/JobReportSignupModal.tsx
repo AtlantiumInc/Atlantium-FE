@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 const SNOOZE_KEY = "jobReportModalSnooze";
@@ -30,6 +31,7 @@ function snooze() {
 }
 
 export type SignupStep = "pitch" | "otp";
+type ModalStep = SignupStep | "questionnaire" | "done";
 
 interface JobReportSignupModalProps {
   open: boolean;
@@ -37,7 +39,7 @@ interface JobReportSignupModalProps {
   /** Prefill for the email step (e.g. from the alerts card). */
   initialEmail?: string;
   /** "otp" when the code was already sent (alerts card path). */
-  initialStep?: SignupStep;
+  initialStep?: ModalStep;
 }
 
 export function JobReportSignupModal({
@@ -47,7 +49,7 @@ export function JobReportSignupModal({
   initialStep = "pitch",
 }: JobReportSignupModalProps) {
   const { checkAuth } = useAuth();
-  const [step, setStep] = useState<SignupStep | "done">(initialStep);
+  const [step, setStep] = useState<ModalStep>(initialStep);
   const [email, setEmail] = useState(initialEmail ?? "");
   const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -69,6 +71,7 @@ export function JobReportSignupModal({
   })();
 
   const close = (value: boolean) => {
+    if (!value && step === "questionnaire") return;
     if (!value && step !== "done") snooze();
     onOpenChange(value);
   };
@@ -94,9 +97,12 @@ export function JobReportSignupModal({
     setIsLoading(true);
     try {
       await api.verifyOtp(email.trim(), code.trim());
-      await checkAuth();
-      setStep("done");
-      toast.success("Welcome to Atlantium!");
+      const me = await checkAuth();
+      const done = (me as { _profile?: { registration_details?: { is_completed?: boolean } } } | null)
+        ?._profile?.registration_details?.is_completed === true;
+      // Every member answers the questionnaire — returning members skip it.
+      setStep(done ? "done" : "questionnaire");
+      if (done) toast.success("Welcome back!");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Invalid code");
     } finally {
@@ -106,8 +112,23 @@ export function JobReportSignupModal({
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="max-w-md p-0 overflow-hidden border-cyan-500/20">
-        {step === "done" ? (
+      <DialogContent className={step === "questionnaire"
+        ? "max-w-2xl p-0 overflow-hidden border-cyan-500/20"
+        : "max-w-md p-0 overflow-hidden border-cyan-500/20"}>
+        {step === "questionnaire" ? (
+          <div className="p-6 sm:p-7 max-h-[85vh] overflow-y-auto">
+            <DialogTitle className="text-lg mb-1">Tell us who you are</DialogTitle>
+            <p className="text-xs text-muted-foreground mb-5">
+              Every Atlantium member answers these — it's how we match you to roles, rooms and people.
+            </p>
+            <OnboardingFlow
+              onComplete={() => {
+                setStep("done");
+                toast.success("Welcome to Atlantium!");
+              }}
+            />
+          </div>
+        ) : step === "done" ? (
           <div className="flex flex-col items-center gap-3 p-8 text-center">
             <div className="h-14 w-14 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
               <CheckCircle2 className="h-7 w-7 text-emerald-400" />
@@ -230,7 +251,7 @@ export function useJobReportSignup() {
   const { user, isLoading } = useAuth();
   const [open, setOpen] = useState(false);
   const [initialEmail, setInitialEmail] = useState<string | undefined>();
-  const [initialStep, setInitialStep] = useState<SignupStep>("pitch");
+  const [initialStep, setInitialStep] = useState<ModalStep>("pitch");
 
   useEffect(() => {
     if (isLoading || user) return;
@@ -244,6 +265,8 @@ export function useJobReportSignup() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("welcome") === "1") {
       toast.success("Welcome to Atlantium! You're on the Weekly Job Report.");
+      setInitialStep("questionnaire");
+      setOpen(true);
       params.delete("welcome");
       const qs = params.toString();
       window.history.replaceState(
@@ -252,6 +275,12 @@ export function useJobReportSignup() {
         `${window.location.pathname}${qs ? `?${qs}` : ""}`,
       );
     }
+  }, []);
+
+  /** Drop a signed-in member straight into the questionnaire. */
+  const openQuestionnaire = useCallback(() => {
+    setInitialStep("questionnaire");
+    setOpen(true);
   }, []);
 
   const openWithEmail = useCallback((email?: string) => {
@@ -276,5 +305,13 @@ export function useJobReportSignup() {
     }
   }, []);
 
-  return { open, setOpen, initialEmail, initialStep, openWithEmail, startWithEmail, isMember: !!user };
+  const onboardingDone =
+    (user as { _profile?: { registration_details?: { is_completed?: boolean } } } | null)
+      ?._profile?.registration_details?.is_completed === true;
+
+  return {
+    open, setOpen, initialEmail, initialStep, openWithEmail, startWithEmail, openQuestionnaire,
+    isMember: !!user,
+    isOnboarded: !!user && onboardingDone,
+  };
 }

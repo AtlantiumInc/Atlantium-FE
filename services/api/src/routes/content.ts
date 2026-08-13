@@ -70,6 +70,32 @@ async function requireMember(c: Context<{ Bindings: Env }>) {
   return ctx;
 }
 
+/**
+ * A member who has finished the questionnaire. Membership itself is open (no
+ * admin review), so this is the gate on everything that costs us something to
+ * give away: contact reveals, apply links, the lab.
+ */
+async function requireOnboardedMember(c: Context<{ Bindings: Env }>) {
+  const ctx = await requireMember(c);
+  if (ctx.authUser.isAdmin) return ctx;
+  if (!ctx.authUser.isApproved) {
+    throw new HttpError(403, "account_suspended", "This account has been suspended.");
+  }
+  const [profile] = await ctx.db
+    .select({
+      onboardingCompletedAt: profiles.onboardingCompletedAt,
+      registrationDetails: profiles.registrationDetails,
+    })
+    .from(profiles)
+    .where(eq(profiles.ownerUserId, ctx.authUser.id))
+    .limit(1);
+  const reg = (profile?.registrationDetails ?? {}) as Record<string, unknown>;
+  if (!(Boolean(profile?.onboardingCompletedAt) || reg.is_completed === true)) {
+    throw new HttpError(403, "onboarding_required", "Complete your member questionnaire to continue.");
+  }
+  return ctx;
+}
+
 async function requireAdmin(c: Context<{ Bindings: Env }>) {
   const ctx = await requireMember(c);
   if (!ctx.authUser.isAdmin) throw new HttpError(403, "forbidden", "Admin access required.");
@@ -428,7 +454,7 @@ const documentInput = z.object({
   collection_id: z.string().uuid().optional().nullable(),
   sort_order: z.number().int().default(0),
   status: z.enum(["draft", "published", "archived"]).default("draft"),
-  gate: z.enum(["public", "preview", "member"]).default("preview"),
+  gate: z.enum(["public", "preview", "member"]).default("public"),
   meta: z.record(z.string(), z.unknown()).default({}),
 });
 
@@ -807,7 +833,7 @@ contentRoutes.get("/directory/:kind/:slug/state", async (c) => {
 });
 
 contentRoutes.post("/directory/entries/:id/reveal", async (c) => {
-  const { db, authUser } = await requireMember(c);
+  const { db, authUser } = await requireOnboardedMember(c);
   const entryId = c.req.param("id");
   const [entry] = await db.select().from(directoryEntries).where(eq(directoryEntries.id, entryId)).limit(1);
   if (!entry) throw new HttpError(404, "not_found", "Not found.");
