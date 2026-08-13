@@ -218,7 +218,10 @@ export function EbookReader({ doc, onGateCta }: ReaderProps) {
   const [progress, setProgress] = useStoredProgress(doc.slug);
   const bookRef = useRef<HTMLDivElement>(null);
   // page -1 = cover/TOC; 0..n-1 = chapters
-  const [page, setPage] = useState(() => (progress.current > 0 ? progress.current - 1 : -1));
+  const [rawPage, setPage] = useState(() => (progress.current > 0 ? progress.current - 1 : -1));
+  // Stored progress may exceed the chapters we can currently render (the gate
+  // shortens the book when a session lapses), so clamp before indexing.
+  const page = sections.length === 0 ? -1 : Math.min(rawPage, sections.length - 1);
   const pct = sections.length ? Math.round(((page + 1) / sections.length) * 100) : 0;
 
   const open = (i: number) => {
@@ -262,18 +265,39 @@ export function EbookReader({ doc, onGateCta }: ReaderProps) {
   }
 
   const chapter = sections[page];
+  if (!chapter) {
+    // Nothing renderable at this index — fall back to the contents page.
+    return (
+      <div ref={bookRef} className="rounded-2xl border border-border/40 bg-card/30 p-8 text-sm text-muted-foreground">
+        This book has no readable chapters yet.
+      </div>
+    );
+  }
   const isLast = page === sections.length - 1;
 
   return (
     <div ref={bookRef}>
-      <button onClick={() => setPage(-1)} className="text-xs text-muted-foreground hover:text-foreground mb-6 inline-flex items-center gap-1">
-        <ListOrdered className="h-3.5 w-3.5" /> Contents
-      </button>
+      {/* Sticky chapter bar — the only chrome while reading */}
+      <div className="sticky top-16 z-20 -mx-4 px-4 py-2.5 mb-6 bg-background/85 backdrop-blur border-b border-border/30 flex items-center gap-3">
+        <button onClick={() => setPage(-1)} className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 flex-shrink-0">
+          <ListOrdered className="h-3.5 w-3.5" /> Contents
+        </button>
+        <span className="text-xs text-muted-foreground truncate">
+          <span className="text-violet-400/80">Ch. {page + 1}</span> · {chapter.title}
+        </span>
+        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+          <div className="w-16 sm:w-24 h-1 rounded-full bg-border/40 overflow-hidden">
+            <div className="h-full bg-violet-400/70 transition-all" style={{ width: `${pct}%` }} />
+          </div>
+          <span className="text-[11px] text-muted-foreground tabular-nums">{pct}%</span>
+        </div>
+      </div>
+
       <motion.div key={page} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}
-        className="rounded-2xl border border-border/40 bg-card/30 p-8 sm:p-12">
+        className="rounded-2xl border border-border/40 bg-card/30 px-6 py-10 sm:px-16 sm:py-16 min-h-[70vh]">
         <p className="font-serif text-violet-400/70 text-sm mb-2">Chapter {page + 1}</p>
-        <h2 className="font-serif text-3xl font-bold tracking-tight mb-8">{chapter.title}</h2>
-        <div className="font-serif [&_p]:text-[1.05rem] [&_p]:leading-[1.85] first-letter:[&>div>p:first-of-type]:text-5xl">
+        <h2 className="font-serif text-2xl sm:text-[2rem] font-bold tracking-tight mb-8 leading-tight">{chapter.title}</h2>
+        <div className="max-w-[68ch] mx-auto font-serif [&_p]:text-[1.12rem] [&_p]:leading-[1.9] [&_h2]:font-serif [&_h3]:font-serif">
           <ContentMarkdown markdown={chapter.body} />
         </div>
       </motion.div>
@@ -282,12 +306,9 @@ export function EbookReader({ doc, onGateCta }: ReaderProps) {
         <Button variant="outline" size="sm" onClick={() => (page === 0 ? setPage(-1) : open(page - 1))} className="gap-1">
           <ChevronLeft className="h-4 w-4" /> {page === 0 ? "Contents" : "Previous"}
         </Button>
-        <div className="flex items-center gap-3">
-          <div className="w-28 h-1 rounded-full bg-border/40 overflow-hidden">
-            <div className="h-full bg-violet-400/70 transition-all" style={{ width: `${pct}%` }} />
-          </div>
-          <span className="text-xs text-muted-foreground">{pct}%</span>
-        </div>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          Chapter {page + 1} of {sections.length}{doc.gated ? "+" : ""}
+        </span>
         {isLast && doc.gated ? (
           <Button size="sm" className="gap-1 bg-white text-black hover:bg-gray-100" onClick={onGateCta}>
             Unlock the rest <ChevronRight className="h-4 w-4" />

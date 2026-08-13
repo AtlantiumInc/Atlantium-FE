@@ -97,7 +97,7 @@ export function ContentDocumentPage() {
             : null
         }
       />
-      <main className={`relative z-10 mx-auto px-4 py-6 w-full ${doc?.type === "post" ? "max-w-6xl" : presentation === "howto" || presentation === "comparison" || presentation === "document" ? "max-w-5xl" : "max-w-3xl"}`}>
+      <main className={`relative z-10 mx-auto px-4 py-6 w-full ${doc?.type === "post" ? "max-w-6xl" : presentation === "howto" || presentation === "comparison" || presentation === "document" ? "max-w-5xl" : presentation === "ebook" ? "max-w-4xl" : "max-w-3xl"}`}>
         <Link to={backLink.to} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6">
           <ChevronLeft className="h-4 w-4" /> {backLink.label}
         </Link>
@@ -115,22 +115,43 @@ export function ContentDocumentPage() {
         ) : (
           <div className={doc.type === "post" ? "grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-8 items-start" : ""}>
           <motion.article initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="min-w-0">
-            {/* Cover hero — image first, header sits beneath it */}
-            {doc.cover_image_url && (
+            {/* Cover hero — image first, header sits beneath it.
+                eBooks render their own cover page, so no hero above it. */}
+            {doc.cover_image_url && presentation !== "ebook" && (
               <div className="relative rounded-2xl overflow-hidden border border-border/30 mb-6 aspect-[16/7]">
                 <img src={doc.cover_image_url} alt="" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/10 to-transparent" />
               </div>
             )}
 
-            {/* Header — eyebrow / title / standfirst / byline rule */}
+            {/* eBooks carry their own cover page, so the page header collapses
+                to one quiet line and the book itself takes the screen. */}
+            {presentation === "ebook" ? (
+              <header ref={headerRef} className="mb-5">
+                <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1 text-[11px] uppercase tracking-widest text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5 text-violet-400 font-semibold">
+                    <BookOpen className="h-3 w-3" /> {PRESENTATION_LABELS.ebook}
+                  </span>
+                  {doc.collection_slug && <span>{doc.collection_slug.replace(/-/g, " ")}</span>}
+                  {doc.author && (
+                    <span className="normal-case tracking-normal">{doc.author.display_name}</span>
+                  )}
+                  {doc.meta?.read_time ? (
+                    <span className="normal-case tracking-normal inline-flex items-center gap-1">
+                      <Clock className="h-3 w-3" />{doc.meta.read_time} min
+                    </span>
+                  ) : null}
+                </div>
+                <h1 className="text-lg sm:text-xl font-bold tracking-tight mt-1.5">{doc.title}</h1>
+              </header>
+            ) : (
+            /* Header — eyebrow / title / standfirst / byline rule */
             <header ref={headerRef} className="mb-8">
               {/* Eyebrow: kind · collection */}
               <div className="flex flex-wrap items-center gap-2 mb-2.5 text-[11px] font-semibold uppercase tracking-widest">
                 {presentation && (
                   <span className="inline-flex items-center gap-1.5 text-violet-400">
                     {presentation === "howto" && <GraduationCap className="h-3 w-3" />}
-                    {presentation === "ebook" && <BookOpen className="h-3 w-3" />}
                     {presentation === "comparison" && <Scale className="h-3 w-3" />}
                     {presentation === "document" && <FileText className="h-3 w-3" />}
                     {PRESENTATION_LABELS[presentation]}
@@ -177,8 +198,10 @@ export function ContentDocumentPage() {
                 ))}
               </div>
             </header>
+            )}
 
             {presentation ? (
+
               <GuideReader doc={doc} presentation={presentation} onGateCta={openGateSignup} />
             ) : (
               <ContentMarkdown markdown={doc.body_md} />
