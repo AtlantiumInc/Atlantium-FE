@@ -409,8 +409,12 @@ class ApiClient {
     const data = text ? JSON.parse(text) : null;
 
     if (!response.ok) {
-      const error = new Error(data.message || "An error occurred") as Error & { status?: number };
+      const error = new Error(data.message || "An error occurred") as Error & {
+        status?: number;
+        code?: string;
+      };
       error.status = response.status;
+      error.code = data?.code ?? data?.error ?? undefined;
       throw error;
     }
 

@@ -69,6 +69,30 @@ export async function ensureMemberInGoodStanding(c: Context<{ Bindings: Env }>) 
     throw new HttpError(403, "onboarding_required", "Complete your member questionnaire to continue.");
   }
 }
+/**
+ * Non-throwing counterpart to ensureMemberInGoodStanding, for endpoints that
+ * serialize a public payload and simply omit member-only fields. Same rule:
+ * approved AND questionnaire complete (admins bypass).
+ */
+export async function hasMemberBenefits(c: Context<{ Bindings: Env }>): Promise<boolean> {
+  const session = await getAuthSession(c.env, c.req.raw);
+  const userId = session?.user?.id;
+  if (!userId) return false;
+  const db = createDb(c.env);
+  const [account] = await db.select().from(user).where(eq(user.id, userId)).limit(1);
+  if (!account) return false;
+  if (account.isAdmin) return true;
+  if (!account.isApproved) return false;
+  const [profile] = await db
+    .select()
+    .from(profiles)
+    .where(eq(profiles.ownerUserId, userId))
+    .limit(1);
+  if (!profile) return false;
+  const reg = (profile.registrationDetails ?? {}) as Record<string, unknown>;
+  return Boolean(profile.onboardingCompletedAt) || reg.is_completed === true;
+}
+
 for (const pattern of ["/lobby", "/lobby/*", "/realtime/*", "/dashboard/*"]) {
   appRoutes.use(pattern, async (c, next) => {
     await ensureMemberInGoodStanding(c);
@@ -398,6 +422,16 @@ appRoutes.post(
     const onboardingCompletedAt = isCompleted
       ? (activeProfile.onboardingCompletedAt ?? new Date())
       : activeProfile.onboardingCompletedAt;
+
+    // Completing the questionnaire is what grants access — there is no review
+    // queue. Only ever flips approval on; an admin suspension is undone by an
+    // admin, not by the member resubmitting the form.
+    if (isCompleted && !authUser.isApproved && !activeProfile.onboardingCompletedAt) {
+      await db
+        .update(user)
+        .set({ isApproved: true, updatedAt: new Date() })
+        .where(eq(user.id, authUser.id));
+    }
 
     const [updated] = await db
       .update(profiles)
@@ -953,7 +987,7 @@ const jobPostingWriteSchema = z.object({
   content: z.record(z.string(), z.unknown()).nullish(),
 });
 
-function publicJobPosting(row: typeof jobPostings.$inferSelect, hasSession = false) {
+function publicJobPosting(row: typeof jobPostings.$inferSelect, hasBenefits = false) {
   return {
     id: row.id,
     slug: row.slug,
@@ -964,8 +998,8 @@ function publicJobPosting(row: typeof jobPostings.$inferSelect, hasSession = fal
     seniority: row.seniority,
     salary_min: row.salaryMin,
     salary_max: row.salaryMax,
-    apply_url: hasSession ? row.applyUrl : null,
-    apply_gated: !hasSession,
+    apply_url: hasBenefits ? row.applyUrl : null,
+    apply_gated: !hasBenefits,
     status: row.status,
     posted_at: row.postedAt?.toISOString() ?? null,
     content: row.content ?? {},
@@ -1113,13 +1147,12 @@ appRoutes.get("/job_postings", async (c) => {
     asc(jobPostings.id),
   ];
 
-  const listSession = await getAuthSession(c.env, c.req.raw);
-  const listHasSession = Boolean(listSession?.user?.id);
+  const listHasBenefits = await hasMemberBenefits(c);
 
   if (c.req.query("format") !== "paged") {
     // Legacy bare-array shape for older bundles/scripts — newest 500.
     const rows = await db.select().from(jobPostings).where(where).orderBy(...order).limit(500);
-    return c.json(rows.map((row) => publicJobPosting(row, listHasSession)));
+    return c.json(rows.map((row) => publicJobPosting(row, listHasBenefits)));
   }
 
   const limit = Math.min(Math.max(Number(c.req.query("limit")) || 60, 1), 200);
@@ -1143,7 +1176,7 @@ appRoutes.get("/job_postings", async (c) => {
   ]);
   const t = totals[0];
   return c.json({
-    jobs: rows.map((row) => publicJobPosting(row, listHasSession)),
+    jobs: rows.map((row) => publicJobPosting(row, listHasBenefits)),
     total: t?.total ?? 0,
     counts: {
       remote: t?.remote ?? 0,
@@ -1163,8 +1196,7 @@ appRoutes.get("/job_postings/:slug", async (c) => {
     where: eq(jobPostings.slug, c.req.param("slug")),
   });
   if (!row) throw new HttpError(404, "not_found", "Job posting not found.");
-  const session = await getAuthSession(c.env, c.req.raw);
-  return c.json(publicJobPosting(row, Boolean(session?.user?.id)));
+  return c.json(publicJobPosting(row, await hasMemberBenefits(c)));
 });
 
 // The official application link — the one thing on a job page that needs a

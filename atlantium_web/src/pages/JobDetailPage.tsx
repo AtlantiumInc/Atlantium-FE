@@ -144,7 +144,7 @@ export function JobDetailPage() {
     if (job.apply_url) { setApplyUrl(job.apply_url); return; }
     if (!signup.isMember || !signup.isOnboarded) { setApplyUrl(null); return; }
     api.getJobApplyUrl(slug).then((r) => setApplyUrl(r.apply_url)).catch(() => {});
-  }, [job, slug, signup.isMember]);
+  }, [job, slug, signup.isMember, signup.isOnboarded]);
 
   const ApplyButton = ({ size }: { size?: "lg" }) => {
     if (liveApplyUrl) {

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
-import { ExternalLink, MapPin, Briefcase, Search, Building2, Clock, ChevronDown, ChevronUp, Cpu, GraduationCap, Bell, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
+import { ExternalLink, Lock, MapPin, Briefcase, Search, Building2, Clock, ChevronDown, ChevronUp, Cpu, GraduationCap, Bell, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PublicNavbar } from "@/components/PublicNavbar";
@@ -72,7 +72,17 @@ function getWorkplaceColor(type: string) {
   }
 }
 
-function JobCard({ job, index }: { job: Job; index: number }) {
+function JobCard({
+  job,
+  index,
+  onGatedApply,
+  gatedApplyLabel,
+}: {
+  job: Job;
+  index: number;
+  onGatedApply: () => void;
+  gatedApplyLabel: string;
+}) {
   const [expanded, setExpanded] = useState(false);
   const salary = formatSalary(job.salary_min, job.salary_max);
   const commitment = Array.isArray(job.commitment) ? job.commitment[0] : job.commitment;
@@ -205,12 +215,24 @@ function JobCard({ job, index }: { job: Job; index: number }) {
                 <ArrowRight className="h-3 w-3" />
               </Button>
             </Link>
-            <a href={job.apply_url ?? undefined} target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none">
-              <Button size="sm" variant="outline" className="gap-1.5 w-full sm:w-auto border-border/50 text-muted-foreground hover:text-foreground text-xs sm:text-sm h-8 sm:h-9">
-                Apply Now
-                <ExternalLink className="h-3 w-3" />
+            {job.apply_url ? (
+              <a href={job.apply_url} target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none">
+                <Button size="sm" variant="outline" className="gap-1.5 w-full sm:w-auto border-border/50 text-muted-foreground hover:text-foreground text-xs sm:text-sm h-8 sm:h-9">
+                  Apply Now
+                  <ExternalLink className="h-3 w-3" />
+                </Button>
+              </a>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onGatedApply}
+                className="gap-1.5 flex-1 sm:flex-none w-full sm:w-auto border-border/50 text-muted-foreground hover:text-foreground text-xs sm:text-sm h-8 sm:h-9"
+              >
+                <Lock className="h-3 w-3" />
+                {gatedApplyLabel}
               </Button>
-            </a>
+            )}
           </div>
         </div>
       )}
@@ -362,6 +384,16 @@ export function JobsPage() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const signup = useJobReportSignup();
+  const gatedApplyLabel = signup.isMember ? "Finish profile to apply" : "Join free to apply";
+  const handleGatedApply = useCallback(() => {
+    if (!signup.isMember) {
+      api.trackEvent("content_gate_signup_started", { surface: "jobs_board_apply" });
+      signup.openWithEmail(undefined, "apply");
+      return;
+    }
+    // Signed in but the questionnaire isn't done — that's the actual blocker.
+    signup.openQuestionnaire();
+  }, [signup]);
   const listRef = useRef<HTMLDivElement>(null);
   // Guards against out-of-order responses when filters change mid-flight.
   const requestSeq = useRef(0);
@@ -610,7 +642,12 @@ export function JobsPage() {
                       className="absolute top-0 left-0 w-full pb-3"
                       style={{ transform: `translateY(${vi.start - virtualizer.options.scrollMargin}px)` }}
                     >
-                      <JobCard job={jobs[vi.index]} index={vi.index} />
+                      <JobCard
+                        job={jobs[vi.index]}
+                        index={vi.index}
+                        onGatedApply={handleGatedApply}
+                        gatedApplyLabel={gatedApplyLabel}
+                      />
                     </div>
                   ))}
                 </div>

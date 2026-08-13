@@ -5,6 +5,7 @@ import { Lock, Mail, Phone, Linkedin, Globe, Loader2, Sparkles, ArrowRight, Hand
 import { Button } from "@/components/ui/button";
 import { api, type DirectoryContact, type ContactState } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useJobReportSignup } from "@/components/JobReportSignupModal";
 
 const ICONS: Record<string, typeof Mail> = {
   email: Mail,
@@ -31,6 +32,7 @@ export function ContactCard({
   onJoin: () => void;
 }) {
   const { user } = useAuth();
+  const signup = useJobReportSignup();
   const [state, setState] = useState<ContactState>("none");
   const [available, setAvailable] = useState<number | null>(null);
   const [refreshesAt, setRefreshesAt] = useState<string | null>(null);
@@ -65,8 +67,12 @@ export function ContactCard({
       setAvailable(r.reveals_available ?? null);
       setRefreshesAt(r.refreshes_at ?? null);
     } catch (error) {
-      const err = error as { status?: number; data?: { refreshes_at?: string } };
-      if (err?.status === 402) {
+      const err = error as { status?: number; code?: string; data?: { refreshes_at?: string } };
+      if (err?.code === "onboarding_required") {
+        // Not a failure — they just haven't finished the questionnaire yet.
+        toast.info("Finish your lab profile to reveal contacts.");
+        signup.openQuestionnaire();
+      } else if (err?.status === 402) {
         setState("upgrade_required");
         setAvailable(0);
         toast.error("You've used all your reveals for this window.");

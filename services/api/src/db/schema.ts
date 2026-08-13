@@ -33,7 +33,7 @@ export const user = pgTable("user", {
   email: text("email").notNull(),
   emailVerified: boolean("email_verified").notNull().default(false),
   isAdmin: boolean("is_admin").notNull().default(false),
-  isApproved: boolean("is_approved").notNull().default(true),
+  isApproved: boolean("is_approved").notNull().default(false),
   image: text("image"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

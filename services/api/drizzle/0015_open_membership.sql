@@ -1,13 +1,23 @@
--- Free membership opens up:
---  1. signups are auto-approved (the admin queue stays for revoking, not admitting)
---  2. published content is public — reading is the top of the funnel, not the product
---  3. member VALUE (apply links, contact reveals, the lab) now requires the
---     questionnaire instead, which is enforced in the API layer.
+-- Membership opens up, but the questionnaire becomes the gate:
+--  1. no admin review queue — approval is granted the moment a member
+--     completes the questionnaire (handled in the API layer)
+--  2. published content is public; reading is the top of the funnel, not the
+--     product
+--  3. member VALUE (apply links, contact reveals, the lab) requires a completed
+--     questionnaire, enforced server-side
+--
+-- is_approved keeps its `false` default: a signup that never answers the
+-- questionnaire never becomes an approved member.
 
-ALTER TABLE "user" ALTER COLUMN "is_approved" SET DEFAULT true;
-
--- Everyone waiting under the old policy is admitted; they applied in good faith.
-UPDATE "user" SET "is_approved" = true, "updated_at" = now() WHERE "is_approved" = false;
+-- Anyone who already finished the questionnaire is approved retroactively —
+-- they earned it under the old rules and shouldn't be stuck behind the queue.
+UPDATE "user" SET "is_approved" = true, "updated_at" = now()
+WHERE "is_approved" = false
+  AND "id" IN (
+    SELECT "owner_user_id" FROM "profiles"
+    WHERE "onboarding_completed_at" IS NOT NULL
+       OR "registration_details"->>'is_completed' = 'true'
+  );
 
 ALTER TABLE "content_documents" ALTER COLUMN "gate" SET DEFAULT 'public';
 
