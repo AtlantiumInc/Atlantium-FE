@@ -576,3 +576,78 @@ export const memberRoleRelations = relations(memberRoles, ({ one }) => ({
     references: [professionalPreferences.roleId],
   }),
 }));
+
+// ── P0B: trust primitives (plan §4.2, §4.3, §4.5) ───────────────────────────
+
+export const orgRelationship = pgEnum("org_relationship", [
+  "employee", "founder", "executive", "recruiter", "representative",
+]);
+export const orgAuthority = pgEnum("org_authority", ["none", "page_editor", "hiring", "admin"]);
+export const verificationType = pgEnum("verification_type", [
+  "identity", "employment", "org_authority", "investor", "advisor", "domain",
+]);
+export const evidenceType = pgEnum("evidence_type", [
+  "email_domain_otp", "admin_review", "member_vouch", "external_profile", "document", "payment_instrument",
+]);
+
+export const orgMemberships = pgTable("org_memberships", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  profileId: uuid("profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  entryId: uuid("entry_id").notNull().references(() => directoryEntries.id, { onDelete: "cascade" }),
+  relationship: orgRelationship("relationship").notNull(),
+  /** Employment is not authority: proving you work there ≠ speaking for them. */
+  authority: orgAuthority("authority").notNull().default("none"),
+  isCurrent: boolean("is_current").notNull().default(true),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  endedAt: timestamp("ended_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  entryIdx: index("org_memberships_entry_idx").on(table.entryId, table.authority),
+  profileIdx: index("org_memberships_profile_idx").on(table.profileId),
+}));
+
+export const orgDomains = pgTable("org_domains", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  entryId: uuid("entry_id").notNull().references(() => directoryEntries.id, { onDelete: "cascade" }),
+  domain: text("domain").notNull(),
+  isPrimary: boolean("is_primary").notNull().default(false),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  domainIdx: index("org_domains_domain_idx").on(table.domain),
+}));
+
+/**
+ * Verification is a grant, not an enum: it records who verified what, against
+ * which evidence, when it expires and whether it was revoked. Read it through
+ * `isVerified()` in src/lib/verification.ts — never by selecting rows directly,
+ * which is how expiry and revocation get forgotten.
+ */
+export const verificationGrants = pgTable("verification_grants", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  profileId: uuid("profile_id").references(() => profiles.id, { onDelete: "cascade" }),
+  memberRoleId: uuid("member_role_id").references(() => memberRoles.id, { onDelete: "cascade" }),
+  orgMembershipId: uuid("org_membership_id").references(() => orgMemberships.id, { onDelete: "cascade" }),
+  directoryEntryId: uuid("directory_entry_id").references(() => directoryEntries.id, { onDelete: "cascade" }),
+  verification: verificationType("verification").notNull(),
+  evidence: evidenceType("evidence").notNull(),
+  evidenceRef: text("evidence_ref"),
+  grantedBy: text("granted_by").references(() => user.id, { onDelete: "set null" }),
+  grantedAt: timestamp("granted_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  revokedReason: text("revoked_reason"),
+});
+
+export const workEmailVerifications = pgTable("work_email_verifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  profileId: uuid("profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  domain: text("domain").notNull(),
+  codeHash: text("code_hash").notNull(),
+  attempts: integer("attempts").notNull().default(0),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  consumedAt: timestamp("consumed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

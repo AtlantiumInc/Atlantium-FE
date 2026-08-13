@@ -4,6 +4,18 @@ import { and, asc, desc, eq, gte, ilike, isNull, lte, or, sql } from "drizzle-or
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { z } from "zod";
+import { sendOtpEmail } from "../lib/email";
+import { grantVerification } from "../lib/verification";
+import {
+  CODE_TTL_MINUTES,
+  MAX_ATTEMPTS,
+  candidateOrgsForDomain,
+  generateCode,
+  hashCode,
+  isFreeMailDomain,
+  latestPendingVerification,
+  normalizeDomain,
+} from "../lib/work-email";
 import { createDb } from "../db/client";
 import type { Db } from "../db/client";
 import { captureEvent } from "./content";
@@ -28,6 +40,8 @@ import {
   profileMembers,
   profiles,
   memberRoles,
+  orgMemberships,
+  workEmailVerifications,
   professionalPreferences,
   directoryEntries,
   user,
@@ -569,6 +583,135 @@ appRoutes.delete("/me/roles/:roleId", async (c) => {
   if (deleted.length === 0) throw new HttpError(404, "not_found", "Role not found.");
   return c.json({ roles: await loadOwnRoles(db, profile.id) });
 });
+
+
+// ── P0B: work-email verification → employment grant (plan §4.3) ─────────────
+
+appRoutes.post(
+  "/me/work-email/start",
+  zValidator("json", z.object({ email: z.string().email() })),
+  async (c) => {
+    const { db, authUser } = await requireAppUser(c);
+    const profile = await ensureDefaultProfile(db, authUser);
+    const email = c.req.valid("json").email.trim().toLowerCase();
+    const domain = normalizeDomain(email);
+
+    if (isFreeMailDomain(domain)) {
+      throw new HttpError(400, "personal_domain",
+        "Use your work email — a personal address can't prove where you work.");
+    }
+
+    const candidates = await candidateOrgsForDomain(db, domain);
+    if (candidates.length === 0) {
+      // Claim-only: we don't invent orgs from a domain (§4.1).
+      throw new HttpError(404, "no_matching_org",
+        "No organization in the directory uses that domain yet.");
+    }
+
+    const code = generateCode();
+    const expiresAt = new Date(Date.now() + CODE_TTL_MINUTES * 60 * 1000);
+    await db.insert(workEmailVerifications).values({
+      profileId: profile.id,
+      email,
+      domain,
+      codeHash: await hashCode(code, profile.id),
+      expiresAt,
+    });
+    await sendOtpEmail(c.env, email, code);
+
+    return c.json({
+      domain,
+      // A domain can legitimately map to several orgs, so the member resolves
+      // the ambiguity — possession of @foo.com never proves WHICH foo.
+      candidates: candidates.map((o) => ({ entry_id: o.entryId, name: o.name, slug: o.slug, kind: o.kind })),
+      expires_at: expiresAt.toISOString(),
+      // Same flag the auth OTP uses; must stay off in prod.
+      ...(isDebugAuthCodes(c.env) ? { dev_code: code } : {}),
+    });
+  },
+);
+
+appRoutes.post(
+  "/me/work-email/confirm",
+  zValidator("json", z.object({ code: z.string().trim().min(4).max(8), entry_id: z.string().uuid().optional() })),
+  async (c) => {
+    const { db, authUser } = await requireAppUser(c);
+    const profile = await ensureDefaultProfile(db, authUser);
+    const input = c.req.valid("json");
+
+    const pending = await latestPendingVerification(db, profile.id);
+    if (!pending) throw new HttpError(404, "no_pending_verification", "Start work-email verification first.");
+    if (pending.expiresAt.getTime() < Date.now()) {
+      throw new HttpError(400, "code_expired", "That code has expired. Request a new one.");
+    }
+    if (pending.attempts >= MAX_ATTEMPTS) {
+      throw new HttpError(429, "too_many_attempts", "Too many attempts. Request a new code.");
+    }
+
+    if (await hashCode(input.code, profile.id) !== pending.codeHash) {
+      await db
+        .update(workEmailVerifications)
+        .set({ attempts: pending.attempts + 1 })
+        .where(eq(workEmailVerifications.id, pending.id));
+      throw new HttpError(400, "invalid_code", "That code doesn't match.");
+    }
+
+    const candidates = await candidateOrgsForDomain(db, pending.domain);
+    if (candidates.length === 0) throw new HttpError(404, "no_matching_org", "No organization uses that domain.");
+
+    const chosen = input.entry_id
+      ? candidates.find((o) => o.entryId === input.entry_id)
+      : candidates.length === 1
+        ? candidates[0]
+        : undefined;
+    if (!chosen) {
+      // Ambiguous domain and no pick: refuse rather than guess an employer.
+      throw new HttpError(400, "org_choice_required", "Choose which organization you work for.", );
+    }
+
+    await db
+      .update(workEmailVerifications)
+      .set({ consumedAt: new Date() })
+      .where(eq(workEmailVerifications.id, pending.id));
+
+    // Employment, not authority. Speaking for the company is a separate,
+    // admin-reviewed grant (§4.4) — this one is a badge.
+    const [membership] = await db
+      .insert(orgMemberships)
+      .values({
+        profileId: profile.id,
+        entryId: chosen.entryId,
+        relationship: "employee",
+        authority: "none",
+      })
+      .onConflictDoNothing()
+      .returning();
+
+    const resolved = membership ?? (await db
+      .select()
+      .from(orgMemberships)
+      .where(and(
+        eq(orgMemberships.profileId, profile.id),
+        eq(orgMemberships.entryId, chosen.entryId),
+        eq(orgMemberships.relationship, "employee"),
+      ))
+      .limit(1))[0];
+
+    await grantVerification(db, {
+      subject: { orgMembershipId: resolved.id },
+      verification: "employment",
+      evidence: "email_domain_otp",
+      evidenceRef: pending.domain,
+    });
+
+    return c.json({
+      verified: true,
+      org: { entry_id: chosen.entryId, name: chosen.name, slug: chosen.slug },
+      authority: "none",
+      note: "Employment verified. Representing this organization is a separate review.",
+    });
+  },
+);
 
 appRoutes.post(
   "/profile/edit",
