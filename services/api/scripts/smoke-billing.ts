@@ -13,10 +13,39 @@
  *   - cancellation revokes the capability;
  *   - and, end to end: free member blocked from DMs → webhook → DM allowed.
  *
- *   DATABASE_URL=... STRIPE_WEBHOOK_SECRET=whsec_test ... npx tsx scripts/smoke-billing.ts
+ *   npx tsx scripts/smoke-billing.ts
  */
 import { createHmac } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { neon } from "@neondatabase/serverless";
+
+/**
+ * Read config from .dev.vars — the same file `wrangler dev` feeds the worker.
+ *
+ * The secret and price id here must match what the worker verifies against, or
+ * every signed event is refused and the smoke fails for a reason that has
+ * nothing to do with the code under test. Reading one file keeps them in step
+ * once real Stripe test values replace the placeholders. Explicit environment
+ * variables still win, so CI can override without editing the file.
+ */
+function loadDevVars(path = new URL("../.dev.vars", import.meta.url)) {
+  let raw: string;
+  try {
+    raw = readFileSync(path, "utf8");
+  } catch {
+    return; // absent in CI — env vars or the defaults below cover it
+  }
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq === -1) continue;
+    const key = trimmed.slice(0, eq).trim();
+    const value = trimmed.slice(eq + 1).trim().replace(/^["']|["']$/g, "");
+    if (!(key in process.env)) process.env[key] = value;
+  }
+}
+loadDevVars();
 
 const API = "http://localhost:8788/v1";
 const TAG = "bill-smoke";

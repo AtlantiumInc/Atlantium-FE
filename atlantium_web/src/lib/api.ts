@@ -391,6 +391,64 @@ export type MemberRole = {
   } | null;
 };
 
+export type OutreachStatus = {
+  mayInitiate: boolean;
+  unlimited: boolean;
+  penalised: boolean;
+  pendingUsed: number;
+  monthlyUsed: number;
+  pendingLimit: number | null;
+  monthlyLimit: number | null;
+};
+
+export type MemberConnection = {
+  id: string;
+  status: "pending" | "accepted" | "declined" | "removed";
+  source: "direct" | "atlantium_intro" | "member_intro";
+  direction: "incoming" | "outgoing";
+  other_profile_id: string;
+  message: string | null;
+  created_at: string;
+  accepted_at: string | null;
+};
+
+export type DmRequestSummary = {
+  id: string;
+  purpose: string;
+  body: string;
+  created_at: string;
+};
+
+export type MemberCard = {
+  profile_id: string;
+  display_name: string;
+  slug: string;
+  avatar_url: string | null;
+  bio: string | null;
+  location: string | null;
+  links: { website: string | null; linkedin: string | null; github: string | null };
+  roles: Array<{
+    id: string;
+    role: "professional" | "founder" | "investor" | "advisor";
+    title: string | null;
+    is_primary: boolean;
+    org: { id: string; name: string; slug: string } | null;
+  }>;
+  employers: Array<{ id: string; name: string; slug: string; relationship: string }>;
+  verifications: string[];
+  connection: { id: string; status: string; direction: "incoming" | "outgoing" } | null;
+  is_self: boolean;
+};
+
+export type BillingStatus = {
+  tier: "free" | "club" | "club_annual";
+  status: string | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  has_billing_account: boolean;
+  entitlements: string[];
+};
+
 class ApiClient {
   private authToken: string | null = null;
 
@@ -648,6 +706,68 @@ class ApiClient {
   }
 
   // ── Worker-backed approval queue (api.atlantium.ai, cookie-authed) ──
+  // ── P1: network loop ──────────────────────────────────────────────────────
+
+  async getOutreachStatus(): Promise<OutreachStatus> {
+    return this.request("/me/outreach", { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async getMember(profileId: string): Promise<{ member: MemberCard }> {
+    return this.request(`/members/${profileId}`, { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  /** Lab connections (P1). Distinct from the legacy getConnections() above. */
+  async getMyConnections(): Promise<{ connections: MemberConnection[] }> {
+    return this.request("/me/connections", { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async requestConnection(body: { profile_id: string; message?: string; acting_role_id?: string; purpose?: string }) {
+    return this.request<{ connection: MemberConnection; mutual: boolean }>(
+      "/connections/requests", { method: "POST", body: JSON.stringify(body) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async decideConnection(id: string, accept: boolean) {
+    return this.request<{ connection: MemberConnection }>(
+      `/connections/requests/${id}/decide`, { method: "POST", body: JSON.stringify({ accept }) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async removeConnection(id: string) {
+    return this.request<{ success: boolean }>(`/connections/${id}`, { method: "DELETE" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async blockMember(profileId: string, reason?: string) {
+    return this.request<{ success: boolean }>("/blocks",
+      { method: "POST", body: JSON.stringify({ profile_id: profileId, reason }) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async getDmRequests(): Promise<{ requests: DmRequestSummary[] }> {
+    return this.request("/dm/requests", { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async sendDmRequest(body: { profile_id: string; body: string; purpose: string; acting_role_id?: string }) {
+    return this.request<{ direct: boolean; request_id?: string; thread_id?: string }>(
+      "/dm/requests", { method: "POST", body: JSON.stringify(body) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async decideDmRequest(id: string, accept: boolean) {
+    return this.request<{ accepted: boolean; thread_id?: string }>(
+      `/dm/requests/${id}/decide`, { method: "POST", body: JSON.stringify({ accept }) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  // ── P1b: billing ──────────────────────────────────────────────────────────
+
+  async getBillingStatus(): Promise<BillingStatus> {
+    return this.request("/billing/status", { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async startCheckout(plan: "club" | "club_annual"): Promise<{ checkout_url: string }> {
+    return this.request("/billing/checkout", { method: "POST", body: JSON.stringify({ plan }) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async openBillingPortal(): Promise<{ portal_url: string }> {
+    return this.request("/billing/portal", { method: "POST" }, ATLANTIUM_API_BASE_URL);
+  }
+
   async getMemberRoles(): Promise<{ roles: MemberRole[] }> {
     return this.request("/me/roles", { method: "GET" }, ATLANTIUM_API_BASE_URL);
   }

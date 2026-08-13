@@ -53,6 +53,7 @@ import {
   memberRoles,
   orgMemberships,
   workEmailVerifications,
+  verificationGrants,
   memberConnections,
   memberBlocks,
   dmPolicies,
@@ -1170,6 +1171,100 @@ appRoutes.post("/billing/webhook", async (c) => {
     await db.delete(billingEvents).where(eq(billingEvents.id, event.id));
     throw error;
   }
+});
+
+
+/**
+ * A member as another member sees them. Deliberately narrow: personas,
+ * affiliations and verification badges only.
+ *
+ * It NEVER exposes seeking status or visibility. `visibleSeekers()` is the only
+ * path to that, and a profile endpoint that quietly included it would undo the
+ * whole privacy design (§3.4, §8.7).
+ */
+appRoutes.get("/members/:profileId", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const me = await ensureDefaultProfile(db, authUser);
+  const profileId = c.req.param("profileId");
+
+  const [target] = await db.select().from(profiles).where(eq(profiles.id, profileId)).limit(1);
+  if (!target) throw new HttpError(404, "not_found", "Member not found.");
+
+  // A blocked viewer gets the same 404 as a stranger — presence is not
+  // confirmed to someone who was blocked.
+  const [blocked] = await db.select({ b: memberBlocks.blockerProfileId }).from(memberBlocks)
+    .where(or(
+      and(eq(memberBlocks.blockerProfileId, target.id), eq(memberBlocks.blockedProfileId, me.id)),
+      and(eq(memberBlocks.blockerProfileId, me.id), eq(memberBlocks.blockedProfileId, target.id)),
+    )).limit(1);
+  if (blocked) throw new HttpError(404, "not_found", "Member not found.");
+
+  const roles = await db
+    .select({ role: memberRoles, org: directoryEntries })
+    .from(memberRoles)
+    .leftJoin(directoryEntries, eq(directoryEntries.id, memberRoles.entryId))
+    .where(and(eq(memberRoles.profileId, target.id), sql`${memberRoles.confirmedAt} IS NOT NULL`));
+
+  const grants = await db
+    .select({ verification: verificationGrants.verification })
+    .from(verificationGrants)
+    .leftJoin(memberRoles, eq(memberRoles.id, verificationGrants.memberRoleId))
+    .leftJoin(orgMemberships, eq(orgMemberships.id, verificationGrants.orgMembershipId))
+    .where(and(
+      isNull(verificationGrants.revokedAt),
+      or(eq(memberRoles.profileId, target.id), eq(orgMemberships.profileId, target.id)),
+    ));
+
+  const employers = await db
+    .select({ org: directoryEntries, relationship: orgMemberships.relationship })
+    .from(orgMemberships)
+    .innerJoin(directoryEntries, eq(directoryEntries.id, orgMemberships.entryId))
+    .where(and(eq(orgMemberships.profileId, target.id), eq(orgMemberships.isCurrent, true)));
+
+  const [connection] = await db.select().from(memberConnections)
+    .where(and(
+      inArray(memberConnections.status, ["pending", "accepted"]),
+      or(
+        and(eq(memberConnections.requesterProfileId, me.id), eq(memberConnections.recipientProfileId, target.id)),
+        and(eq(memberConnections.requesterProfileId, target.id), eq(memberConnections.recipientProfileId, me.id)),
+      ),
+    )).limit(1);
+
+  const metadata = (target.metadata ?? {}) as Record<string, string>;
+  return c.json({
+    member: {
+      profile_id: target.id,
+      display_name: target.displayName,
+      slug: target.slug,
+      avatar_url: target.avatarUrl,
+      bio: metadata.bio ?? null,
+      location: metadata.location ?? null,
+      links: {
+        website: metadata.website_url ?? null,
+        linkedin: metadata.linkedin_url ?? null,
+        github: metadata.github_url ?? null,
+      },
+      roles: roles.map((r) => ({
+        id: r.role.id,
+        role: r.role.role,
+        title: r.role.title,
+        is_primary: r.role.isPrimary,
+        org: r.org ? { id: r.org.id, name: r.org.name, slug: r.org.slug } : null,
+      })),
+      employers: employers.map((e) => ({
+        id: e.org.id, name: e.org.name, slug: e.org.slug, relationship: e.relationship,
+      })),
+      verifications: [...new Set(grants.map((g) => g.verification))],
+      connection: connection
+        ? {
+            id: connection.id,
+            status: connection.status,
+            direction: connection.requesterProfileId === me.id ? "outgoing" : "incoming",
+          }
+        : null,
+      is_self: target.id === me.id,
+    },
+  });
 });
 
 appRoutes.post(

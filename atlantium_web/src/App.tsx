@@ -8,6 +8,8 @@ import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { XanoRealtimeProvider } from "@/contexts/XanoRealtimeContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { NetworkPage } from "@/pages/NetworkPage";
+import { MemberProfilePage } from "@/pages/MemberProfilePage";
 import { AdminProtectedRoute } from "@/components/admin/AdminProtectedRoute";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoginPage } from "@/pages/LoginPage";
@@ -135,6 +137,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <MemberDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/network"
+        element={
+          <ProtectedRoute>
+            <NetworkPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/members/:profileId"
+        element={
+          <ProtectedRoute>
+            <MemberProfilePage />
           </ProtectedRoute>
         }
       />
