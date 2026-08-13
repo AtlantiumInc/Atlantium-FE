@@ -226,7 +226,7 @@ export function renderDigest(sections: DigestSection[], unsubscribeUrl: string):
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
         <tr><td style="background:#0b1220;padding:26px 32px;">
           <div style="font-size:20px;font-weight:800;letter-spacing:3px;color:#ffffff;">ATLANTIUM</div>
-          <div style="font-size:13px;color:#7dd3fc;padding-top:4px;">This Week at Atlantium · Citizen Technology Lab</div>
+          <div style="font-size:13px;color:#7dd3fc;padding-top:4px;">This Week at Atlantium · Citizen Technology Network</div>
         </td></tr>
         ${blocks}
         <tr><td style="padding:26px 32px 30px;">

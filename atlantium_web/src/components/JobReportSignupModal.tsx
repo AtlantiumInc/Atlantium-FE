@@ -162,7 +162,7 @@ export function JobReportSignupModal({
                     <Newspaper className="h-5 w-5 text-cyan-400" />
                   </div>
                   <p className="text-[10px] font-bold text-cyan-400 uppercase tracking-[0.2em]">
-                    Atlantium · Citizen Technology Lab
+                    Atlantium · Citizen Technology Network
                   </p>
                 </div>
                 <DialogTitle className="text-2xl tracking-tight">
