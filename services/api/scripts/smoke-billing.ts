@@ -186,6 +186,35 @@ async function main() {
   check("...and revokes dm.send", !afterCancel.entitlements?.includes("dm.send"),
     JSON.stringify(afterCancel.entitlements));
 
+  // ── comps: capability without a subscription (execution plan R6) ─────────
+  const comped = await member("comped");
+  const compTarget = await member("comp-target");
+  const Hc = { "content-type": "application/json", cookie: comped.cookie };
+
+  const beforeComp = await fetch(`${API}/dm/requests`, {
+    method: "POST", headers: Hc,
+    body: JSON.stringify({ profile_id: compTarget.profileId, purpose: "peer", body: "hi" }),
+  });
+  check("comp target starts unable to DM", beforeComp.status === 403, `status=${beforeComp.status}`);
+
+  await sql`insert into entitlement_grants (user_id, entitlement, reason, expires_at)
+            values (${comped.userId}, 'dm.send', 'smoke comp', now() + interval '180 days')`;
+  const afterComp = await fetch(`${API}/dm/requests`, {
+    method: "POST", headers: Hc,
+    body: JSON.stringify({ profile_id: compTarget.profileId, purpose: "peer", body: "hi" }),
+  });
+  check("a comp grants dm.send without any subscription", afterComp.status === 200, `status=${afterComp.status}`);
+
+  const compStatus = await (await fetch(`${API}/billing/status`, { headers: Hc })).json() as any;
+  check("...and the member is still tier=free (revenue stays honest)",
+    compStatus.tier === "free" && compStatus.entitlements.includes("dm.send"),
+    `tier=${compStatus.tier}`);
+
+  await sql`update entitlement_grants set expires_at = now() - interval '1 day' where user_id = ${comped.userId}`;
+  const expired = await (await fetch(`${API}/billing/status`, { headers: Hc })).json() as any;
+  check("an expired comp stops granting", !expired.entitlements.includes("dm.send"),
+    JSON.stringify(expired.entitlements));
+
   await cleanup();
   console.log(`\n${pass} passed, ${fail} failed`);
   if (fail) process.exit(1);

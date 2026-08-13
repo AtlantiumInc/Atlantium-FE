@@ -727,3 +727,20 @@ export const billingEvents = pgTable("billing_events", {
   payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
   error: text("error"),
 });
+
+/**
+ * Directly granted capabilities — comps. Separate from `memberships` on
+ * purpose: a comp is not a subscription, and faking a paid tier would corrupt
+ * every revenue figure derived from it.
+ */
+export const entitlementGrants = pgTable("entitlement_grants", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  entitlement: text("entitlement").notNull(),
+  reason: text("reason").notNull(),
+  grantedBy: text("granted_by").references(() => user.id, { onDelete: "set null" }),
+  grantedAt: timestamp("granted_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  revokedReason: text("revoked_reason"),
+});
