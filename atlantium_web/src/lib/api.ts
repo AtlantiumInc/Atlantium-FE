@@ -228,7 +228,8 @@ export interface JobPosting {
   seniority?: string;
   salary_min?: number | null;
   salary_max?: number | null;
-  apply_url: string;
+  apply_url: string | null;
+  apply_gated?: boolean;
   status: string;
   posted_at?: string | null;
   content?: JobPostingContent;
@@ -1521,6 +1522,10 @@ class ApiClient {
     provenance: Array<{ source: string; source_url?: string | null; last_seen_at: string }>;
   }> {
     return this.request(`/directory/${kind}/${slug}`, { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async getJobApplyUrl(slug: string): Promise<{ apply_url: string }> {
+    return this.request(`/job_postings/${slug}/apply`, { method: "GET" }, ATLANTIUM_API_BASE_URL);
   }
 
   async getContactState(kind: string, slug: string): Promise<{

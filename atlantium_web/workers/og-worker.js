@@ -16,7 +16,7 @@ const ATLANTIUM_API_BASE = 'https://api.atlantium.ai/v1';
 const SITE_ORIGIN = 'https://atlantium.ai';
 
 const BOT_USER_AGENTS =
-  /facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|Slackbot|TelegramBot|Discordbot|Pinterest|Googlebot/i;
+  /facebookexternalhit|facebookcatalog|Facebot|FBAN|FBAV|FB_IAB|Messenger|Twitterbot|LinkedInBot|WhatsApp|Slackbot|Slack-ImgProxy|TelegramBot|Discordbot|Pinterest|Googlebot|bingbot|Applebot|redditbot|SkypeUriPreview|vkShare|Iframely|embedly|Yahoo|DuckDuckBot|Mastodon|Bluesky|nostr/i;
 
 // ---------------------------------------------------------------------------
 // Entry point
@@ -52,6 +52,10 @@ export default {
 
     if ((match = pathname.match(/^\/og\/jobs\/([^/]+?)(?:\.png)?\/?$/))) {
       return renderJobOgImage(match[1], request);
+    }
+
+    if ((match = pathname.match(/^\/og\/directory\/([a-z]+)\/([^/]+?)(?:\.png)?\/?$/))) {
+      return renderDirectoryOgImage(match[1], match[2], request);
     }
 
     if ((match = pathname.match(/^\/blog\/([^/]+)\/?$/))) {
@@ -303,23 +307,137 @@ async function fetchDirectoryOg(kind, slug) {
     <link rel="canonical" href="${escapeHtml(canonical)}" />
     <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`;
 
+  const kindLabel = entry.kind === 'grant' ? 'Atlanta Grants & Programs'
+    : entry.kind === 'investor' ? 'Atlanta Investors'
+    : entry.kind === 'company' ? 'Atlanta Companies Hiring'
+    : 'Atlanta Programs';
+
   return buildOgString({
     type: 'website',
     siteName: 'Atlantium',
-    title: `${entry.name} — Atlanta Grants & Programs`,
-    description: description || `${entry.name} — on the Atlantium grants directory.`,
-    image: `${SITE_ORIGIN}/logo-og.png`,
+    title: `${entry.name} — ${kindLabel}`,
+    description: description || `${entry.name} — on the Atlantium directory.`,
+    image: `${SITE_ORIGIN}/og/directory/${kind}/${encodeURIComponent(entry.slug)}.png?v=${OG_RENDER_VERSION}`,
+    imageWidth: '1200',
+    imageHeight: '630',
     url: canonical,
-    twitterCard: 'summary',
+    twitterCard: 'summary_large_image',
     extra,
   });
+}
+
+
+// ---------------------------------------------------------------------------
+// Directory OG cards — grants, programs, investors, companies
+// ---------------------------------------------------------------------------
+
+async function renderDirectoryOgImage(kind, slug, request) {
+  const cache = caches.default;
+  const cacheUrl = new URL(request.url);
+  cacheUrl.searchParams.set('v', OG_RENDER_VERSION);
+  const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
+  const cached = await cache.match(cacheKey);
+  if (cached) return cached;
+
+  const res = await fetch(`${ATLANTIUM_API_BASE}/directory/${kind}/${encodeURIComponent(slug)}`);
+  if (!res.ok) return Response.redirect(`${SITE_ORIGIN}/og-image.png`, 302);
+  const { entry, jobs } = await res.json();
+  if (!entry || !entry.name) return Response.redirect(`${SITE_ORIGIN}/og-image.png`, 302);
+
+  const THEME = {
+    grant:    { label: 'ATLANTA GRANTS',    accent: '#22d3ee', glow: 'rgba(14,165,233,0.16)' },
+    resource: { label: 'ATLANTA PROGRAMS',  accent: '#a78bfa', glow: 'rgba(139,92,246,0.16)' },
+    investor: { label: 'ATLANTA INVESTORS', accent: '#34d399', glow: 'rgba(16,185,129,0.16)' },
+    company:  { label: 'HIRING IN ATLANTA', accent: '#7dd3fc', glow: 'rgba(56,189,248,0.16)' },
+  }[kind] || { label: 'ATLANTIUM DIRECTORY', accent: '#22d3ee', glow: 'rgba(14,165,233,0.16)' };
+
+  const badge = (label, color, bg, border) => `
+    <div style="display: flex; align-items: center; margin-right: 14px; padding: 6px 16px; border-radius: 999px; font-size: 22px; font-weight: 600; color: ${color}; background: ${bg}; border: 1px solid ${border};">${escapeCard(label)}</div>`;
+
+  const g = entry.grant || {};
+  const amount = g.amount_max
+    ? (g.amount_min ? `$${Math.round(g.amount_min / 1000)}k\u2013$${Math.round(g.amount_max / 1000)}k` : `Up to $${Math.round(g.amount_max / 1000)}k`)
+    : null;
+  const days = typeof g.days_until_close === 'number'
+    ? (g.days_until_close <= 0 ? 'Closes today' : `${g.days_until_close} days left`)
+    : (g.recurring ? 'Rolling deadline' : null);
+
+  const badges = [
+    amount ? badge(amount, '#6ee7b7', 'rgba(16,185,129,0.10)', 'rgba(16,185,129,0.35)') : '',
+    days ? badge(days, '#fcd34d', 'rgba(245,158,11,0.12)', 'rgba(245,158,11,0.4)') : '',
+    g.funder ? badge(g.funder.length > 32 ? `${g.funder.slice(0, 30)}\u2026` : g.funder, '#a5b4fc', 'rgba(99,102,241,0.12)', 'rgba(99,102,241,0.4)') : '',
+    entry.resource && entry.resource.category ? badge(entry.resource.category.replace(/_/g, ' '), '#c4b5fd', 'rgba(139,92,246,0.12)', 'rgba(139,92,246,0.4)') : '',
+    kind === 'company' && jobs && jobs.length ? badge(`${jobs.length} open role${jobs.length === 1 ? '' : 's'}`, '#34d399', 'rgba(16,185,129,0.12)', 'rgba(16,185,129,0.4)') : '',
+  ].filter(Boolean).join('');
+
+  const name = entry.name.length > 60 ? `${entry.name.slice(0, 57)}\u2026` : entry.name;
+  const summary = entry.summary
+    ? (entry.summary.length > 150 ? `${entry.summary.slice(0, 147)}\u2026` : entry.summary)
+    : '';
+  let location = (entry.location || 'Atlanta, GA').split(/\s+or\s+/i)[0];
+  if (location.length > 30) location = `${location.slice(0, 28)}\u2026`;
+
+  const cta = kind === 'grant' ? 'View deadline & eligibility'
+    : kind === 'company' ? 'See open roles'
+    : kind === 'investor' ? 'View investor profile'
+    : 'View program';
+
+  const html = `
+  <div style="display: flex; flex-direction: column; width: 1200px; height: 630px; background: linear-gradient(135deg, #04070d 0%, #071120 55%, #0a1a2e 100%); padding: 56px 64px; font-family: 'Inter'; position: relative;">
+    <div style="display: flex; position: absolute; top: -180px; right: -140px; width: 520px; height: 520px; border-radius: 999px; background: ${THEME.glow};"></div>
+    <div style="display: flex; position: absolute; bottom: -220px; left: -160px; width: 480px; height: 480px; border-radius: 999px; background: rgba(99,102,241,0.10);"></div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; flex-shrink: 0;">
+        <div style="display: flex; font-size: 34px; font-weight: 800; color: #ffffff; letter-spacing: 2px;">ATLANTIUM</div>
+        <div style="display: flex; flex-shrink: 0; white-space: nowrap; margin-left: 18px; padding: 6px 14px; border-radius: 999px; font-size: 20px; font-weight: 600; color: ${THEME.accent}; background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.35); letter-spacing: 1px;">${THEME.label}</div>
+      </div>
+      <div style="display: flex; margin-left: 24px; font-size: 22px; color: #64748b;">${escapeCard(location)}</div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; margin-top: 56px; flex-grow: 1;">
+      <div style="display: flex; font-size: ${name.length > 40 ? 54 : 64}px; font-weight: 800; color: #f8fafc; line-height: 1.15; max-width: 1050px;">${escapeCard(name)}</div>
+      ${summary ? `<div style="display: flex; margin-top: 20px; font-size: 26px; color: #94a3b8; line-height: 1.35; max-width: 1000px;">${escapeCard(summary)}</div>` : ''}
+      <div style="display: flex; margin-top: 28px; flex-wrap: wrap;">${badges}</div>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(148,163,184,0.15); padding-top: 24px;">
+      <div style="display: flex; font-size: 22px; color: #94a3b8;">atlantium.ai/directory</div>
+      <div style="display: flex; font-size: 22px; font-weight: 600; color: ${THEME.accent};">${escapeCard(cta)}</div>
+    </div>
+  </div>`;
+
+  const [regular, semibold, extrabold] = await Promise.all([
+    loadFont(FONT_URLS.regular),
+    loadFont(FONT_URLS.semibold),
+    loadFont(FONT_URLS.extrabold),
+  ]);
+
+  const image = new ImageResponse(html, {
+    width: 1200,
+    height: 630,
+    fonts: [
+      { name: 'Inter', data: regular, weight: 400, style: 'normal' },
+      { name: 'Inter', data: semibold, weight: 600, style: 'normal' },
+      { name: 'Inter', data: extrabold, weight: 800, style: 'normal' },
+    ],
+  });
+
+  const response = new Response(image.body, {
+    headers: {
+      'content-type': 'image/png',
+      'cache-control': 'public, max-age=86400, s-maxage=604800',
+    },
+  });
+  await cache.put(cacheKey, response.clone());
+  return response;
 }
 
 // ---------------------------------------------------------------------------
 // Per-job OG image (1200x630 PNG rendered with satori/resvg via workers-og)
 // ---------------------------------------------------------------------------
 
-const OG_RENDER_VERSION = '3';
+const OG_RENDER_VERSION = '4';
 
 const FONT_URLS = {
   regular: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.ttf',
@@ -368,7 +486,7 @@ async function renderJobOgImage(slug, request) {
   if (location.length > 30) location = `${location.slice(0, 28)}\u2026`;
 
   const badge = (label, color, bg, border) => `
-    <div style="display: flex; align-items: center; margin-right: 14px; padding: 6px 16px; border-radius: 999px; font-size: 22px; font-weight: 600; color: ${color}; background: ${bg}; border: 1px solid ${border};">${escapeHtml(label)}</div>`;
+    <div style="display: flex; align-items: center; margin-right: 14px; padding: 6px 16px; border-radius: 999px; font-size: 22px; font-weight: 600; color: ${color}; background: ${bg}; border: 1px solid ${border};">${escapeCard(label)}</div>`;
 
   const badges = [
     isNewThisWeek ? badge('New this week', '#22d3ee', 'rgba(6,182,212,0.15)', 'rgba(34,211,238,0.5)') : '',
@@ -380,7 +498,7 @@ async function renderJobOgImage(slug, request) {
   const chips = stack
     .map(
       (t) => `
-    <div style="display: flex; margin-right: 10px; margin-bottom: 10px; padding: 5px 14px; border-radius: 8px; font-size: 20px; font-weight: 400; color: #67e8f9; background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.25);">${escapeHtml(t)}</div>`
+    <div style="display: flex; margin-right: 10px; margin-bottom: 10px; padding: 5px 14px; border-radius: 8px; font-size: 20px; font-weight: 400; color: #67e8f9; background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.25);">${escapeCard(t)}</div>`
     )
     .join('');
 
@@ -396,12 +514,12 @@ async function renderJobOgImage(slug, request) {
         <div style="display: flex; font-size: 34px; font-weight: 800; color: #ffffff; letter-spacing: 2px;">ATLANTIUM</div>
         <div style="display: flex; flex-shrink: 0; white-space: nowrap; margin-left: 18px; padding: 6px 14px; border-radius: 999px; font-size: 20px; font-weight: 600; color: #22d3ee; background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.35); letter-spacing: 1px;">ATLANTA TECH JOBS</div>
       </div>
-      <div style="display: flex; margin-left: 24px; font-size: 22px; color: #64748b;">${escapeHtml(location)}</div>
+      <div style="display: flex; margin-left: 24px; font-size: 22px; color: #64748b;">${escapeCard(location)}</div>
     </div>
 
     <div style="display: flex; flex-direction: column; margin-top: 64px; flex-grow: 1;">
-      <div style="display: flex; font-size: ${title.length > 40 ? 54 : 64}px; font-weight: 800; color: #f8fafc; line-height: 1.15; max-width: 1050px;">${escapeHtml(title)}</div>
-      <div style="display: flex; margin-top: 20px; font-size: 32px; font-weight: 600; color: #7dd3fc;">${escapeHtml(job.company || '')}</div>
+      <div style="display: flex; font-size: ${title.length > 40 ? 54 : 64}px; font-weight: 800; color: #f8fafc; line-height: 1.15; max-width: 1050px;">${escapeCard(title)}</div>
+      <div style="display: flex; margin-top: 20px; font-size: 32px; font-weight: 600; color: #7dd3fc;">${escapeCard(job.company || '')}</div>
       <div style="display: flex; margin-top: 28px;">${badges}</div>
     </div>
 
@@ -487,6 +605,11 @@ function injectOgTags(html, ogTags) {
     .replace(/<title>[^<]*<\/title>/i, '');
 
   return html.replace(/<head>/i, `<head>${ogTags}`);
+}
+
+function escapeCard(str) {
+  if (!str) return '';
+  return String(str).replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function escapeHtml(str) {

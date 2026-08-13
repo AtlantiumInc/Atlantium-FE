@@ -205,7 +205,7 @@ function JobCard({ job, index }: { job: Job; index: number }) {
                 <ArrowRight className="h-3 w-3" />
               </Button>
             </Link>
-            <a href={job.apply_url} target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none">
+            <a href={job.apply_url ?? undefined} target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none">
               <Button size="sm" variant="outline" className="gap-1.5 w-full sm:w-auto border-border/50 text-muted-foreground hover:text-foreground text-xs sm:text-sm h-8 sm:h-9">
                 Apply Now
                 <ExternalLink className="h-3 w-3" />

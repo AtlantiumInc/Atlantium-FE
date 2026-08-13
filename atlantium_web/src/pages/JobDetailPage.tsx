@@ -16,6 +16,7 @@ import {
   Plane,
   GraduationCap,
   CheckCircle2,
+  Lock,
   ArrowRight,
   X,
 } from "lucide-react";
@@ -131,6 +132,62 @@ export function JobDetailPage() {
       })
       .finally(() => setIsLoading(false));
   }, [slug]);
+
+  const [applyUrl, setApplyUrl] = useState<string | null>(null);
+  const [isUnlocking, setIsUnlocking] = useState(false);
+  const liveApplyUrl = applyUrl ?? job?.apply_url ?? null;
+
+  // Members get the official link straight away; everyone else sees the door.
+  useEffect(() => {
+    if (!job || !slug) return;
+    if (job.apply_url) { setApplyUrl(job.apply_url); return; }
+    if (!signup.isMember) { setApplyUrl(null); return; }
+    api.getJobApplyUrl(slug).then((r) => setApplyUrl(r.apply_url)).catch(() => {});
+  }, [job, slug, signup.isMember]);
+
+  const ApplyButton = ({ size }: { size?: "lg" }) => {
+    if (liveApplyUrl) {
+      return (
+        <a
+          href={liveApplyUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => api.trackEvent("job_apply_clicked", { slug, company: job?.company })}
+          className="flex-shrink-0"
+        >
+          <Button size={size} className="gap-2 bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30 w-full sm:w-auto">
+            Apply Now
+            <ExternalLink className="h-4 w-4" />
+          </Button>
+        </a>
+      );
+    }
+    return (
+      <Button
+        size={size}
+        disabled={isUnlocking}
+        onClick={async () => {
+          if (!signup.isMember) {
+            api.trackEvent("content_gate_signup_started", { slug, surface: "job_apply" });
+            signup.openWithEmail();
+            return;
+          }
+          setIsUnlocking(true);
+          try {
+            const r = await api.getJobApplyUrl(slug!);
+            setApplyUrl(r.apply_url);
+            window.open(r.apply_url, "_blank", "noopener,noreferrer");
+          } finally {
+            setIsUnlocking(false);
+          }
+        }}
+        className="gap-2 bg-white text-black hover:bg-gray-100 w-full sm:w-auto flex-shrink-0"
+      >
+        <Lock className="h-4 w-4" />
+        {isUnlocking ? "Opening..." : "Join free to apply"}
+      </Button>
+    );
+  };
 
   const salary = formatSalary(job?.salary_min, job?.salary_max);
   const commitment = Array.isArray(job?.content?.commitment)
@@ -286,15 +343,7 @@ export function JobDetailPage() {
 
                 {/* Apply CTA */}
                 <div className="flex-shrink-0">
-                  <a href={job.apply_url} target="_blank" rel="noopener noreferrer">
-                    <Button
-                      size="lg"
-                      className="gap-2 bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30 w-full sm:w-auto"
-                    >
-                      Apply Now
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  </a>
+                  <ApplyButton size="lg" />
                 </div>
               </div>
             </div>
@@ -340,14 +389,10 @@ export function JobDetailPage() {
                     <p className="text-sm font-medium text-foreground">Ready to apply?</p>
                     <p className="text-xs text-muted-foreground">
                       {job.company} is hiring for this role.
+                      {!liveApplyUrl && " A free account unlocks the official application link."}
                     </p>
                   </div>
-                  <a href={job.apply_url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
-                    <Button className="gap-2 bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30">
-                      Apply Now
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  </a>
+                  <ApplyButton />
                 </div>
               </div>
 

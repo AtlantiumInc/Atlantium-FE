@@ -100,7 +100,7 @@ function toCardJob(j: JobPosting): Job {
     salary_min: j.salary_min ?? null,
     salary_max: j.salary_max ?? null,
     tech_stack: j.content?.tech_stack ?? [],
-    apply_url: j.apply_url,
+    apply_url: j.apply_url ?? "",
   };
 }
 

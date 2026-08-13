@@ -15,6 +15,7 @@ import {
   directorySources,
   funnelEvents,
   grantDetails,
+  jobPostings,
   profiles,
   resourceDetails,
   threadMessages,
@@ -47,6 +48,8 @@ const FUNNEL_EVENT_NAMES = new Set([
   "upgrade_clicked",
   "upgrade_completed",
   "comment_posted",
+  "job_apply_revealed",
+  "job_apply_clicked",
 ]);
 
 const COMMENT_RATE_LIMIT_PER_MINUTE = 10;
@@ -676,8 +679,38 @@ contentRoutes.get("/directory/:kind/:slug", async (c) => {
     .from(directoryEntrySources)
     .where(eq(directoryEntrySources.entryId, row.entry.id));
 
+  // A company's open roles are the whole point of its page. Matched on the
+  // canonical name the board scraped (the alias table resolves the entry).
+  const openJobs = row.entry.kind === "company"
+    ? await db
+        .select({
+          slug: jobPostings.slug,
+          title: jobPostings.title,
+          location: jobPostings.location,
+          workplaceType: jobPostings.workplaceType,
+          seniority: jobPostings.seniority,
+          salaryMin: jobPostings.salaryMin,
+          salaryMax: jobPostings.salaryMax,
+          postedAt: jobPostings.postedAt,
+        })
+        .from(jobPostings)
+        .where(and(eq(jobPostings.company, row.entry.name), eq(jobPostings.status, "active")))
+        .orderBy(sql`${jobPostings.postedAt} desc nulls last`)
+        .limit(25)
+    : [];
+
   return c.json({
     entry: publicDirectoryEntry(row.entry, { grant: row.grant, resource: row.resource }),
+    jobs: openJobs.map((j) => ({
+      slug: j.slug,
+      title: j.title,
+      location: j.location,
+      workplace_type: j.workplaceType,
+      seniority: j.seniority,
+      salary_min: j.salaryMin,
+      salary_max: j.salaryMax,
+      posted_at: j.postedAt?.toISOString() ?? null,
+    })),
     provenance: sources.map((s) => ({
       source: s.source,
       source_url: s.sourceUrl,

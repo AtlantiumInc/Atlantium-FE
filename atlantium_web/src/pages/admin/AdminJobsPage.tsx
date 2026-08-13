@@ -244,7 +244,7 @@ export function AdminJobsPage() {
       seniority: job.seniority || "",
       salary_min: job.salary_min != null ? String(job.salary_min) : "",
       salary_max: job.salary_max != null ? String(job.salary_max) : "",
-      apply_url: job.apply_url,
+      apply_url: job.apply_url ?? "",
       posted_at: job.posted_at ? job.posted_at.slice(0, 10) : "",
       requirements_summary: job.content?.requirements_summary || "",
       tech_stack: (job.content?.tech_stack ?? []).join(", "),

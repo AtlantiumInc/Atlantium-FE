@@ -25,9 +25,40 @@ function formatDate(iso?: string | null) {
   return new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
+type LinkedJob = {
+  slug: string;
+  title: string;
+  location?: string | null;
+  workplace_type?: string | null;
+  seniority?: string | null;
+  salary_min?: number | null;
+  salary_max?: number | null;
+};
+
+/** Circle logo with an initials fallback — most scraped orgs have no image. */
+function EntityAvatar({ name, logoUrl }: { name: string; logoUrl?: string | null }) {
+  const initials = name
+    .replace(/[^A-Za-z0-9 ]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join("");
+  return (
+    <div className="h-14 w-14 rounded-full overflow-hidden flex-shrink-0 ring-1 ring-border/60 bg-card/70 flex items-center justify-center">
+      {logoUrl ? (
+        <img src={logoUrl} alt="" className="h-full w-full object-cover" />
+      ) : (
+        <span className="text-sm font-semibold text-muted-foreground tracking-wide">{initials || "—"}</span>
+      )}
+    </div>
+  );
+}
+
 export function DirectoryEntryPage() {
   const { kind, slug } = useParams<{ kind: string; slug: string }>();
   const signup = useJobReportSignup();
+  const [jobs, setJobs] = useState<LinkedJob[]>([]);
   const [entry, setEntry] = useState<DirectoryEntry | null>(null);
   const [provenance, setProvenance] = useState<Array<{ source: string; source_url?: string | null; last_seen_at: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -36,7 +67,11 @@ export function DirectoryEntryPage() {
   useEffect(() => {
     if (!kind || !slug) return;
     api.getDirectoryEntry(kind, slug)
-      .then((r) => { setEntry(r.entry); setProvenance(r.provenance); })
+      .then((r) => {
+        setEntry(r.entry);
+        setProvenance(r.provenance);
+        setJobs((r as { jobs?: LinkedJob[] }).jobs ?? []);
+      })
       .catch(() => setNotFound(true))
       .finally(() => setIsLoading(false));
   }, [kind, slug]);
@@ -87,7 +122,17 @@ export function DirectoryEntryPage() {
                 )}
               </div>
 
-              <h1 className="text-2xl sm:text-[1.75rem] font-bold tracking-tight leading-[1.25]">{entry.name}</h1>
+              {kind === "investor" || kind === "company" || kind === "person" ? (
+                <div className="flex items-start gap-4">
+                  <EntityAvatar
+                    name={entry.name}
+                    logoUrl={(entry.attributes as { logo_url?: string } | undefined)?.logo_url}
+                  />
+                  <h1 className="text-2xl sm:text-[1.75rem] font-bold tracking-tight leading-[1.25] pt-1">{entry.name}</h1>
+                </div>
+              ) : (
+                <h1 className="text-2xl sm:text-[1.75rem] font-bold tracking-tight leading-[1.25]">{entry.name}</h1>
+              )}
               {entry.summary && (
                 <p className="text-[0.95rem] leading-relaxed text-muted-foreground mt-2.5">{entry.summary}</p>
               )}
@@ -135,6 +180,35 @@ export function DirectoryEntryPage() {
 
             {entry.id && (kind === "investor" || kind === "company" || kind === "person") && (
               <ContactCard entryId={entry.id} kind={kind} slug={slug!} onJoin={() => signup.openWithEmail()} />
+            )}
+
+            {jobs.length > 0 && (
+              <section className="mb-6">
+                <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                  Open roles ({jobs.length})
+                </h2>
+                <div className="space-y-2">
+                  {jobs.map((j) => (
+                    <Link
+                      key={j.slug}
+                      to={`/jobs/${j.slug}`}
+                      className="group flex items-center gap-3 rounded-xl border border-border/40 bg-card/40 hover:border-cyan-500/30 hover:bg-card/60 transition-all px-4 py-3"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate group-hover:text-cyan-300 transition-colors">{j.title}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">
+                          {[j.seniority, j.workplace_type, (j.location ?? "").split(/\s+or\s+/i)[0]].filter(Boolean).join(" · ")}
+                        </p>
+                      </div>
+                      {money(j.salary_min, j.salary_max) && (
+                        <span className="text-[11px] text-cyan-400 font-medium flex-shrink-0">
+                          {money(j.salary_min, j.salary_max)}
+                        </span>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              </section>
             )}
 
             {eligibility.length > 0 && (
