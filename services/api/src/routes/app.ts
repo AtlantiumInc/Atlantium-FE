@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { z } from "zod";
 import { sendOtpEmail } from "../lib/email";
-import { grantVerification } from "../lib/verification";
+import { grantVerification, revokeVerification } from "../lib/verification";
 import { canInitiate, outreachStatus } from "../lib/outreach";
 import { entitlementsFor } from "../lib/entitlements";
 import {
@@ -1409,6 +1409,104 @@ appRoutes.post(
     return c.json({
       message: { id: message.id, body: message.body, mine: true, created_at: message.createdAt.toISOString() },
     });
+  },
+);
+
+
+// ── P1 S2: DM policy + admin verification grants ────────────────────────────
+
+const DM_ACCEPTS = ["members", "verified", "introductions_only", "nobody"] as const;
+
+appRoutes.get("/me/dm-policy", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const me = await ensureDefaultProfile(db, authUser);
+  const [row] = await db.select().from(dmPolicies).where(eq(dmPolicies.profileId, me.id)).limit(1);
+  return c.json({ accepts: row?.accepts ?? "members" });
+});
+
+appRoutes.patch(
+  "/me/dm-policy",
+  zValidator("json", z.object({ accepts: z.enum(DM_ACCEPTS) })),
+  async (c) => {
+    const { db, authUser } = await requireAppUser(c);
+    const me = await ensureDefaultProfile(db, authUser);
+    const accepts = c.req.valid("json").accepts;
+    await db
+      .insert(dmPolicies)
+      .values({ profileId: me.id, accepts })
+      .onConflictDoUpdate({ target: dmPolicies.profileId, set: { accepts, updatedAt: new Date() } });
+    return c.json({ accepts });
+  },
+);
+
+/**
+ * Admin-granted verification — the manual review the founder does for advisors
+ * and investors (§8.5). Broad reach must be earned, and this is where it is.
+ */
+appRoutes.post(
+  "/admin/verifications",
+  zValidator("json", z.object({
+    member_role_id: z.string().uuid(),
+    verification: z.enum(["investor", "advisor", "identity"]),
+    evidence: z.enum(["admin_review", "member_vouch", "external_profile", "document"]).default("admin_review"),
+    evidence_ref: z.string().trim().max(500).optional(),
+    expires_in_days: z.number().int().min(1).max(3650).optional(),
+  })),
+  async (c) => {
+    const { db, authUser } = await requireAdminUser(c);
+    const input = c.req.valid("json");
+
+    const [role] = await db.select().from(memberRoles)
+      .where(eq(memberRoles.id, input.member_role_id)).limit(1);
+    if (!role) throw new HttpError(404, "not_found", "Role not found.");
+    if (role.role !== input.verification && input.verification !== "identity") {
+      throw new HttpError(400, "role_mismatch",
+        `That role is ${role.role}, not ${input.verification}.`);
+    }
+
+    const grant = await grantVerification(db, {
+      subject: { memberRoleId: role.id },
+      verification: input.verification,
+      evidence: input.evidence,
+      evidenceRef: input.evidence_ref ?? null,
+      grantedBy: authUser.id,
+      // Investor and advisor grants carry an expiry so trust decays rather than
+      // silently outliving the review that produced it (§4.5).
+      expiresAt: input.expires_in_days
+        ? new Date(Date.now() + input.expires_in_days * 24 * 60 * 60 * 1000)
+        : input.verification === "investor" || input.verification === "advisor"
+          ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+          : null,
+    });
+
+    // A verified investor is the scarce side. Protect their inbox BY DEFAULT
+    // rather than relying on them to find a setting (§8.3). Only when they have
+    // no policy of their own — never overriding a choice they already made.
+    if (input.verification === "investor") {
+      await db
+        .insert(dmPolicies)
+        .values({ profileId: role.profileId, accepts: "introductions_only" })
+        .onConflictDoNothing({ target: dmPolicies.profileId });
+    }
+
+    return c.json({ granted: true, grant_id: grant.id, expires_at: grant.expiresAt?.toISOString() ?? null });
+  },
+);
+
+appRoutes.post(
+  "/admin/verifications/revoke",
+  zValidator("json", z.object({
+    member_role_id: z.string().uuid(),
+    verification: z.enum(["investor", "advisor", "identity"]),
+    reason: z.string().trim().min(1).max(300),
+  })),
+  async (c) => {
+    const { db } = await requireAdminUser(c);
+    const input = c.req.valid("json");
+    const revoked = await revokeVerification(
+      db, { memberRoleId: input.member_role_id }, input.verification, input.reason);
+    if (revoked === 0) throw new HttpError(404, "not_found", "No live grant to revoke.");
+    return c.json({ revoked });
   },
 );
 

@@ -440,6 +440,8 @@ export type MemberCard = {
   is_self: boolean;
 };
 
+export type DmAccepts = "members" | "verified" | "introductions_only" | "nobody";
+
 export type ThreadMessage = {
   id: string;
   body: string;
@@ -786,6 +788,15 @@ class ApiClient {
   async sendThreadMessage(id: string, body: string): Promise<{ message: ThreadMessage }> {
     return this.request(`/threads/${id}/messages`,
       { method: "POST", body: JSON.stringify({ body }) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async getDmPolicy(): Promise<{ accepts: DmAccepts }> {
+    return this.request("/me/dm-policy", { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async setDmPolicy(accepts: DmAccepts): Promise<{ accepts: DmAccepts }> {
+    return this.request("/me/dm-policy",
+      { method: "PATCH", body: JSON.stringify({ accepts }) }, ATLANTIUM_API_BASE_URL);
   }
 
   // ── P1b: billing ──────────────────────────────────────────────────────────

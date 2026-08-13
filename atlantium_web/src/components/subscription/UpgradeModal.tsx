@@ -66,7 +66,7 @@ export function UpgradeModal({ open, onOpenChange, onSuccess }: UpgradeModalProp
             <DialogTitle>Upgrade to Club</DialogTitle>
           </div>
           <DialogDescription>
-            Join the Atlantium Club for $128/month and unlock exclusive features.
+            Join the Atlantium Club for $29/month and unlock exclusive features.
           </DialogDescription>
         </DialogHeader>
 

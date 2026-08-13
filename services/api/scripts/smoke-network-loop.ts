@@ -191,6 +191,55 @@ async function main() {
   check("NOT OVER-BLOCKED: founder+recruiter may still reach a founder peer",
     peerContact.status === 200, `status=${peerContact.status} ${JSON.stringify((await peerContact.clone().json().catch(()=>({}))) as any).slice(0,80)}`);
 
+  // ── S2: DM policy + the investor default ─────────────────────────────────
+  const policyOwner = await member("policy-owner");
+  await addRole(policyOwner, "professional");
+  const reacher = await member("policy-reacher", { paid: true });
+  await addRole(reacher, "professional");
+
+  const defaultPolicy = await (await fetch(`${API}/me/dm-policy`, { headers: H(policyOwner) })).json() as any;
+  check("dm policy defaults to members", defaultPolicy.accepts === "members", `accepts=${defaultPolicy.accepts}`);
+
+  await fetch(`${API}/me/dm-policy`, {
+    method: "PATCH", headers: H(policyOwner), body: JSON.stringify({ accepts: "nobody" }),
+  });
+  const shut = await dm(reacher, policyOwner, "peer");
+  check("accepts=nobody stops contact", shut.status === 403, `status=${shut.status}`);
+  check("...generically", ((await shut.json()) as any).code === "not_available");
+
+  // An admin grant to an investor must protect their inbox by default.
+  const investor = await member("fresh-investor");
+  const invRole = await addRole(investor, "investor");
+  const admin = await member("verifier");
+  await sql`update "user" set is_admin = true where id = ${admin.userId}`;
+
+  const granted = await fetch(`${API}/admin/verifications`, {
+    method: "POST", headers: H(admin),
+    body: JSON.stringify({ member_role_id: invRole, verification: "investor" }),
+  });
+  const grantBody = await granted.json() as any;
+  check("admin can grant investor verification", granted.status === 200, `status=${granted.status}`);
+  check("investor grants carry an expiry", Boolean(grantBody.expires_at));
+
+  const invPolicy = await (await fetch(`${API}/me/dm-policy`, { headers: H(investor) })).json() as any;
+  check("VERIFIED INVESTOR defaults to introductions_only",
+    invPolicy.accepts === "introductions_only", `accepts=${invPolicy.accepts}`);
+
+  const founderReach = await member("founder-reaching-investor", { paid: true });
+  await addRole(founderReach, "founder");
+  await sql`insert into org_memberships (profile_id, entry_id, relationship, authority)
+            values (${founderReach.profileId}, ${acme.id}, 'founder', 'admin')`;
+  const pitch = await dm(founderReach, investor, "fundraising");
+  check("a founder cannot cold-pitch a verified investor", pitch.status === 403, `status=${pitch.status}`);
+  check("...and is pointed at introductions",
+    ((await pitch.json()) as any).code === "intro_required");
+
+  const revoked = await fetch(`${API}/admin/verifications/revoke`, {
+    method: "POST", headers: H(admin),
+    body: JSON.stringify({ member_role_id: invRole, verification: "investor", reason: "smoke" }),
+  });
+  check("admin can revoke a grant", revoked.status === 200, `status=${revoked.status}`);
+
   await cleanup();
   console.log(`\n${pass} passed, ${fail} failed`);
   if (fail) process.exit(1);

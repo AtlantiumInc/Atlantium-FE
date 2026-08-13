@@ -166,7 +166,7 @@ export function PaymentForm({ clientSecret, onSuccess, onCancel, tier = "club" }
               Processing...
             </>
           ) : tier === "club_annual" ? (
-            "Subscribe - $399/year"
+            "Subscribe - $290/year"
           ) : (
             "Subscribe - $49/mo"
           )}

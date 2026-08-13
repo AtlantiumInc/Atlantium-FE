@@ -1,7 +1,11 @@
+import { useState } from "react";
 import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "motion/react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import SpotlightCard from "@/components/ui/SpotlightCard";
 import ShinyText from "@/components/ui/ShinyText";
@@ -24,8 +28,7 @@ import {
   FolderOpen,
   Lightbulb,
   CalendarCheck,
-  Globe,
-} from "lucide-react";
+  Globe, Loader2 } from "lucide-react";
 
 function FadeIn({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -61,9 +64,9 @@ const tiers = [
   },
   {
     name: "Club Membership",
-    price: "$128",
+    price: "$29",
     period: "/month",
-    description: "For serious builders",
+    description: "For people who want our time",
     popular: true,
     icon: Crown,
     color: "violet",
@@ -79,15 +82,15 @@ const tiers = [
   },
   {
     name: "Annual Membership",
-    price: "$399",
+    price: "$290",
     period: "/year",
     description: "Committed to the frontier",
-    savings: "Save $1,137",
+    savings: "2 months free",
     icon: Calendar,
     color: "emerald",
     features: [
       "Everything in Club",
-      "9 months free",
+      "Two months free",
       "Member directory access",
       "Quarterly performance review",
       "Discounted services",
@@ -96,6 +99,60 @@ const tiers = [
   },
 ];
 
+
+
+type PricingTier = (typeof tiers)[number];
+
+/**
+ * A visitor signs up first; a signed-in member goes straight to Stripe.
+ * `billing_unavailable` is a normal state before keys are configured, so it
+ * gets a plain message rather than an error.
+ */
+function PlanCta({ tier }: { tier: PricingTier }) {
+  const { user } = useAuth();
+  const [isStarting, setIsStarting] = useState(false);
+
+  if (tier.name === "Free" || !user) {
+    return (
+      <Link to="/signup" className="block">
+        <Button
+          className={`w-full gap-2 ${tier.popular ? "bg-white text-black hover:bg-gray-100 border-0" : ""}`}
+          variant={tier.popular ? "default" : "outline"}
+        >
+          {tier.name === "Free" ? "Get Started" : "Join Now"}
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </Link>
+    );
+  }
+
+  const plan = tier.period === "/year" ? "club_annual" : "club";
+
+  return (
+    <Button
+      disabled={isStarting}
+      onClick={async () => {
+        setIsStarting(true);
+        try {
+          const { checkout_url } = await api.startCheckout(plan);
+          window.location.href = checkout_url;
+        } catch (error) {
+          const err = error as { code?: string; message?: string };
+          toast.error(err.code === "billing_unavailable"
+            ? "Checkout isn't switched on yet — hold tight."
+            : err.message ?? "Couldn't start checkout");
+          setIsStarting(false);
+        }
+      }}
+      className={`w-full gap-2 ${tier.popular ? "bg-white text-black hover:bg-gray-100 border-0" : ""}`}
+      variant={tier.popular ? "default" : "outline"}
+    >
+      {isStarting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+      Join Now
+      <ArrowRight className="h-4 w-4" />
+    </Button>
+  );
+}
 
 export function PricingPage() {
   return (
@@ -195,19 +252,7 @@ export function PricingPage() {
                       ))}
                     </ul>
 
-                    <Link to="/signup" className="block">
-                      <Button
-                        className={`w-full gap-2 ${
-                          tier.popular
-                            ? "bg-white text-black hover:bg-gray-100 border-0"
-                            : ""
-                        }`}
-                        variant={tier.popular ? "default" : "outline"}
-                      >
-                        {tier.name === "Free" ? "Get Started" : "Join Now"}
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </Link>
+                    <PlanCta tier={tier} />
                   </SpotlightCard>
                 </div>
               </FadeIn>
@@ -295,7 +340,7 @@ export function PricingPage() {
                   </div>
                   <h2 className="text-2xl sm:text-3xl font-bold mb-4">Go Annual. Get More.</h2>
                   <p className="text-muted-foreground leading-relaxed mb-6">
-                    Annual members save $1,137 and unlock exclusive monthly events with founders, investors, and industry leaders. Plus networking opportunities you won't find anywhere else.
+                    Annual members get two months free and unlock exclusive monthly events with founders, investors, and industry leaders. Plus networking opportunities you won't find anywhere else.
                   </p>
                   <Link to="/signup">
                     <Button className="gap-2 bg-white text-black hover:bg-gray-100 border-0">

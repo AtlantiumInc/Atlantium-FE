@@ -29,7 +29,7 @@ const tiers: PricingTier[] = [
   },
   {
     name: "Club Membership",
-    price: "$128",
+    price: "$29",
     period: "/month",
     description: "For serious builders",
     popular: true,
@@ -46,10 +46,10 @@ const tiers: PricingTier[] = [
   },
   {
     name: "Annual Membership",
-    price: "$399",
+    price: "$290",
     period: "/year",
     description: "Committed to the frontier",
-    savings: "Save $1,137",
+    savings: "2 months free",
     icon: Calendar,
     features: [
       "Everything in Club",

@@ -30,7 +30,7 @@ const PRICING_PLANS: PricingPlan[] = [
   {
     id: "club",
     name: "Club Membership",
-    price: "$128",
+    price: "$29",
     period: "/month",
     description: "For people who want our time",
     popular: true,
@@ -48,10 +48,10 @@ const PRICING_PLANS: PricingPlan[] = [
   {
     id: "club_annual",
     name: "Annual Membership",
-    price: "$399",
+    price: "$290",
     period: "/year",
     description: "Same access, committed for a year",
-    savings: "Save $1,137",
+    savings: "2 months free",
     icon: Calendar,
     features: [
       "Everything in Club",

@@ -6,6 +6,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api, type DmRequestSummary, type MemberConnection, type OutreachStatus } from "@/lib/api";
+import { DmPolicyControl } from "@/components/network/DmPolicyControl";
 import { toast } from "sonner";
 
 /**
@@ -108,7 +109,8 @@ export function NetworkPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="connections" className="mt-4 space-y-2">
+          <TabsContent value="connections" className="mt-4 space-y-4">
+            <DmPolicyControl />
             {accepted.length === 0 ? (
               <Empty
                 title="No connections yet"

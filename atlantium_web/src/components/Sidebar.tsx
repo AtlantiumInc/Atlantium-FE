@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,6 +9,8 @@ import {
   Send,
   Sparkles,
   Users,
+  Users2,
+  MessagesSquare,
 } from "lucide-react";
 
 interface Message {
@@ -29,14 +32,18 @@ export function Sidebar({
   aiOpen,
   onAIToggle,
 }: SidebarProps) {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // `href` entries are real routes; the rest switch the dashboard's own panes.
   const navItems = [
-    { id: "lobby",       icon: <Radio size={20} />,        label: "Lobby" },
+    { id: "lobby",       icon: <Radio size={20} />,         label: "Lobby" },
+    { id: "network",     icon: <Users2 size={20} />,        label: "Network", href: "/network" },
+    { id: "messages",    icon: <MessagesSquare size={20} />, label: "Messages", href: "/messages" },
     { id: "partners",    icon: <Users size={20} />,         label: "Partners" },
     { id: "playground",  icon: <FlaskConical size={20} />,  label: "Playground" },
   ];
@@ -135,7 +142,7 @@ export function Sidebar({
         {navItems.map((item, i) => (
           <button
             key={item.id}
-            onClick={() => onNavigate?.(item.id)}
+            onClick={() => (item.href ? navigate(item.href) : onNavigate?.(item.id))}
             style={{ transitionDelay: aiOpen ? "0ms" : `${i * 30}ms` }}
             className={cn(
               "group relative h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-200",
