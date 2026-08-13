@@ -24,6 +24,26 @@ BOOMIN_CONNECT_PUBLIC_KEY = "pk_live_atlantium_creator_program_63xwon9h"
 BOOMIN_CONNECT_API_BASE = "https://api.boomin.ai/v1/connect"
 BOOMIN_HANDOFF_REDIRECT_URI = "https://atlantium.ai/creator-program"
 
+# ── Membership price IDs — TEST MODE ─────────────────────────────────────────
+# Not secret: price ids are public identifiers, so they live here rather than
+# in `wrangler secret put`. Amounts are authoritative in Stripe, not in code.
+#
+# These belong to acct_1SnV4PRuuGzvQG5r (team@atlantium.ai) and must match the
+# account STRIPE_SECRET_KEY belongs to. A price id from a different account
+# fails at runtime as "No such price" — the confusing one. Atlantium is NOT
+# Boomin's Stripe account (acct_1QlNn1…2MxRiQvQLW); do not cross the two.
+#
+# TEST MODE: the deployed worker currently runs sandbox billing — real cards
+# are declined and no money moves. Going live is a deliberate separate step:
+# create live-mode prices, swap these two ids, re-put both Stripe secrets, and
+# register a live webhook endpoint (its signing secret differs per endpoint).
+#
+# Club Membership  — $29/mo   (ATLANTIUM_NETWORK_PLAN.md §6.2)
+# Annual Membership — $290/yr (§6.3: ~2 months free, replacing the old
+# $128/mo + $399/yr, whose 74% annual discount made the monthly an anchor).
+STRIPE_PRICE_CLUB_MONTHLY = "price_1U46LXRuuGzvQG5rSsQ3YtXY"
+STRIPE_PRICE_CLUB_ANNUAL = "price_1U46LYRuuGzvQG5rv6vc2FUe"
+
 # Required secrets:
 #   wrangler secret put DATABASE_URL
 #   wrangler secret put BETTER_AUTH_SECRET
@@ -31,6 +51,10 @@ BOOMIN_HANDOFF_REDIRECT_URI = "https://atlantium.ai/creator-program"
 #   wrangler secret put LIVEKIT_URL
 #   wrangler secret put LIVEKIT_API_KEY
 #   wrangler secret put LIVEKIT_API_SECRET
+# Billing (test mode today — see the price-id note above):
+#   wrangler secret put STRIPE_SECRET_KEY      # rk_test_… restricted key
+#   wrangler secret put STRIPE_WEBHOOK_SECRET  # whsec_… from the endpoint,
+#                                              # regenerated per endpoint
 # Optional:
 #   wrangler secret put RESEND_API_KEY
 

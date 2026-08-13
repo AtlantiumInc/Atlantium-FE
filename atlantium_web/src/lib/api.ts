@@ -440,6 +440,21 @@ export type MemberCard = {
   is_self: boolean;
 };
 
+export type ThreadMessage = {
+  id: string;
+  body: string;
+  mine: boolean;
+  created_at: string;
+};
+
+export type Conversation = {
+  id: string;
+  other_profile_id: string | null;
+  other_name: string;
+  last_message: { body: string; created_at: string; mine: boolean } | null;
+  updated_at: string;
+};
+
 export type BillingStatus = {
   tier: "free" | "club" | "club_annual";
   status: string | null;
@@ -752,6 +767,25 @@ class ApiClient {
   async decideDmRequest(id: string, accept: boolean) {
     return this.request<{ accepted: boolean; thread_id?: string }>(
       `/dm/requests/${id}/decide`, { method: "POST", body: JSON.stringify({ accept }) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  // ── P1: conversations ─────────────────────────────────────────────────────
+
+  async getConversations(): Promise<{ conversations: Conversation[] }> {
+    return this.request("/threads", { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async getConversation(id: string): Promise<{
+    conversation: { id: string; other_profile_id: string | null; other_name: string };
+    messages: ThreadMessage[];
+  }> {
+    return this.request(`/threads/${id}/messages`, { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  /** Lab DM reply. Distinct from the legacy Xano-era sendMessage(). */
+  async sendThreadMessage(id: string, body: string): Promise<{ message: ThreadMessage }> {
+    return this.request(`/threads/${id}/messages`,
+      { method: "POST", body: JSON.stringify({ body }) }, ATLANTIUM_API_BASE_URL);
   }
 
   // ── P1b: billing ──────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Check, Inbox, Loader2, MessageSquare, Send, UserMinus, Users, X,
 } from "lucide-react";
@@ -22,6 +22,7 @@ export function NetworkPage() {
   const [names, setNames] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const load = useCallback(async () => {
     try {
@@ -159,7 +160,11 @@ export function NetworkPage() {
                       </div>
                       <div className="flex flex-shrink-0 gap-1.5">
                         <Button size="sm" disabled={busyId === r.id}
-                          onClick={() => act(r.id, () => api.decideDmRequest(r.id, true), "Conversation opened")}>
+                          onClick={() => act(r.id, async () => {
+                            const res = await api.decideDmRequest(r.id, true);
+                            // Land in the conversation — accepting used to end here.
+                            if (res.thread_id) navigate(`/messages/${res.thread_id}`);
+                          }, "Conversation opened")}>
                           Reply
                         </Button>
                         <Button size="sm" variant="ghost" disabled={busyId === r.id}

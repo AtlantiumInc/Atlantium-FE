@@ -1,6 +1,6 @@
 import { zValidator } from "@hono/zod-validator";
 import { getPartnerStanding, postHandoff, recordReferralClick, recordSignup } from "@boomin/server";
-import { and, asc, desc, eq, gte, ilike, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { z } from "zod";
@@ -1266,6 +1266,151 @@ appRoutes.get("/members/:profileId", async (c) => {
     },
   });
 });
+
+
+// ── P1: conversations (plan §8A.4, execution plan S1) ───────────────────────
+// The threads spine already existed; DM acceptance already wrote to it. This is
+// the missing read/reply half — without it, accepting a request dead-ends.
+
+/**
+ * Membership in a thread is the ONLY key. A non-participant gets 404, never
+ * 403, so thread ids can't be probed for existence.
+ */
+async function requireThreadParticipant(db: Db, threadId: string, userId: string) {
+  const [row] = await db
+    .select({ thread: threads })
+    .from(threads)
+    .innerJoin(threadParticipants, eq(threadParticipants.threadId, threads.id))
+    .where(and(
+      eq(threads.id, threadId),
+      eq(threadParticipants.userId, userId),
+      eq(threads.kind, "dm"),
+    ))
+    .limit(1);
+  if (!row) throw new HttpError(404, "not_found", "Conversation not found.");
+  return row.thread;
+}
+
+/** The other side of a DM thread, as profile + display name. */
+async function counterpart(db: Db, threadId: string, userId: string) {
+  const [row] = await db
+    .select({ profileId: profiles.id, displayName: profiles.displayName, userId: profiles.ownerUserId })
+    .from(threadParticipants)
+    .innerJoin(profiles, eq(profiles.ownerUserId, threadParticipants.userId))
+    .where(and(eq(threadParticipants.threadId, threadId), ne(threadParticipants.userId, userId)))
+    .limit(1);
+  return row ?? null;
+}
+
+appRoutes.get("/threads", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const me = await ensureDefaultProfile(db, authUser);
+
+  const rows = await db
+    .select({ thread: threads })
+    .from(threads)
+    .innerJoin(threadParticipants, eq(threadParticipants.threadId, threads.id))
+    .where(and(eq(threadParticipants.userId, authUser.id), eq(threads.kind, "dm")))
+    .orderBy(desc(threads.updatedAt))
+    .limit(100);
+
+  const blocks = await db
+    .select({ other: memberBlocks.blockedProfileId, blocker: memberBlocks.blockerProfileId })
+    .from(memberBlocks)
+    .where(or(eq(memberBlocks.blockerProfileId, me.id), eq(memberBlocks.blockedProfileId, me.id)));
+  const blockedProfiles = new Set(blocks.flatMap((b) => [b.other, b.blocker]).filter((id) => id !== me.id));
+
+  const conversations = await Promise.all(rows.map(async ({ thread }) => {
+    const other = await counterpart(db, thread.id, authUser.id);
+    const [last] = await db
+      .select()
+      .from(threadMessages)
+      .where(and(eq(threadMessages.threadId, thread.id), isNull(threadMessages.deletedAt)))
+      .orderBy(desc(threadMessages.createdAt))
+      .limit(1);
+    return {
+      id: thread.id,
+      other_profile_id: other?.profileId ?? null,
+      other_name: other?.displayName ?? "A member",
+      // A block hides the conversation from both sides without deleting it.
+      blocked: other ? blockedProfiles.has(other.profileId) : false,
+      last_message: last ? { body: last.body, created_at: last.createdAt.toISOString(), mine: last.authorUserId === authUser.id } : null,
+      updated_at: thread.updatedAt.toISOString(),
+    };
+  }));
+
+  return c.json({ conversations: conversations.filter((t) => !t.blocked) });
+});
+
+appRoutes.get("/threads/:id/messages", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const me = await ensureDefaultProfile(db, authUser);
+  const thread = await requireThreadParticipant(db, c.req.param("id"), authUser.id);
+
+  const other = await counterpart(db, thread.id, authUser.id);
+  if (other) {
+    const [blocked] = await db.select({ b: memberBlocks.blockerProfileId }).from(memberBlocks)
+      .where(or(
+        and(eq(memberBlocks.blockerProfileId, me.id), eq(memberBlocks.blockedProfileId, other.profileId)),
+        and(eq(memberBlocks.blockerProfileId, other.profileId), eq(memberBlocks.blockedProfileId, me.id)),
+      )).limit(1);
+    // A block severs an existing thread in both directions.
+    if (blocked) throw new HttpError(404, "not_found", "Conversation not found.");
+  }
+
+  const messages = await db
+    .select()
+    .from(threadMessages)
+    .where(and(eq(threadMessages.threadId, thread.id), isNull(threadMessages.deletedAt)))
+    .orderBy(asc(threadMessages.createdAt))
+    .limit(500);
+
+  return c.json({
+    conversation: {
+      id: thread.id,
+      other_profile_id: other?.profileId ?? null,
+      other_name: other?.displayName ?? "A member",
+    },
+    messages: messages.map((m) => ({
+      id: m.id,
+      body: m.body,
+      mine: m.authorUserId === authUser.id,
+      created_at: m.createdAt.toISOString(),
+    })),
+  });
+});
+
+appRoutes.post(
+  "/threads/:id/messages",
+  zValidator("json", z.object({ body: z.string().trim().min(1).max(4000) })),
+  async (c) => {
+    const { db, authUser } = await requireAppUser(c);
+    const me = await ensureDefaultProfile(db, authUser);
+    const thread = await requireThreadParticipant(db, c.req.param("id"), authUser.id);
+
+    const other = await counterpart(db, thread.id, authUser.id);
+    if (other) {
+      const [blocked] = await db.select({ b: memberBlocks.blockerProfileId }).from(memberBlocks)
+        .where(or(
+          and(eq(memberBlocks.blockerProfileId, me.id), eq(memberBlocks.blockedProfileId, other.profileId)),
+          and(eq(memberBlocks.blockerProfileId, other.profileId), eq(memberBlocks.blockedProfileId, me.id)),
+        )).limit(1);
+      if (blocked) throw new HttpError(404, "not_found", "Conversation not found.");
+    }
+
+    const now = new Date();
+    const [message] = await db
+      .insert(threadMessages)
+      .values({ threadId: thread.id, authorUserId: authUser.id, body: c.req.valid("json").body })
+      .returning();
+    // Bump the thread so the list orders by real activity.
+    await db.update(threads).set({ updatedAt: now }).where(eq(threads.id, thread.id));
+
+    return c.json({
+      message: { id: message.id, body: message.body, mine: true, created_at: message.createdAt.toISOString() },
+    });
+  },
+);
 
 appRoutes.post(
   "/profile/edit",

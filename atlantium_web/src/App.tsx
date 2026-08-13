@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { NetworkPage } from "@/pages/NetworkPage";
 import { MemberProfilePage } from "@/pages/MemberProfilePage";
+import { MessagesPage } from "@/pages/MessagesPage";
 import { AdminProtectedRoute } from "@/components/admin/AdminProtectedRoute";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoginPage } from "@/pages/LoginPage";
@@ -145,6 +146,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <NetworkPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/messages"
+        element={
+          <ProtectedRoute>
+            <MessagesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/messages/:threadId"
+        element={
+          <ProtectedRoute>
+            <MessagesPage />
           </ProtectedRoute>
         }
       />
