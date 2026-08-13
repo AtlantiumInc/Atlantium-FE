@@ -370,6 +370,27 @@ export interface FrontierArticle {
   };
 }
 
+export type MemberRole = {
+  id: string;
+  role: "professional" | "founder" | "investor" | "advisor";
+  title: string | null;
+  is_primary: boolean;
+  source: "self_declared" | "inferred" | "admin_assigned";
+  /** False for a persona Atlantium guessed — grants nothing until affirmed. */
+  confirmed: boolean;
+  org: { id: string; name: string; slug: string; kind: string } | null;
+  professional: {
+    seeking: "not_seeking" | "open" | "actively_looking";
+    visibility: "private" | "matched_only" | "verified_employers" | "all_members";
+    seeking_updated_at: string | null;
+    target_titles: string[];
+    seniority: string | null;
+    stack: string[];
+    min_salary: number | null;
+    remote_pref: string | null;
+  } | null;
+};
+
 class ApiClient {
   private authToken: string | null = null;
 
@@ -627,6 +648,28 @@ class ApiClient {
   }
 
   // ── Worker-backed approval queue (api.atlantium.ai, cookie-authed) ──
+  async getMemberRoles(): Promise<{ roles: MemberRole[] }> {
+    return this.request("/me/roles", { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async createMemberRole(body: {
+    role: "professional" | "founder" | "investor" | "advisor";
+    entry_id?: string | null;
+    title?: string | null;
+    is_primary?: boolean;
+  }): Promise<{ roles: MemberRole[] }> {
+    return this.request("/me/roles", { method: "POST", body: JSON.stringify(body) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async updateSeeking(roleId: string, body: {
+    seeking?: "not_seeking" | "open" | "actively_looking";
+    visibility?: "private" | "matched_only" | "verified_employers" | "all_members";
+    stack?: string[];
+    seniority?: string | null;
+  }): Promise<{ roles: MemberRole[] }> {
+    return this.request(`/me/roles/${roleId}/seeking`, { method: "PATCH", body: JSON.stringify(body) }, ATLANTIUM_API_BASE_URL);
+  }
+
   async resetUserOnboarding(userId: string): Promise<{ success: boolean; profiles_reset: number }> {
     return this.request(`/admin/users/${userId}/reset-onboarding`, { method: "POST" }, AUTH_API_BASE_URL);
   }

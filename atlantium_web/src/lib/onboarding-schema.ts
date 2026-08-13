@@ -75,6 +75,19 @@ export const interestsSchema = z.object({
     .min(1, "Please select at least one interest"),
 });
 
+export const personaSchema = z.object({
+  persona: z.enum(["professional", "founder", "investor", "advisor"], {
+    message: "Pick the role that fits you best — you can add others later",
+  }),
+});
+
+export const seekingSchema = z.object({
+  seeking: z.enum(["not_seeking", "open", "actively_looking"]).optional(),
+  seeking_visibility: z
+    .enum(["private", "matched_only", "verified_employers", "all_members"])
+    .optional(),
+});
+
 export const membershipTierSchema = z.object({
   membership_tier: z.enum(["free", "club", "club_annual"], {
     message: "Pick how you're joining — Club, Annual, or free for now",
@@ -145,6 +158,9 @@ export const onboardingFormSchema = z
     is_georgia_resident: z.boolean().optional(),
     primary_goal: z.enum(primaryGoalValues),
     interests: z.array(z.enum(interestValues)).min(1),
+    persona: z.enum(["professional", "founder", "investor", "advisor"]).optional(),
+    seeking: z.enum(["not_seeking", "open", "actively_looking"]).optional(),
+    seeking_visibility: z.enum(["private", "matched_only", "verified_employers", "all_members"]).optional(),
     membership_tier: z.enum(["free", "club", "club_annual"]).optional(),
     working_on_project: z.enum(projectStatusValues),
     project_description: z.string().max(1000).optional(),
@@ -194,17 +210,19 @@ export function validateStep(
 ): { success: boolean; errors?: z.ZodError } {
   const schemas: Record<number, z.ZodSchema> = {
     1: nameSchema,
-    2: membershipTierSchema,
+    2: personaSchema,          // the branch point
     3: timezoneSchema,
     4: primaryGoalSchema,
     5: interestsSchema,
-    6: projectStatusSchema,
-    7: projectDescriptionSchema,
-    8: technicalLevelSchema,
-    9: communityHopesSchema,
-    10: timeCommitmentSchema,
-    11: successDefinitionSchema,
-    12: avatarSchema,
+    6: seekingSchema,          // professionals only
+    7: projectStatusSchema,    // founders only
+    8: projectDescriptionSchema,
+    9: technicalLevelSchema,
+    10: communityHopesSchema,
+    11: timeCommitmentSchema,
+    12: successDefinitionSchema,
+    13: avatarSchema,
+    14: membershipTierSchema,  // the money question, asked last
   };
 
   const schema = schemas[step];
@@ -216,18 +234,39 @@ export function validateStep(
     : { success: false, errors: result.error };
 }
 
-// Check if a step should be shown (for conditional steps)
+/**
+ * Persona branches the questionnaire (plan §5.1). The point is that each member
+ * answers FEWER screens than the old flat 11 — while the answers they do give
+ * are all relevant to who they are.
+ */
 export function shouldShowStep(
   step: number,
   data: Partial<OnboardingFormData>
 ): boolean {
-  // Step 7 (project description) only shown if working on a project
-  if (step === 7) {
+  const persona = data.persona;
+
+  // Seeking + visibility: professionals only.
+  if (step === 6) return persona === "professional";
+
+  // Project status: founders (and advisors, who often build alongside).
+  if (step === 7) return persona === "founder" || persona === "advisor";
+
+  // Project description: only when there's actually a project.
+  if (step === 8) {
+    if (persona !== "founder" && persona !== "advisor") return false;
     return (
       data.working_on_project === "yes_actively" ||
       data.working_on_project === "yes_early"
     );
   }
+
+  // Technical level is meaningful for people who build; investors skip it.
+  if (step === 9) return persona !== "investor";
+
+  // Time commitment reads as "how much will you show up" — relevant to
+  // advisors and professionals, noise for investors we're comping anyway.
+  if (step === 11) return persona !== "investor";
+
   return true;
 }
 

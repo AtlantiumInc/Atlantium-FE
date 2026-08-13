@@ -9,7 +9,7 @@ import {
 import { detectUserTimezone } from "../lib/onboarding-options";
 
 const STORAGE_KEY = "atlantium_onboarding_progress";
-const TOTAL_STEPS = 12;
+const TOTAL_STEPS = 14;
 
 interface OnboardingState {
   currentStep: number;
@@ -43,6 +43,9 @@ function getInitialState(): OnboardingState {
       is_georgia_resident: false,
       primary_goal: undefined,
       interests: [],
+      persona: undefined,
+      seeking: undefined,
+      seeking_visibility: undefined,
       membership_tier: undefined,
       working_on_project: undefined,
       project_description: "",

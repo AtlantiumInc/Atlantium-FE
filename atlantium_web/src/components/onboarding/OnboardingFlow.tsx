@@ -11,6 +11,8 @@ import { Button } from "../ui/button";
 import { OnboardingProgress } from "./OnboardingProgress";
 
 import { StepName } from "./steps/StepName";
+import { StepPersona } from "./steps/StepPersona";
+import { StepSeeking } from "./steps/StepSeeking";
 import { StepTimezone } from "./steps/StepTimezone";
 import { StepPrimaryGoal } from "./steps/StepPrimaryGoal";
 import { StepInterests } from "./steps/StepInterests";
@@ -76,6 +78,30 @@ export function OnboardingFlow({ onComplete, render }: Props) {
         registration_details: registrationDetails,
       });
 
+      // Persona is a first-class row, not a questionnaire answer (plan §3.2).
+      // It's written after the profile save so a member whose persona write
+      // fails still keeps their completed questionnaire — they'd be prompted to
+      // pick a persona again rather than losing the whole flow.
+      if (data.persona) {
+        try {
+          const { roles } = await api.createMemberRole({
+            role: data.persona,
+            is_primary: true,
+          });
+          const professionalRole = roles.find((r) => r.role === "professional");
+          if (data.persona === "professional" && professionalRole && data.seeking) {
+            await api.updateSeeking(professionalRole.id, {
+              seeking: data.seeking,
+              // Absent an explicit choice this stays matched_only — the server
+              // default. We never widen visibility on the member's behalf.
+              ...(data.seeking_visibility ? { visibility: data.seeking_visibility } : {}),
+            });
+          }
+        } catch (error) {
+          console.error("Persona save failed; questionnaire was saved", error);
+        }
+      }
+
       await checkAuth();
       onComplete?.();
     },
@@ -133,17 +159,19 @@ export function OnboardingFlow({ onComplete, render }: Props) {
   const stepNode = (() => {
     switch (currentStep) {
       case 1: return <StepName {...stepProps} />;
-      case 2: return <StepPricing {...stepProps} />;
+      case 2: return <StepPersona {...stepProps} />;
       case 3: return <StepTimezone {...stepProps} />;
       case 4: return <StepPrimaryGoal {...stepProps} />;
       case 5: return <StepInterests {...stepProps} />;
-      case 6: return <StepProjectStatus {...stepProps} />;
-      case 7: return <StepProjectDescription {...stepProps} />;
-      case 8: return <StepTechnicalLevel {...stepProps} />;
-      case 9: return <StepCommunityHopes {...stepProps} />;
-      case 10: return <StepTimeCommitment {...stepProps} />;
-      case 11: return <StepSuccessDefinition {...stepProps} />;
-      case 12: return <StepAvatar {...stepProps} googleAvatarUrl={googleAvatarUrl} />;
+      case 6: return <StepSeeking {...stepProps} />;
+      case 7: return <StepProjectStatus {...stepProps} />;
+      case 8: return <StepProjectDescription {...stepProps} />;
+      case 9: return <StepTechnicalLevel {...stepProps} />;
+      case 10: return <StepCommunityHopes {...stepProps} />;
+      case 11: return <StepTimeCommitment {...stepProps} />;
+      case 12: return <StepSuccessDefinition {...stepProps} />;
+      case 13: return <StepAvatar {...stepProps} googleAvatarUrl={googleAvatarUrl} />;
+      case 14: return <StepPricing {...stepProps} />;
       default: return null;
     }
   })();
