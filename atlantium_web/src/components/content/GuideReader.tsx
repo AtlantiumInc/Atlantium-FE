@@ -230,10 +230,49 @@ export function EbookReader({ doc, onGateCta }: ReaderProps) {
     keepReaderInView(bookRef.current);
   };
 
+  // A book cover is portrait and physical, not a wide banner: prefer a
+  // purpose-made portrait render, fall back to the landscape card art.
+  const coverArt = doc.meta?.guide?.cover_portrait ?? doc.cover_image_url;
+
   if (page === -1) {
     return (
       <div ref={bookRef} className="rounded-2xl border border-border/40 bg-card/30 p-8 sm:p-10">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-violet-400 mb-6">
+        <div className="grid md:grid-cols-[210px_1fr] gap-8 lg:gap-10">
+          {/* Cover — bound-book treatment: spine, sheen, and the title set on it */}
+          <div className="mx-auto md:mx-0 w-[210px] flex-shrink-0">
+            <div className="relative aspect-[3/4] rounded-l-[3px] rounded-r-lg overflow-hidden ring-1 ring-white/10 shadow-2xl shadow-black/60 rotate-[-1deg] hover:rotate-0 transition-transform duration-500">
+              {coverArt ? (
+                <img src={coverArt} alt="" className="absolute inset-0 w-full h-full object-cover" />
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-violet-900/60 to-slate-900" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/10" />
+              {/* spine */}
+              <div className="absolute inset-y-0 left-0 w-3 bg-gradient-to-r from-black/70 via-black/25 to-transparent" />
+              <div className="absolute inset-y-0 left-3 w-px bg-white/10" />
+              {/* sheen */}
+              <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.07] to-transparent" />
+
+              <div className="absolute inset-0 p-4 pl-5 flex flex-col justify-end">
+                <p className="font-serif text-[10px] uppercase tracking-[0.2em] text-violet-300/90 mb-1.5">
+                  Atlantium Press
+                </p>
+                <p className="font-serif text-[15px] leading-tight font-bold text-white drop-shadow">
+                  {doc.title}
+                </p>
+                {doc.author && (
+                  <p className="font-serif text-[11px] text-white/70 mt-1.5">{doc.author.display_name}</p>
+                )}
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground text-center mt-3">
+              {sections.length} chapter{sections.length === 1 ? "" : "s"}
+              {doc.meta?.read_time ? ` · ${doc.meta.read_time} min` : ""}
+            </p>
+          </div>
+
+          <div className="min-w-0">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-violet-400 mb-4">
           <BookOpen className="h-3.5 w-3.5" /> Atlantium Press
         </div>
         {intro && <div className="mb-8 font-serif text-lg leading-relaxed text-muted-foreground"><ContentMarkdown markdown={intro} /></div>}
@@ -260,6 +299,8 @@ export function EbookReader({ doc, onGateCta }: ReaderProps) {
         <Button onClick={() => open(progress.current > 0 ? progress.current - 1 : 0)} className="gap-2">
           {progress.current > 0 ? "Continue reading" : "Start reading"} <ChevronRight className="h-4 w-4" />
         </Button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -279,6 +320,13 @@ export function EbookReader({ doc, onGateCta }: ReaderProps) {
     <div ref={bookRef}>
       {/* Sticky chapter bar — the only chrome while reading */}
       <div className="sticky top-16 z-20 -mx-4 px-4 py-2.5 mb-6 bg-background/85 backdrop-blur border-b border-border/30 flex items-center gap-3">
+        {coverArt && (
+          <img
+            src={coverArt}
+            alt=""
+            className="hidden sm:block h-8 w-6 object-cover rounded-[2px] ring-1 ring-white/10 flex-shrink-0"
+          />
+        )}
         <button onClick={() => setPage(-1)} className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 flex-shrink-0">
           <ListOrdered className="h-3.5 w-3.5" /> Contents
         </button>
