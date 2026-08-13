@@ -10,7 +10,8 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
-    "smoke:direct": "tsx scripts/direct-smoke.ts"
+    "smoke:direct": "tsx scripts/direct-smoke.ts",
+    "smoke:roles": "tsx scripts/smoke-member-roles.ts"
   },
   "dependencies": {
     "@boomin/server": "^0.1.1",

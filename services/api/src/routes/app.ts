@@ -27,6 +27,9 @@ import {
   memberships,
   profileMembers,
   profiles,
+  memberRoles,
+  professionalPreferences,
+  directoryEntries,
   user,
   verification,
 } from "../db/schema";
@@ -383,6 +386,188 @@ appRoutes.post("/admin/users/:userId/delete", async (c) => {
 
   await db.delete(user).where(eq(user.id, userId));
   return c.json({ success: true, deleted_email: target.email });
+});
+
+
+// ── P0A: personas, affiliations and the professional surface (plan §3) ──────
+
+const ROLE_VALUES = ["investor", "professional", "founder", "advisor"] as const;
+const SEEKING_VALUES = ["not_seeking", "open", "actively_looking"] as const;
+const VISIBILITY_VALUES = ["private", "matched_only", "verified_employers", "all_members"] as const;
+
+const memberRoleWriteSchema = z.object({
+  role: z.enum(ROLE_VALUES),
+  entry_id: z.string().uuid().nullish(),
+  title: z.string().trim().max(120).nullish(),
+  is_primary: z.boolean().optional(),
+});
+
+const seekingWriteSchema = z.object({
+  seeking: z.enum(SEEKING_VALUES).optional(),
+  visibility: z.enum(VISIBILITY_VALUES).optional(),
+  target_titles: z.array(z.string().trim().min(1).max(80)).max(10).optional(),
+  seniority: z.string().trim().max(40).nullish(),
+  stack: z.array(z.string().trim().min(1).max(40)).max(30).optional(),
+  min_salary: z.number().int().min(0).max(10_000_000).nullish(),
+  remote_pref: z.string().trim().max(40).nullish(),
+});
+
+function publicMemberRole(
+  row: typeof memberRoles.$inferSelect,
+  prefs: typeof professionalPreferences.$inferSelect | null,
+  org: { id: string; name: string; slug: string; kind: string } | null,
+) {
+  return {
+    id: row.id,
+    role: row.role,
+    title: row.title,
+    is_primary: row.isPrimary,
+    source: row.source,
+    // An inferred persona is our guess, not their assertion (§5.3). It grants
+    // nothing until the member confirms it.
+    confirmed: Boolean(row.confirmedAt),
+    org: org ? { id: org.id, name: org.name, slug: org.slug, kind: org.kind } : null,
+    professional: prefs
+      ? {
+          seeking: prefs.seeking,
+          visibility: prefs.visibility,
+          seeking_updated_at: prefs.seekingUpdatedAt?.toISOString() ?? null,
+          target_titles: prefs.targetTitles,
+          seniority: prefs.seniority,
+          stack: prefs.stack,
+          min_salary: prefs.minSalary,
+          remote_pref: prefs.remotePref,
+        }
+      : null,
+  };
+}
+
+/** The member's own personas. Never a route for looking at anybody else. */
+async function loadOwnRoles(db: Db, profileId: string) {
+  const rows = await db
+    .select({ role: memberRoles, prefs: professionalPreferences, org: directoryEntries })
+    .from(memberRoles)
+    .leftJoin(professionalPreferences, eq(professionalPreferences.roleId, memberRoles.id))
+    .leftJoin(directoryEntries, eq(directoryEntries.id, memberRoles.entryId))
+    .where(eq(memberRoles.profileId, profileId))
+    .orderBy(desc(memberRoles.isPrimary), asc(memberRoles.createdAt));
+  return rows.map((r) => publicMemberRole(r.role, r.prefs, r.org));
+}
+
+appRoutes.get("/me/roles", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const profile = await ensureDefaultProfile(db, authUser);
+  return c.json({ roles: await loadOwnRoles(db, profile.id) });
+});
+
+appRoutes.post("/me/roles", zValidator("json", memberRoleWriteSchema), async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const profile = await ensureDefaultProfile(db, authUser);
+  const input = c.req.valid("json");
+
+  // Claim-only: an affiliation must point at an entry that already exists in
+  // the catalog. Members never free-create orgs (§4.1).
+  if (input.entry_id) {
+    const [entry] = await db
+      .select({ id: directoryEntries.id })
+      .from(directoryEntries)
+      .where(eq(directoryEntries.id, input.entry_id))
+      .limit(1);
+    if (!entry) throw new HttpError(404, "not_found", "That organization isn't in the directory yet.");
+  }
+
+  // Raw SQL because the uniqueness is an EXPRESSION index
+  // (profile_id, role, COALESCE(entry_id, ...)) and drizzle's typed
+  // onConflictDoUpdate cannot express that target. Keeping it as a real upsert
+  // matters: the read-then-act alternative races on a double-submit.
+  const now = new Date();
+  const upserted = await db.execute(sql`
+    INSERT INTO member_roles (profile_id, role, entry_id, title, is_primary, source, confirmed_at)
+    VALUES (
+      ${profile.id}, ${input.role}::member_role, ${input.entry_id ?? null},
+      ${input.title ?? null}, ${input.is_primary ?? false}, 'self_declared'::role_source, ${now}
+    )
+    ON CONFLICT (profile_id, role, COALESCE(entry_id, '00000000-0000-0000-0000-000000000000'::uuid))
+    DO UPDATE SET
+      title = EXCLUDED.title,
+      is_primary = EXCLUDED.is_primary,
+      -- Re-declaring an inferred persona is the member confirming it.
+      source = 'self_declared'::role_source,
+      confirmed_at = ${now},
+      updated_at = ${now}
+    RETURNING id
+  `);
+  const row = (upserted.rows?.[0] ?? (upserted as unknown as Array<{ id: string }>)[0]) as { id: string } | undefined;
+
+  // A professional persona always has a preferences row so seeking + visibility
+  // have somewhere to live — created at the safe default, never null.
+  if (row && input.role === "professional") {
+    await db
+      .insert(professionalPreferences)
+      .values({ roleId: row.id })
+      .onConflictDoNothing({ target: professionalPreferences.roleId });
+  }
+
+  return c.json({ roles: await loadOwnRoles(db, profile.id) });
+});
+
+appRoutes.patch("/me/roles/:roleId/seeking", zValidator("json", seekingWriteSchema), async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const profile = await ensureDefaultProfile(db, authUser);
+  const input = c.req.valid("json");
+
+  const [role] = await db
+    .select()
+    .from(memberRoles)
+    .where(and(eq(memberRoles.id, c.req.param("roleId")), eq(memberRoles.profileId, profile.id)))
+    .limit(1);
+  if (!role) throw new HttpError(404, "not_found", "Role not found.");
+  if (role.role !== "professional") {
+    throw new HttpError(400, "not_professional", "Seeking status belongs to a professional role.");
+  }
+
+  const now = new Date();
+  await db
+    .insert(professionalPreferences)
+    .values({
+      roleId: role.id,
+      ...(input.seeking !== undefined ? { seeking: input.seeking, seekingUpdatedAt: now } : {}),
+      ...(input.visibility !== undefined ? { visibility: input.visibility } : {}),
+      ...(input.target_titles !== undefined ? { targetTitles: input.target_titles } : {}),
+      ...(input.seniority !== undefined ? { seniority: input.seniority ?? null } : {}),
+      ...(input.stack !== undefined ? { stack: input.stack } : {}),
+      ...(input.min_salary !== undefined ? { minSalary: input.min_salary ?? null } : {}),
+      ...(input.remote_pref !== undefined ? { remotePref: input.remote_pref ?? null } : {}),
+    })
+    .onConflictDoUpdate({
+      target: professionalPreferences.roleId,
+      set: {
+        // seeking_updated_at only moves when the status itself moves, so the
+        // staleness clock measures the answer, not the last time they edited
+        // an unrelated field (§3.4).
+        ...(input.seeking !== undefined ? { seeking: input.seeking, seekingUpdatedAt: now } : {}),
+        ...(input.visibility !== undefined ? { visibility: input.visibility } : {}),
+        ...(input.target_titles !== undefined ? { targetTitles: input.target_titles } : {}),
+        ...(input.seniority !== undefined ? { seniority: input.seniority ?? null } : {}),
+        ...(input.stack !== undefined ? { stack: input.stack } : {}),
+        ...(input.min_salary !== undefined ? { minSalary: input.min_salary ?? null } : {}),
+        ...(input.remote_pref !== undefined ? { remotePref: input.remote_pref ?? null } : {}),
+        updatedAt: now,
+      },
+    });
+
+  return c.json({ roles: await loadOwnRoles(db, profile.id) });
+});
+
+appRoutes.delete("/me/roles/:roleId", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const profile = await ensureDefaultProfile(db, authUser);
+  const deleted = await db
+    .delete(memberRoles)
+    .where(and(eq(memberRoles.id, c.req.param("roleId")), eq(memberRoles.profileId, profile.id)))
+    .returning();
+  if (deleted.length === 0) throw new HttpError(404, "not_found", "Role not found.");
+  return c.json({ roles: await loadOwnRoles(db, profile.id) });
 });
 
 appRoutes.post(

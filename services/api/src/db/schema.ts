@@ -515,3 +515,64 @@ export const profileRelations = relations(profiles, ({ one, many }) => ({
   owner: one(user, { fields: [profiles.ownerUserId], references: [user.id] }),
   members: many(profileMembers),
 }));
+
+// ── P0A: identity (plan §3.2) ───────────────────────────────────────────────
+// Persona, affiliation and status as three separate axes. Verification is a
+// fourth, orthogonal concern and lands in P0B.
+
+export const memberRole = pgEnum("member_role", ["investor", "professional", "founder", "advisor"]);
+export const roleSource = pgEnum("role_source", ["self_declared", "inferred", "admin_assigned"]);
+export const seekingStatus = pgEnum("seeking_status", ["not_seeking", "open", "actively_looking"]);
+export const seekingVisibility = pgEnum("seeking_visibility", [
+  "private",
+  "matched_only",
+  "verified_employers",
+  "all_members",
+]);
+
+export const memberRoles = pgTable("member_roles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  profileId: uuid("profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  role: memberRole("role").notNull(),
+  /** Affiliation — the org this persona is held at, when known. */
+  entryId: uuid("entry_id").references(() => directoryEntries.id, { onDelete: "set null" }),
+  title: text("title"),
+  isPrimary: boolean("is_primary").notNull().default(false),
+  /** `inferred` is never treated as the member's own assertion (§5.3). */
+  source: roleSource("source").notNull().default("self_declared"),
+  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  profileIdx: index("member_roles_profile_idx").on(table.profileId),
+  entryIdx: index("member_roles_entry_idx").on(table.entryId),
+  roleIdx: index("member_roles_role_idx").on(table.role),
+}));
+
+export const professionalPreferences = pgTable("professional_preferences", {
+  roleId: uuid("role_id").primaryKey().references(() => memberRoles.id, { onDelete: "cascade" }),
+  seeking: seekingStatus("seeking").notNull().default("not_seeking"),
+  seekingUpdatedAt: timestamp("seeking_updated_at", { withTimezone: true }),
+  /**
+   * The load-bearing privacy control (§3.4, §8.7). `matched_only` means
+   * Atlantium may act on the signal but nobody may query, list or receive it.
+   * Never read `seeking` without it.
+   */
+  visibility: seekingVisibility("visibility").notNull().default("matched_only"),
+  targetTitles: text("target_titles").array().notNull().default(sql`'{}'::text[]`),
+  seniority: text("seniority"),
+  stack: text("stack").array().notNull().default(sql`'{}'::text[]`),
+  minSalary: integer("min_salary"),
+  remotePref: text("remote_pref"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const memberRoleRelations = relations(memberRoles, ({ one }) => ({
+  profile: one(profiles, { fields: [memberRoles.profileId], references: [profiles.id] }),
+  entry: one(directoryEntries, { fields: [memberRoles.entryId], references: [directoryEntries.id] }),
+  professional: one(professionalPreferences, {
+    fields: [memberRoles.id],
+    references: [professionalPreferences.roleId],
+  }),
+}));
