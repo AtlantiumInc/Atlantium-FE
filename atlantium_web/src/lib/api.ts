@@ -623,6 +623,14 @@ class ApiClient {
   }
 
   // ── Worker-backed approval queue (api.atlantium.ai, cookie-authed) ──
+  async resetUserOnboarding(userId: string): Promise<{ success: boolean; profiles_reset: number }> {
+    return this.request(`/admin/users/${userId}/reset-onboarding`, { method: "POST" }, AUTH_API_BASE_URL);
+  }
+
+  async deleteUserAccount(userId: string): Promise<{ success: boolean; deleted_email: string }> {
+    return this.request(`/admin/users/${userId}/delete`, { method: "POST" }, AUTH_API_BASE_URL);
+  }
+
   async getApprovalUsers(): Promise<Array<{
     id: string;
     email: string;

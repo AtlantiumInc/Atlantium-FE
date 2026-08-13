@@ -32,11 +32,11 @@ const PRICING_PLANS: PricingPlan[] = [
     name: "Club Membership",
     price: "$128",
     period: "/month",
-    description: "For serious builders",
+    description: "For people who want our time",
     popular: true,
     icon: Crown,
     features: [
-      "Everything in Free",
+      "Everything in Open Lab",
       "Office hours Mon–Thu",
       "AI engineering curriculum",
       "Focus groups",
@@ -50,7 +50,7 @@ const PRICING_PLANS: PricingPlan[] = [
     name: "Annual Membership",
     price: "$399",
     period: "/year",
-    description: "Committed to the frontier",
+    description: "Same access, committed for a year",
     savings: "Save $1,137",
     icon: Calendar,
     features: [
@@ -63,16 +63,17 @@ const PRICING_PLANS: PricingPlan[] = [
   },
   {
     id: "free",
-    name: "Free",
+    name: "Open Lab",
     price: "$0",
     period: " forever",
-    description: "Get started with the basics",
+    description: "Everything the lab publishes",
     icon: Star,
     features: [
-      "iOS app access",
-      "Frontier feed access",
-      "Public events",
-      "Software perks & discounts",
+      "Every doc, guide & field manual",
+      "Atlanta job board + apply links",
+      "Grants, investor & company directory",
+      "Public events + Frontier feed",
+      "iOS app & software perks",
     ],
   },
 ];
@@ -96,6 +97,7 @@ function PricingCard({
       animate={{ opacity: 1, y: 0 }}
       className={cn(
         "relative rounded-xl border-2 p-5 cursor-pointer transition-all h-full",
+        (plan.popular || plan.savings) && "mt-3",
         selected
           ? "border-primary bg-primary/5"
           : plan.id === "free"
@@ -107,16 +109,16 @@ function PricingCard({
       onClick={onSelect}
     >
       {plan.popular && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <span className="bg-primary text-primary-foreground text-xs font-medium px-3 py-1 rounded-full">
-            Most Popular
+        <div className="absolute -top-3 left-4">
+          <span className="whitespace-nowrap bg-primary text-primary-foreground text-xs font-medium px-3 py-1 rounded-full">
+            Most popular
           </span>
         </div>
       )}
 
       {plan.savings && (
         <div className="absolute -top-3 right-4">
-          <span className="bg-green-500 text-white text-xs font-medium px-2 py-1 rounded-full">
+          <span className="whitespace-nowrap bg-green-500 text-white text-xs font-medium px-2 py-1 rounded-full">
             {plan.savings}
           </span>
         </div>
@@ -181,31 +183,30 @@ export function StepPricing({ formData, errors, onUpdate }: StepPricingProps) {
     >
       <div className="space-y-2 text-center">
         <h2 className="text-2xl font-bold tracking-tight">
-          How are you joining Atlantium?
+          How will you use the lab?
         </h2>
         <p className="text-muted-foreground">
-          Atlantium is a paid community with a free tier — tell us where you're
-          starting. Nothing is charged today, and you can change this anytime.
+          The docs, job board and directories are free and stay free. Paid tiers
+          buy the things that take our time — office hours, curriculum, advisory.
+          Nothing is charged today; you can change this whenever.
         </p>
         {errors?.membership_tier && (
           <p className="text-sm text-red-400 pt-1">{errors.membership_tier}</p>
         )}
       </div>
 
-      {/* Club & Annual side by side */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Stacked: paid options first, then the open tier */}
+      <div className="space-y-3">
         {paidPlans.map((plan) => (
-          <div key={plan.id} className="min-w-0">
-            <PricingCard
-              plan={plan}
-              selected={selectedPlan === plan.id}
-              onSelect={() => handlePlanSelect(plan.id)}
-            />
-          </div>
+          <PricingCard
+            key={plan.id}
+            plan={plan}
+            selected={selectedPlan === plan.id}
+            onSelect={() => handlePlanSelect(plan.id)}
+          />
         ))}
       </div>
 
-      {/* Free card spans below */}
       <div className="border-t border-border/50 pt-4">
         <PricingCard
           plan={freePlan}

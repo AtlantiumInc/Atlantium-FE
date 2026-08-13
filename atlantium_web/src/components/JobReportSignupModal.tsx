@@ -31,6 +31,8 @@ function snooze() {
 }
 
 export type SignupStep = "pitch" | "otp";
+/** Why the door opened — the pitch is written for the reason, not the average. */
+export type SignupIntent = "report" | "apply";
 type ModalStep = SignupStep | "questionnaire" | "done";
 
 interface JobReportSignupModalProps {
@@ -40,6 +42,8 @@ interface JobReportSignupModalProps {
   initialEmail?: string;
   /** "otp" when the code was already sent (alerts card path). */
   initialStep?: ModalStep;
+  /** What the visitor was reaching for when the door appeared. */
+  intent?: SignupIntent;
 }
 
 export function JobReportSignupModal({
@@ -47,6 +51,7 @@ export function JobReportSignupModal({
   onOpenChange,
   initialEmail,
   initialStep = "pitch",
+  intent = "report",
 }: JobReportSignupModalProps) {
   const { checkAuth } = useAuth();
   const [step, setStep] = useState<ModalStep>(initialStep);
@@ -117,14 +122,15 @@ export function JobReportSignupModal({
         : "max-w-md p-0 overflow-hidden border-cyan-500/20"}>
         {step === "questionnaire" ? (
           <div className="p-6 sm:p-7 max-h-[85vh] overflow-y-auto">
-            <DialogTitle className="text-lg mb-1">Tell us who you are</DialogTitle>
+            <DialogTitle className="text-lg mb-1">Set up your lab profile</DialogTitle>
             <p className="text-xs text-muted-foreground mb-5">
-              Every Atlantium member answers these — it's how we match you to roles, rooms and people.
+              Everyone in the lab answers these once. It's how we point you at the
+              right roles, rooms and resources — and it takes about two minutes.
             </p>
             <OnboardingFlow
               onComplete={() => {
                 setStep("done");
-                toast.success("Welcome to Atlantium!");
+                toast.success("Welcome to the lab.");
               }}
             />
           </div>
@@ -135,8 +141,9 @@ export function JobReportSignupModal({
             </div>
             <DialogTitle className="text-xl">You're in!</DialogTitle>
             <DialogDescription className="leading-relaxed">
-              You're an Atlantium member. The Weekly Job Report — new Atlanta AI &amp; tech
-              roles — is on its way to your inbox and feeds.
+              You're in the lab. Apply links are unlocked across the board, and the
+              Weekly Job Report — new Atlanta AI &amp; tech roles — is on its way to your
+              inbox and feeds.
             </DialogDescription>
             <Button
               className="mt-3 w-full h-11 bg-cyan-500 text-cyan-950 hover:bg-cyan-400 font-semibold"
@@ -155,16 +162,26 @@ export function JobReportSignupModal({
                     <Newspaper className="h-5 w-5 text-cyan-400" />
                   </div>
                   <p className="text-[10px] font-bold text-cyan-400 uppercase tracking-[0.2em]">
-                    Atlantium · Free Membership
+                    Atlantium · Citizen Technology Lab
                   </p>
                 </div>
                 <DialogTitle className="text-2xl tracking-tight">
-                  Get the Weekly Job Report
+                  {intent === "apply" ? "Open the application" : "Get the Weekly Job Report"}
                 </DialogTitle>
                 <DialogDescription className="leading-relaxed">
-                  Every week's new Atlanta AI &amp; tech roles — salaries, stacks, and who's
-                  actually hiring — in your inbox and on YouTube, Instagram, TikTok, and
-                  Threads.
+                  {intent === "apply" ? (
+                    <>
+                      Free lab access opens the official apply link for this role — and
+                      every other role on the board, plus the Weekly Job Report and the
+                      grants, investor and company directories.
+                    </>
+                  ) : (
+                    <>
+                      Every week's new Atlanta AI &amp; tech roles — salaries, stacks, and
+                      who's actually hiring — in your inbox and on YouTube, Instagram,
+                      TikTok, and Threads.
+                    </>
+                  )}
                 </DialogDescription>
               </DialogHeader>
             </div>
@@ -197,8 +214,9 @@ export function JobReportSignupModal({
                     </Button>
                   </form>
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Membership is free. Members can also book{" "}
-                    <span className="text-foreground font-medium">Office Hours</span> — daily,
+                    Free, and it stays free — every doc, guide and directory the lab
+                    publishes is open. Paid tiers add the things that take our time, like{" "}
+                    <span className="text-foreground font-medium">Office Hours</span>: daily,
                     hands-on help from working engineers.
                   </p>
                 </div>
@@ -252,6 +270,7 @@ export function useJobReportSignup() {
   const [open, setOpen] = useState(false);
   const [initialEmail, setInitialEmail] = useState<string | undefined>();
   const [initialStep, setInitialStep] = useState<ModalStep>("pitch");
+  const [intent, setIntent] = useState<SignupIntent>("report");
 
   useEffect(() => {
     if (isLoading || user) return;
@@ -264,7 +283,7 @@ export function useJobReportSignup() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("welcome") === "1") {
-      toast.success("Welcome to Atlantium! You're on the Weekly Job Report.");
+      toast.success("Welcome to the lab — you're on the Weekly Job Report.");
       setInitialStep("questionnaire");
       setOpen(true);
       params.delete("welcome");
@@ -283,9 +302,10 @@ export function useJobReportSignup() {
     setOpen(true);
   }, []);
 
-  const openWithEmail = useCallback((email?: string) => {
+  const openWithEmail = useCallback((email?: string, nextIntent: SignupIntent = "report") => {
     setInitialEmail(email);
     setInitialStep("pitch");
+    setIntent(nextIntent);
     setOpen(true);
   }, []);
 
@@ -310,7 +330,7 @@ export function useJobReportSignup() {
       ?._profile?.registration_details?.is_completed === true;
 
   return {
-    open, setOpen, initialEmail, initialStep, openWithEmail, startWithEmail, openQuestionnaire,
+    open, setOpen, initialEmail, initialStep, intent, openWithEmail, startWithEmail, openQuestionnaire,
     isMember: !!user,
     isOnboarded: !!user && onboardingDone,
   };

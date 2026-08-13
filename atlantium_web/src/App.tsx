@@ -29,7 +29,6 @@ import { AdminArticlesPage } from "@/pages/admin/AdminArticlesPage";
 import { AdminJobsPage } from "@/pages/admin/AdminJobsPage";
 import { AdminContentPage } from "@/pages/admin/AdminContentPage";
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
-import { AdminApprovalsPage } from "@/pages/admin/AdminApprovalsPage";
 import { AdminGTMPage } from "@/pages/admin/AdminGTMPage";
 import { GitHubCallbackPage } from "@/pages/GitHubCallbackPage";
 import { GoogleCallbackPage } from "@/pages/GoogleCallbackPage";
@@ -163,7 +162,7 @@ function AppRoutes() {
         <Route path="jobs" element={<AdminJobsPage />} />
         <Route path="content" element={<AdminContentPage />} />
         <Route path="users" element={<AdminUsersPage />} />
-        <Route path="approvals" element={<AdminApprovalsPage />} />
+        <Route path="approvals" element={<Navigate to="/admin/users" replace />} />
         <Route path="partnerships" element={<DashboardPage embedded />} />
         <Route path="gtm" element={<AdminGTMPage />} />
       </Route>

@@ -319,6 +319,48 @@ appRoutes.post("/admin/users/:userId/revoke", async (c) => {
   return c.json({ success: true, is_approved: false });
 });
 
+
+// Reset the questionnaire so the member runs it again from step 1. Used for
+// testing the flow, and for members who need to redo their answers.
+appRoutes.post("/admin/users/:userId/reset-onboarding", async (c) => {
+  const { db } = await requireAdminUser(c);
+  const userId = c.req.param("userId");
+  const [target] = await db.select().from(user).where(eq(user.id, userId)).limit(1);
+  if (!target) throw new HttpError(404, "not_found", "User not found.");
+
+  const owned = await db.select().from(profiles).where(eq(profiles.ownerUserId, userId));
+  for (const p of owned) {
+    const reg = (p.registrationDetails ?? {}) as Record<string, unknown>;
+    // Keep the record of what they answered before; only clear completion so
+    // the wizard restarts. Nothing else about the account is touched.
+    const { is_completed: _dropped, ...previous } = reg;
+    await db
+      .update(profiles)
+      .set({
+        onboardingCompletedAt: null,
+        registrationDetails: { ...previous, is_completed: false },
+        updatedAt: new Date(),
+      })
+      .where(eq(profiles.id, p.id));
+  }
+  return c.json({ success: true, profiles_reset: owned.length });
+});
+
+// Hard delete. Every user-owned table declares ON DELETE CASCADE, so the row
+// takes its sessions, profiles, comments and reveal ledger with it.
+appRoutes.post("/admin/users/:userId/delete", async (c) => {
+  const { db, authUser } = await requireAdminUser(c);
+  const userId = c.req.param("userId");
+  if (userId === authUser.id) {
+    throw new HttpError(400, "cannot_delete_self", "You can't delete your own account here.");
+  }
+  const [target] = await db.select().from(user).where(eq(user.id, userId)).limit(1);
+  if (!target) throw new HttpError(404, "not_found", "User not found.");
+
+  await db.delete(user).where(eq(user.id, userId));
+  return c.json({ success: true, deleted_email: target.email });
+});
+
 appRoutes.post(
   "/profile/edit",
   zValidator("json", z.object({

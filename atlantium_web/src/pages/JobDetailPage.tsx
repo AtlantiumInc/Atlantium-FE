@@ -170,7 +170,7 @@ export function JobDetailPage() {
         onClick={async () => {
           if (!signup.isMember) {
             api.trackEvent("content_gate_signup_started", { slug, surface: "job_apply" });
-            signup.openWithEmail();
+            signup.openWithEmail(undefined, "apply");
             return;
           }
           if (!signup.isOnboarded) {
@@ -535,6 +535,7 @@ export function JobDetailPage() {
         onOpenChange={signup.setOpen}
         initialEmail={signup.initialEmail}
         initialStep={signup.initialStep}
+        intent={signup.intent}
       />
     </div>
   );

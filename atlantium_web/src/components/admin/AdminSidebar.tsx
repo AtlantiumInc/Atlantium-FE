@@ -7,7 +7,6 @@ import {
   FileText,
   Handshake,
   Users,
-  UserCheck,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -78,12 +77,6 @@ export function AdminSidebar({
       path: "/admin/users",
       icon: <Users size={20} />,
       label: "Users",
-    },
-    {
-      id: "approvals",
-      path: "/admin/approvals",
-      icon: <UserCheck size={20} />,
-      label: "Approvals",
     },
     {
       id: "gtm",

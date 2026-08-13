@@ -266,6 +266,7 @@ export function DirectoryEntryPage() {
         onOpenChange={signup.setOpen}
         initialEmail={signup.initialEmail}
         initialStep={signup.initialStep}
+        intent={signup.intent}
       />
     </div>
   );

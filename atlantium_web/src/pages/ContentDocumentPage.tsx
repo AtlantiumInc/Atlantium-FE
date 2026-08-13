@@ -254,6 +254,7 @@ export function ContentDocumentPage() {
         onOpenChange={signup.setOpen}
         initialEmail={signup.initialEmail}
         initialStep={signup.initialStep}
+        intent={signup.intent}
       />
     </div>
   );

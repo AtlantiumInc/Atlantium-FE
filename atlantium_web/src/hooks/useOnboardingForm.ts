@@ -43,7 +43,7 @@ function getInitialState(): OnboardingState {
       is_georgia_resident: false,
       primary_goal: undefined,
       interests: [],
-      membership_tier: "club",
+      membership_tier: undefined,
       working_on_project: undefined,
       project_description: "",
       technical_level: undefined,
