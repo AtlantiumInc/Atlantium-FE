@@ -349,7 +349,7 @@ export function PricingPage() {
               </p>
               <Link to="/signup">
                 <Button size="lg" className="gap-2 bg-white text-black hover:bg-gray-100 shadow-xl shadow-black/20 border-0 text-base px-8">
-                  Join Lab
+                  Join Network
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>

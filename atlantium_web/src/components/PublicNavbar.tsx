@@ -349,7 +349,7 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
               <>
                 <Link to="/dashboard">
                   <Button size="sm" className="gap-1.5 bg-white text-black hover:bg-gray-100 border-0 h-8 text-xs px-3">
-                    Enter Lab
+                    Enter Network
                   </Button>
                 </Link>
                 {avatarLink}
@@ -358,7 +358,7 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
               <div className="flex flex-col items-center">
                 <Link to="/signup" className="cursor-pointer">
                   <Button size="sm" className="gap-1.5 bg-white text-black hover:bg-gray-100 border-0 h-7 text-xs px-3 cursor-pointer">
-                    Join Lab
+                    Join Network
                   </Button>
                 </Link>
                 <Link to="/login" className="text-[10px] text-muted-foreground hover:text-foreground transition-colors mt-0.5">
@@ -369,14 +369,14 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
             <ThemeToggle />
           </div>
 
-          {/* Right: Join Lab + hamburger. Reading mode keeps this at every width. */}
+          {/* Right: Join Network + hamburger. Reading mode keeps this at every width. */}
           <div className={`items-center gap-2 ml-auto shrink-0 ${reading ? "flex" : "flex md:hidden"}`}>
             {/* Signed in, the avatar carries both jobs at this width: it says
                 who you are and it's the way in. Keeps the title room back. */}
             {user ? avatarLink : (
               <Link to="/signup">
                 <Button size="sm" className="gap-1.5 bg-white text-black hover:bg-gray-100 border-0 text-xs h-8 px-3">
-                  Join Lab
+                  Join Network
                 </Button>
               </Link>
             )}
@@ -545,14 +545,14 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
               {user ? (
                 <Link to="/dashboard" onClick={() => setOpen(false)}>
                   <Button className="w-full gap-2 bg-white text-black hover:bg-gray-100 border-0 h-12 text-base">
-                    Enter Lab
+                    Enter Network
                   </Button>
                 </Link>
               ) : (
                 <>
                   <Link to="/signup" onClick={() => setOpen(false)}>
                     <Button className="w-full gap-2 bg-white text-black hover:bg-gray-100 border-0 h-12 text-base">
-                      Join Lab
+                      Join Network
                     </Button>
                   </Link>
                   <Link to="/login" onClick={() => setOpen(false)}>

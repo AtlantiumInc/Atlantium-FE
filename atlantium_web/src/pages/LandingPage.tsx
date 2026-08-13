@@ -406,7 +406,7 @@ export function LandingPage() {
                 <div className="flex flex-wrap justify-center gap-3 mb-10">
                   <Link to="/signup">
                     <Button size="lg" className="gap-2 bg-white text-black hover:bg-gray-100 shadow-lg shadow-black/20 border-0">
-                      Join Lab
+                      Join Network
                       <ArrowRight className="h-4 w-4" />
                     </Button>
                   </Link>
@@ -857,7 +857,7 @@ export function LandingPage() {
                 <div className="flex gap-3">
                   <Link to="/signup">
                     <Button className="gap-2 bg-white text-black hover:bg-gray-100 shadow-lg shadow-black/20 border-0">
-                      Join Lab
+                      Join Network
                       <ArrowRight className="h-4 w-4" />
                     </Button>
                   </Link>
