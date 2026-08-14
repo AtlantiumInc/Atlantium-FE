@@ -82,6 +82,55 @@ export async function createPortalSession(
   }));
 }
 
+/** Reuse the member's customer, or make one. Idempotent by our own record. */
+export async function ensureCustomer(
+  env: Env,
+  input: { existingId?: string | null; email: string; userId: string; name?: string | null },
+): Promise<string> {
+  if (input.existingId) return input.existingId;
+  const customer = await stripeRequest<{ id: string }>(env, "/customers", form({
+    email: input.email,
+    ...(input.name ? { name: input.name } : {}),
+    "metadata[user_id]": input.userId,
+  }));
+  return customer.id;
+}
+
+/**
+ * A SetupIntent collects the card without charging it. We then create the
+ * subscription server-side with that payment method — the same shape Boomin
+ * uses, and it avoids leaving `incomplete` subscriptions behind when someone
+ * abandons the form.
+ */
+export async function createSetupIntent(env: Env, customerId: string) {
+  return stripeRequest<{ id: string; client_secret: string }>(env, "/setup_intents", form({
+    customer: customerId,
+    usage: "off_session",
+    "payment_method_types[0]": "card",
+  }));
+}
+
+export async function createSubscription(
+  env: Env,
+  input: { customerId: string; priceId: string; paymentMethodId: string; userId: string },
+) {
+  return stripeRequest<StripeSubscription>(env, "/subscriptions", form({
+    customer: input.customerId,
+    "items[0][price]": input.priceId,
+    default_payment_method: input.paymentMethodId,
+    "metadata[user_id]": input.userId,
+    "expand[0]": "latest_invoice.payment_intent",
+  }));
+}
+
+export async function attachPaymentMethod(env: Env, paymentMethodId: string, customerId: string) {
+  await stripeRequest(env, `/payment_methods/${paymentMethodId}/attach`, form({ customer: customerId }));
+  // Make it the default for future invoices, not just this one.
+  await stripeRequest(env, `/customers/${customerId}`, form({
+    "invoice_settings[default_payment_method]": paymentMethodId,
+  }));
+}
+
 export async function getSubscription(env: Env, subscriptionId: string) {
   if (!env.STRIPE_SECRET_KEY) throw new Error("STRIPE_SECRET_KEY is not configured");
   const res = await fetch(`${STRIPE_API}/subscriptions/${subscriptionId}`, {

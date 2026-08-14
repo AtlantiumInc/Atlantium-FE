@@ -1,11 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Loader2, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, type BillingStatus } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { UpgradeDialog } from "./UpgradeDialog";
 
 /**
  * ONE upgrade path for the whole platform.
@@ -65,8 +65,9 @@ export function useBilling() {
 }
 
 /**
- * Start a purchase. The single seam between "the member said yes" and however
- * we take money this month.
+ * The single seam between "the member said yes" and how we take money.
+ * Payment happens in-page via Elements (UpgradeDialog); this remains as the
+ * hosted-Checkout fallback for surfaces that would rather redirect.
  */
 export async function startPurchase(plan: "club" | "club_annual") {
   const { checkout_url } = await api.startCheckout(plan);
@@ -91,24 +92,14 @@ export function UpgradeCta({
 }) {
   const { user } = useAuth();
   const { status } = useBilling();
-  const [isStarting, setIsStarting] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   // Members don't get sold to. A CTA that keeps appearing after you've paid is
   // the fastest way to make paying feel pointless.
   if (status && status.tier !== "free") return null;
 
-  const go = async () => {
-    setIsStarting(true);
-    try {
-      await startPurchase(plan);
-    } catch (error) {
-      const err = error as { code?: string; message?: string };
-      toast.error(err.code === "billing_unavailable"
-        ? "Checkout isn't switched on yet — hold tight."
-        : err.message ?? "Couldn't start checkout");
-      setIsStarting(false);
-    }
-  };
+  // Elements keeps the member on Atlantium; no redirect, no lost context.
+  const go = () => setDialogOpen(true);
 
   // Signed out: joining comes before paying.
   if (!user) {
@@ -135,10 +126,8 @@ export function UpgradeCta({
               {MEMBER_PLAN.monthly.price}{MEMBER_PLAN.monthly.period} — member DMs, exclusive events, and the
               agent. {MEMBER_PLAN.annual.price}/year gets {MEMBER_PLAN.annual.note}.
             </p>
-            <Button size="sm" className="mt-3 gap-1.5" onClick={go} disabled={isStarting}>
-              {isStarting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-              {cta}
-            </Button>
+            <Button size="sm" className="mt-3 gap-1.5" onClick={go}>{cta}</Button>
+            <UpgradeDialog open={dialogOpen} onOpenChange={setDialogOpen} reason={reason} defaultPlan={plan} />
           </div>
         </div>
       </div>
@@ -146,15 +135,16 @@ export function UpgradeCta({
   }
 
   return (
-    <Button
-      variant={variant === "inline" ? "link" : "outline"}
-      size={variant === "inline" ? "sm" : "default"}
-      className={cn("gap-1.5", className)}
-      onClick={go}
-      disabled={isStarting}
-    >
-      {isStarting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-      {cta}
-    </Button>
+    <>
+      <Button
+        variant={variant === "inline" ? "link" : "outline"}
+        size={variant === "inline" ? "sm" : "default"}
+        className={cn("gap-1.5", className)}
+        onClick={go}
+      >
+        {cta}
+      </Button>
+      <UpgradeDialog open={dialogOpen} onOpenChange={setDialogOpen} reason={reason} defaultPlan={plan} />
+    </>
   );
 }

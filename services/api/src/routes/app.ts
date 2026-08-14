@@ -9,6 +9,10 @@ import { grantVerification, revokeVerification } from "../lib/verification";
 import { canInitiate, outreachStatus } from "../lib/outreach";
 import { entitlementsFor } from "../lib/entitlements";
 import {
+  attachPaymentMethod,
+  createSetupIntent,
+  createSubscription,
+  ensureCustomer,
   createCheckoutSession,
   createPortalSession,
   getSubscription,
@@ -1507,6 +1511,102 @@ appRoutes.post(
       db, { memberRoleId: input.member_role_id }, input.verification, input.reason);
     if (revoked === 0) throw new HttpError(404, "not_found", "No live grant to revoke.");
     return c.json({ revoked });
+  },
+);
+
+
+// ── P1b: embedded payments (Stripe Elements) ────────────────────────────────
+// Elements collects the card in our own page instead of redirecting. The flow
+// is SetupIntent → confirmSetup in the browser → subscription created here with
+// the resulting payment method, which avoids leaving `incomplete` subscriptions
+// behind when someone abandons the form.
+
+appRoutes.get("/billing/config", async (c) => {
+  await requireAppUser(c);
+  // Publishable keys are public by design; serving it avoids a rebuild when it
+  // rotates, and keeps the FE from guessing which account/mode is live.
+  return c.json({
+    publishable_key: c.env.STRIPE_PUBLISHABLE_KEY ?? null,
+    monthly_price: 2900,
+    annual_price: 29000,
+    currency: "usd",
+  });
+});
+
+appRoutes.post("/billing/setup-intent", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  if (!c.env.STRIPE_SECRET_KEY) {
+    throw new HttpError(503, "billing_unavailable", "Billing isn't configured yet.");
+  }
+  const existing = await membershipFor(db, authUser.id);
+  const customerId = await ensureCustomer(c.env, {
+    existingId: existing?.stripeCustomerId,
+    email: authUser.email,
+    userId: authUser.id,
+    name: authUser.name,
+  });
+
+  // Remember the customer immediately: if the member abandons the form we must
+  // not mint a second Stripe customer for them next time.
+  await db
+    .insert(memberships)
+    .values({ userId: authUser.id, stripeCustomerId: customerId })
+    .onConflictDoUpdate({ target: memberships.userId, set: { stripeCustomerId: customerId, updatedAt: new Date() } });
+
+  const intent = await createSetupIntent(c.env, customerId);
+  return c.json({ client_secret: intent.client_secret });
+});
+
+appRoutes.post(
+  "/billing/subscribe",
+  zValidator("json", z.object({
+    plan: z.enum(["club", "club_annual"]),
+    payment_method_id: z.string().min(1),
+  })),
+  async (c) => {
+    const { db, authUser } = await requireAppUser(c);
+    const input = c.req.valid("json");
+    const priceId = input.plan === "club_annual" ? c.env.STRIPE_PRICE_CLUB_ANNUAL : c.env.STRIPE_PRICE_CLUB_MONTHLY;
+    if (!priceId || !c.env.STRIPE_SECRET_KEY) {
+      throw new HttpError(503, "billing_unavailable", "Billing isn't configured yet.");
+    }
+
+    const existing = await membershipFor(db, authUser.id);
+    if (existing?.stripeSubscriptionId && existing.tier !== "free") {
+      throw new HttpError(409, "already_subscribed", "You already have an active membership.");
+    }
+
+    const customerId = await ensureCustomer(c.env, {
+      existingId: existing?.stripeCustomerId,
+      email: authUser.email,
+      userId: authUser.id,
+      name: authUser.name,
+    });
+
+    // Stripe's own refusals (declined card, unusable payment method) are the
+    // member's problem to fix, not a server fault — surface them as 400 with
+    // Stripe's wording rather than a 500 the UI can only call "unknown error".
+    let subscription;
+    try {
+      await attachPaymentMethod(c.env, input.payment_method_id, customerId);
+      subscription = await createSubscription(c.env, {
+        customerId,
+        priceId,
+        paymentMethodId: input.payment_method_id,
+        userId: authUser.id,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "That payment couldn't be completed.";
+      throw new HttpError(400, "payment_failed", message.replace(/^Stripe \S+ failed: /, ""));
+    }
+
+    // The webhook is still the authority — this response only tells the browser
+    // what to render while `customer.subscription.created` is in flight.
+    return c.json({
+      subscription_id: subscription.id,
+      status: subscription.status,
+      active: subscription.status === "active" || subscription.status === "trialing",
+    });
   },
 );
 

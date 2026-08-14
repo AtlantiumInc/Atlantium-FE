@@ -120,3 +120,6 @@ async function main() {
 }
 
 main().catch((e) => { console.error(String(e.message ?? e)); process.exit(1); });
+
+// Module scope: these top-level consts would otherwise collide globally.
+export {};

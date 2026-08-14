@@ -13,6 +13,8 @@ export type Env = {
   STRIPE_WEBHOOK_SECRET?: string;
   STRIPE_PRICE_CLUB_MONTHLY?: string;
   STRIPE_PRICE_CLUB_ANNUAL?: string;
+  /** Public by design — served to the browser for Elements. */
+  STRIPE_PUBLISHABLE_KEY?: string;
   ADMIN_EMAILS?: string;
   BOOMIN_CONNECT_PUBLIC_KEY?: string;
   BOOMIN_CONNECT_PROGRAM_ID?: string;

@@ -801,6 +801,30 @@ class ApiClient {
 
   // ── P1b: billing ──────────────────────────────────────────────────────────
 
+  async getBillingConfig(): Promise<{
+    publishable_key: string | null;
+    monthly_price: number;
+    annual_price: number;
+    currency: string;
+  }> {
+    return this.request("/billing/config", { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  /** Lab billing. Distinct from the legacy Xano-era createSetupIntent(). */
+  async createBillingSetupIntent(): Promise<{ client_secret: string }> {
+    return this.request("/billing/setup-intent", { method: "POST" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async subscribeWithPaymentMethod(plan: "club" | "club_annual", paymentMethodId: string): Promise<{
+    subscription_id: string;
+    status: string;
+    active: boolean;
+  }> {
+    return this.request("/billing/subscribe",
+      { method: "POST", body: JSON.stringify({ plan, payment_method_id: paymentMethodId }) },
+      ATLANTIUM_API_BASE_URL);
+  }
+
   async getBillingStatus(): Promise<BillingStatus> {
     return this.request("/billing/status", { method: "GET" }, ATLANTIUM_API_BASE_URL);
   }

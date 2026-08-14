@@ -47,6 +47,12 @@ BOOMIN_HANDOFF_REDIRECT_URI = "https://atlantium.ai/creator-program"
 STRIPE_PRICE_CLUB_MONTHLY = "price_1U48jTRpvj2ofWAVtQeVMnd1"
 STRIPE_PRICE_CLUB_ANNUAL = "price_1U48jURpvj2ofWAVz9qqgxlB"
 
+# Publishable key: public by design (it identifies the account to Stripe.js and
+# can do nothing on its own). Served to the browser by GET /v1/billing/config so
+# rotating it needs no frontend rebuild. Must match the account AND mode of
+# STRIPE_SECRET_KEY — a live pk with a test sk fails at confirmation time.
+STRIPE_PUBLISHABLE_KEY = ""
+
 # Required secrets:
 #   wrangler secret put DATABASE_URL
 #   wrangler secret put BETTER_AUTH_SECRET
