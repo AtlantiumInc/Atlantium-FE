@@ -240,6 +240,41 @@ async function main() {
   });
   check("admin can revoke a grant", revoked.status === 200, `status=${revoked.status}`);
 
+  // ── comped investors: verification buys the ability to answer ────────────
+  const comped = await member("comped-investor");
+  const compedRole = await addRole(comped, "investor");
+  const reachable = await member("reachable-pro");
+  await addRole(reachable, "professional");
+
+  const beforeGrant = await dm(comped, reachable, "peer");
+  check("an UNVERIFIED investor can't initiate", beforeGrant.status === 403,
+    `status=${beforeGrant.status} ${((await beforeGrant.json()) as any).code}`);
+
+  await fetch(`${API}/admin/verifications`, {
+    method: "POST", headers: H(admin),
+    body: JSON.stringify({ member_role_id: compedRole, verification: "investor" }),
+  });
+
+  const outreach = await (await fetch(`${API}/me/outreach`, { headers: H(comped) })).json() as any;
+  check("verification comps the investor (unlimited outreach)",
+    outreach.mayInitiate && outreach.unlimited, JSON.stringify(outreach).slice(0, 80));
+
+  const afterGrant = await dm(comped, reachable, "peer");
+  check("a verified investor CAN now start a conversation", afterGrant.status === 200,
+    `status=${afterGrant.status}`);
+
+  const revoke = await fetch(`${API}/admin/verifications/revoke`, {
+    method: "POST", headers: H(admin),
+    body: JSON.stringify({ member_role_id: compedRole, verification: "investor", reason: "smoke" }),
+  });
+  const revokeBody = await revoke.json() as any;
+  check("revoking the verification also revokes the comp",
+    revokeBody.entitlements_revoked === 1, JSON.stringify(revokeBody));
+
+  const afterRevoke = await (await fetch(`${API}/me/outreach`, { headers: H(comped) })).json() as any;
+  check("...so a revoked investor loses outreach", !afterRevoke.mayInitiate,
+    JSON.stringify(afterRevoke).slice(0, 70));
+
   await cleanup();
   console.log(`\n${pass} passed, ${fail} failed`);
   if (fail) process.exit(1);

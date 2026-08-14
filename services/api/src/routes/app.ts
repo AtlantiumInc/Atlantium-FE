@@ -63,6 +63,7 @@ import {
   dmPolicies,
   dmRequests,
   introductions,
+  entitlementGrants,
   billingEvents,
   threads,
   threadParticipants,
@@ -1579,6 +1580,26 @@ appRoutes.post(
         .insert(dmPolicies)
         .values({ profileId: role.profileId, accepts: "introductions_only" })
         .onConflictDoNothing({ target: dmPolicies.profileId });
+
+      // Investors are comped by design (§6.2) — we charge the side that wants
+      // to reach them, not them. Without this they could receive introductions
+      // and be unable to answer anyone, which is half a membership.
+      const [owner] = await db
+        .select({ userId: profiles.ownerUserId })
+        .from(profiles)
+        .where(eq(profiles.id, role.profileId))
+        .limit(1);
+      if (owner) {
+        await db.insert(entitlementGrants).values({
+          userId: owner.userId,
+          entitlement: "dm.send.unlimited",
+          reason: "comped investor — verified",
+          grantedBy: authUser.id,
+          // Tied to the verification's own lifetime: when the trust expires,
+          // so does what it bought.
+          expiresAt: grant.expiresAt ?? null,
+        });
+      }
     }
 
     return c.json({ granted: true, grant_id: grant.id, expires_at: grant.expiresAt?.toISOString() ?? null });
@@ -1595,10 +1616,34 @@ appRoutes.post(
   async (c) => {
     const { db } = await requireAdminUser(c);
     const input = c.req.valid("json");
+    const [role] = await db.select().from(memberRoles)
+      .where(eq(memberRoles.id, input.member_role_id)).limit(1);
+
     const revoked = await revokeVerification(
       db, { memberRoleId: input.member_role_id }, input.verification, input.reason);
     if (revoked === 0) throw new HttpError(404, "not_found", "No live grant to revoke.");
-    return c.json({ revoked });
+
+    // Revoking the verification must revoke what it bought, or a revoked
+    // investor keeps unlimited outreach forever.
+    let entitlementsRevoked = 0;
+    if (input.verification === "investor" && role) {
+      const [owner] = await db.select({ userId: profiles.ownerUserId }).from(profiles)
+        .where(eq(profiles.id, role.profileId)).limit(1);
+      if (owner) {
+        const rows = await db
+          .update(entitlementGrants)
+          .set({ revokedAt: new Date(), revokedReason: input.reason })
+          .where(and(
+            eq(entitlementGrants.userId, owner.userId),
+            eq(entitlementGrants.entitlement, "dm.send.unlimited"),
+            isNull(entitlementGrants.revokedAt),
+          ))
+          .returning({ id: entitlementGrants.id });
+        entitlementsRevoked = rows.length;
+      }
+    }
+
+    return c.json({ revoked, entitlements_revoked: entitlementsRevoked });
   },
 );
 
