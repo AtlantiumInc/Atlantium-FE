@@ -171,6 +171,13 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
     () => sessionStorage.getItem(PROFILE_AVATAR_KEY),
   );
   const [platformOpen, setPlatformOpen] = useState(false);
+  // Hover state for the living logo; once wanted, the video stays mounted so
+  // it never re-downloads, and later hovers resume instantly.
+  const [logoHover, setLogoHover] = useState(false);
+  const [logoVideoWanted, setLogoVideoWanted] = useState(false);
+  useEffect(() => {
+    if (logoHover || platformOpen) setLogoVideoWanted(true);
+  }, [logoHover, platformOpen]);
   const liveReadouts = usePlatformReadouts(platformOpen);
 
   // Close on route change
@@ -273,24 +280,41 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
             <div className="relative shrink-0">
               <button
                 onClick={() => setPlatformOpen((o) => !o)}
+                onPointerEnter={() => setLogoHover(true)}
+                onPointerLeave={() => setLogoHover(false)}
                 aria-label={platformOpen ? "Close menu" : "Open menu"}
                 aria-expanded={platformOpen}
-                className={`group relative h-11 w-11 rounded-full flex items-center justify-center border transition-all duration-300 ${
+                className={`group relative h-11 w-11 rounded-full overflow-hidden border transition-all duration-300 ${
                   platformOpen
-                    ? "border-cyan-400/60 shadow-[0_0_24px_rgba(0,212,255,0.25)] bg-cyan-400/5"
+                    ? "border-cyan-400/60 shadow-[0_0_24px_rgba(0,212,255,0.25)]"
                     : "border-border/60 hover:border-cyan-400/40 hover:shadow-[0_0_18px_rgba(0,212,255,0.15)]"
                 }`}
               >
+                {/* The mark on its mountain — path to the frontier, cropped to
+                    the circle. Hover swaps in the living version: the video
+                    only ever loads after the first hover. */}
                 <img
-                  src="/logo.png"
+                  src="/nav-logo.png"
                   alt="Atlantium"
-                  className={`h-7 w-7 transition-transform duration-300 ${platformOpen ? "scale-90" : "group-hover:scale-105"}`}
+                  className={`absolute inset-0 h-full w-full object-cover transition-transform duration-500 ${platformOpen ? "scale-110" : "group-hover:scale-110"}`}
                 />
-                {/* idle ping advertises that the mark is a control, not a decoration */}
-                {!platformOpen && (
-                  <span className="absolute inset-0 rounded-full border border-cyan-400/20 animate-ping [animation-duration:3s] pointer-events-none" />
+                {logoVideoWanted && (
+                  <video
+                    src="/nav-logo.mp4"
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${logoHover || platformOpen ? "opacity-100" : "opacity-0"}`}
+                  />
                 )}
               </button>
+              {/* idle ping advertises that the mark is a control, not a
+                  decoration — outside the button so overflow-hidden can crop
+                  the media without eating the ring */}
+              {!platformOpen && (
+                <span className="absolute inset-0 rounded-full border border-cyan-400/20 animate-ping [animation-duration:3s] pointer-events-none" />
+              )}
 
             </div>
           )}
