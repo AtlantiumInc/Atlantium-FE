@@ -1008,6 +1008,28 @@ class ApiClient {
     is_email_verified: boolean;
     onboarding_completed: boolean;
     membership_tier: string | null;
+    headline: string | null;
+    roles: Array<{
+      role: string;
+      title: string | null;
+      is_primary: boolean;
+      org: { name: string; slug: string } | null;
+      seeking: { status: string; visibility: string } | null;
+      details: {
+        venture_stage: string | null;
+        needs: string[];
+        check_min: number | null;
+        check_max: number | null;
+        focus_stages: string[];
+        intro_appetite: string;
+        domains: string[];
+        engagement: string[];
+        availability: string;
+        hiring_roles: string[];
+        hiring_contact: string | null;
+      } | null;
+    }>;
+    pending_claims: Array<{ kind: string; relationship: string; org: string | null }>;
     registration_details: Record<string, unknown>;
     created_at: string;
   }>> {

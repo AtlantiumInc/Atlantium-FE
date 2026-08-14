@@ -363,6 +363,43 @@ appRoutes.get("/admin/users", async (c) => {
   for (const p of allProfiles) {
     if (!profileByOwner.has(p.ownerUserId)) profileByOwner.set(p.ownerUserId, p);
   }
+
+  // Persona, affiliation and the branch answers are first-class rows now, not
+  // questionnaire keys — an admin looking at an investor should be able to see
+  // whether they want introductions, which is what decides if the curation
+  // queue may point founders at them.
+  const profileIds = allProfiles.map((p) => p.id);
+  const roleRows = profileIds.length
+    ? await db
+        .select({ role: memberRoles, org: directoryEntries, details: roleDetails, prefs: professionalPreferences })
+        .from(memberRoles)
+        .leftJoin(directoryEntries, eq(directoryEntries.id, memberRoles.entryId))
+        .leftJoin(roleDetails, eq(roleDetails.roleId, memberRoles.id))
+        .leftJoin(professionalPreferences, eq(professionalPreferences.roleId, memberRoles.id))
+        .where(inArray(memberRoles.profileId, profileIds))
+    : [];
+  const pendingClaims = profileIds.length
+    ? await db
+        .select({ profileId: orgRequests.profileId, kind: orgRequests.kind, proposed: orgRequests.proposed,
+          relationship: orgRequests.relationship, org: directoryEntries.name })
+        .from(orgRequests)
+        .leftJoin(directoryEntries, eq(directoryEntries.id, orgRequests.entryId))
+        .where(and(inArray(orgRequests.profileId, profileIds), eq(orgRequests.status, "pending")))
+    : [];
+
+  const rolesByProfile = new Map<string, typeof roleRows>();
+  for (const r of roleRows) {
+    const list = rolesByProfile.get(r.role.profileId) ?? [];
+    list.push(r);
+    rolesByProfile.set(r.role.profileId, list);
+  }
+  const claimsByProfile = new Map<string, typeof pendingClaims>();
+  for (const cl of pendingClaims) {
+    const list = claimsByProfile.get(cl.profileId) ?? [];
+    list.push(cl);
+    claimsByProfile.set(cl.profileId, list);
+  }
+
   return c.json(users.map((u) => {
     const p = profileByOwner.get(u.id);
     const reg = (p?.registrationDetails ?? {}) as Record<string, unknown>;
@@ -375,6 +412,34 @@ appRoutes.get("/admin/users", async (c) => {
       is_email_verified: u.emailVerified,
       onboarding_completed: Boolean(p?.onboardingCompletedAt) || reg.is_completed === true,
       membership_tier: typeof reg.membership_tier === "string" ? reg.membership_tier : null,
+      headline: (p?.metadata as Record<string, unknown> | null)?.bio ?? null,
+      roles: (rolesByProfile.get(p?.id ?? "") ?? []).map((r) => ({
+        role: r.role.role,
+        title: r.role.title,
+        is_primary: r.role.isPrimary,
+        org: r.org ? { name: r.org.name, slug: r.org.slug } : null,
+        seeking: r.prefs ? { status: r.prefs.seeking, visibility: r.prefs.visibility } : null,
+        details: r.details
+          ? {
+              venture_stage: r.details.ventureStage,
+              needs: r.details.needs,
+              check_min: r.details.checkMin,
+              check_max: r.details.checkMax,
+              focus_stages: r.details.focusStages,
+              intro_appetite: r.details.introAppetite,
+              domains: r.details.domains,
+              engagement: r.details.engagement,
+              availability: r.details.availability,
+              hiring_roles: r.details.hiringRoles,
+              hiring_contact: r.details.hiringContact,
+            }
+          : null,
+      })),
+      pending_claims: (claimsByProfile.get(p?.id ?? "") ?? []).map((cl) => ({
+        kind: cl.kind,
+        relationship: cl.relationship,
+        org: cl.org ?? (cl.proposed as Record<string, unknown> | null)?.name ?? null,
+      })),
       registration_details: reg,
       created_at: u.createdAt?.toISOString?.() ?? u.createdAt,
     };

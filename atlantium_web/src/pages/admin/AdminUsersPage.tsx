@@ -42,11 +42,27 @@ function fmtDate(value: string) {
   });
 }
 
+/**
+ * Bookkeeping and plumbing that live in the same blob as the answers but are
+ * not answers. `onboarding_completed_at` is the one that actually misled:
+ * resetting a questionnaire clears the completion column and deliberately keeps
+ * the previous answers, so a stale timestamp sat directly under an
+ * "incomplete" badge. Ids and display caches are noise for the same reason.
+ */
+const NOT_AN_ANSWER = new Set([
+  "is_completed",
+  "onboarding_completed_at",
+  "org_entry_id",
+  "org_name",
+  "org_none",
+  "org_proposed_name",
+]);
+
 /** Registration answers, rendered readable rather than as a JSON dump. */
 function AnswerList({ details }: { details: Record<string, unknown> }) {
   const entries = Object.entries(details).filter(
     ([key, value]) =>
-      key !== "is_completed" &&
+      !NOT_AN_ANSWER.has(key) &&
       value !== null &&
       value !== undefined &&
       value !== "" &&
@@ -66,6 +82,90 @@ function AnswerList({ details }: { details: Record<string, unknown> }) {
         </div>
       ))}
     </dl>
+  );
+}
+
+const money = (n: number) => (n >= 1000 ? `$${Math.round(n / 1000)}k` : `$${n}`);
+
+/**
+ * Where this member actually stands in the network.
+ *
+ * The questionnaire blob below is a record of what they typed; this is the part
+ * that does something — the persona they hold, the company they claim, whether
+ * they're listed as looking, and whether the curation queue may send founders
+ * their way. None of it is a registration answer, so none of it appeared here
+ * before.
+ */
+function NetworkStanding({ user }: { user: AdminUser }) {
+  const roles = user.roles ?? [];
+  const claims = user.pending_claims ?? [];
+  if (roles.length === 0 && claims.length === 0 && !user.headline) return null;
+
+  return (
+    <div>
+      <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+        Standing in the network
+      </h3>
+
+      {user.headline && <p className="mb-3 text-sm">{user.headline}</p>}
+
+      <div className="space-y-2">
+        {roles.map((r, i) => {
+          const d = r.details;
+          const facts: string[] = [];
+          if (r.seeking) facts.push(`seeking: ${r.seeking.status} (${r.seeking.visibility})`);
+          if (d?.venture_stage) facts.push(`stage: ${d.venture_stage}`);
+          if (d?.needs?.length) facts.push(`needs: ${d.needs.join(", ")}`);
+          if (d?.check_min != null || d?.check_max != null) {
+            facts.push(`checks: ${d.check_min != null ? money(d.check_min) : "?"}–${d.check_max != null ? money(d.check_max) : "up"}`);
+          }
+          if (d?.focus_stages?.length) facts.push(`invests at: ${d.focus_stages.join(", ")}`);
+          if (d?.domains?.length) facts.push(`advises on: ${d.domains.join(", ")}`);
+          if (d?.engagement?.length) facts.push(`engages: ${d.engagement.join(", ")}`);
+          if (d?.hiring_roles?.length) facts.push(`hiring: ${d.hiring_roles.join(", ")}`);
+
+          return (
+            <div key={i} className="rounded-lg border border-border/50 bg-background/40 px-3 py-2.5">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                <span className="font-medium capitalize">{r.role}</span>
+                {r.title && <span className="text-muted-foreground">· {r.title}</span>}
+                {r.org && <span className="text-muted-foreground">· {r.org.name}</span>}
+                {r.is_primary && (
+                  <span className="rounded-full border border-border/60 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                    primary
+                  </span>
+                )}
+                {/* The two answers that gate something, called out rather than
+                    buried in the list — they decide who may reach this person. */}
+                {d && d.intro_appetite !== "none" && (
+                  <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-emerald-300">
+                    wants intros: {d.intro_appetite}
+                  </span>
+                )}
+                {d?.availability && r.role === "advisor" && (
+                  <span className="rounded-full border border-border/60 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {d.availability.replace(/_/g, " ")}
+                  </span>
+                )}
+              </div>
+              {facts.length > 0 && (
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{facts.join(" · ")}</p>
+              )}
+            </div>
+          );
+        })}
+
+        {claims.map((cl, i) => (
+          <div key={`claim-${i}`} className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs">
+            <span className="text-amber-300">Claim awaiting review</span>
+            <span className="text-muted-foreground">
+              {" — "}{cl.relationship} at {cl.org ?? "an unnamed company"}
+              {cl.kind === "create" && " (new to the catalog)"}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -365,6 +465,8 @@ export function AdminUsersPage() {
                   </Button>
                 )}
               </div>
+
+              <NetworkStanding user={selected} />
 
               <div>
                 <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
