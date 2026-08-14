@@ -113,25 +113,45 @@ export function GrantsPage() {
   const activeKind = searchParams.get("kind") ?? "grant";
 
   const [entries, setEntries] = useState<DirectoryEntry[]>([]);
+  const [total, setTotal] = useState(0);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [search, setSearch] = useState("");
 
+  // Search goes to the SERVER. The page holds at most one page of a
+  // 1,000-entry directory, so filtering the loaded slice made most of the
+  // catalog unfindable — a search box that quietly lies.
+  const PAGE = 100;
   useEffect(() => {
     setIsLoading(true);
-    api.getDirectory({ kind: activeKind === "all" ? undefined : activeKind, limit: 100 })
-      .then((r) => { setEntries(r.entries); setCounts(r.counts); })
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
-  }, [activeKind]);
+    const t = setTimeout(() => {
+      api.getDirectory({
+        kind: activeKind === "all" ? undefined : activeKind,
+        q: search.trim() || undefined,
+        limit: PAGE,
+      })
+        .then((r) => { setEntries(r.entries); setTotal(r.total); setCounts(r.counts); })
+        .catch(() => {})
+        .finally(() => setIsLoading(false));
+    }, search.trim() ? 300 : 0);
+    return () => clearTimeout(t);
+  }, [activeKind, search]);
 
-  const visible = useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    if (!needle) return entries;
-    return entries.filter(
-      (e) => e.name.toLowerCase().includes(needle) || (e.summary ?? "").toLowerCase().includes(needle),
-    );
-  }, [entries, search]);
+  const loadMore = () => {
+    setIsLoadingMore(true);
+    api.getDirectory({
+      kind: activeKind === "all" ? undefined : activeKind,
+      q: search.trim() || undefined,
+      limit: PAGE,
+      offset: entries.length,
+    })
+      .then((r) => { setEntries((prev) => [...prev, ...r.entries]); setTotal(r.total); })
+      .catch(() => {})
+      .finally(() => setIsLoadingMore(false));
+  };
+
+  const visible = entries;
 
   const closingSoon = useMemo(
     () => entries.filter((e) => typeof e.grant?.days_until_close === "number" && e.grant.days_until_close! <= 45).length,
@@ -221,6 +241,18 @@ export function GrantsPage() {
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {visible.map((e) => <EntryCard key={e.id} entry={e} />)}
           </motion.div>
+        )}
+
+        {!isLoading && entries.length < total && (
+          <div className="mt-8 flex flex-col items-center gap-2">
+            <Button variant="outline" onClick={loadMore} disabled={isLoadingMore} className="gap-2">
+              {isLoadingMore && <Loader2 className="h-4 w-4 animate-spin" />}
+              Show more
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              {entries.length.toLocaleString()} of {total.toLocaleString()}
+            </p>
+          </div>
         )}
 
         {/* Funnel: the weekly report carries new grants */}
