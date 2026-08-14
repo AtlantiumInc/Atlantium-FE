@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "motion/react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import SpotlightCard from "@/components/ui/SpotlightCard";
@@ -206,21 +207,17 @@ const outcomes = [
 
 // ── Component ────────────────────────────────────────────────────────────────
 export function TrainingPage() {
-  const scrollToApply = () =>
-    document.getElementById("apply")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  // The application is a modal — apply from wherever the decision happens,
+  // without leaving the pitch.
+  const [applyOpen, setApplyOpen] = useState(false);
+  const scrollToApply = () => setApplyOpen(true);
 
   const [featuredJobs, setFeaturedJobs] = useState<Job[]>(FALLBACK_FEATURED);
   const [totalJobs, setTotalJobs] = useState(allJobs.length);
 
-  // Old /training/apply links redirect here with #apply — land them on the
-  // form. One scroll isn't enough: the sections above are still loading and
-  // reflowing, so re-anchor a few times while the page settles.
+  // Old /training/apply links redirect here with #apply — open the modal.
   useEffect(() => {
-    if (window.location.hash !== "#apply") return;
-    const timers = [0, 250, 600, 1200].map((ms) =>
-      setTimeout(() => document.getElementById("apply")?.scrollIntoView({ block: "start" }), ms),
-    );
-    return () => timers.forEach(clearTimeout);
+    if (window.location.hash === "#apply") setApplyOpen(true);
   }, []);
 
   useEffect(() => {
@@ -491,7 +488,7 @@ export function TrainingPage() {
         </FadeIn>
       </section>
 
-      {/* ── Apply, inline — the pitch and the form are one page ── */}
+      {/* ── Final CTA — the application opens in a modal ── */}
       <section id="apply" className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
         <FadeIn>
           <div className="relative overflow-hidden rounded-2xl">
@@ -503,21 +500,39 @@ export function TrainingPage() {
                 <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">Cohort 1 — Limited Spots</span>
               </div>
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
-                Apply for Cohort 1
+                Ready to Build?
               </h2>
-              <p className="text-muted-foreground text-lg max-w-xl mx-auto mb-2">
+              <p className="text-muted-foreground text-lg max-w-xl mx-auto mb-8">
                 30 seats, and they fill every cohort. Apply in two minutes — Kleveland calls every applicant personally, usually the same day.
               </p>
-              <p className="text-xs text-muted-foreground mb-10">
+              <Button
+                size="lg"
+                onClick={() => setApplyOpen(true)}
+                className="gap-2 bg-white text-black hover:bg-gray-100 shadow-xl shadow-black/20 border-0 text-base px-8"
+              >
+                Apply for Cohort 1
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+              <p className="text-xs text-muted-foreground mt-4">
                 Tuition varies — Atlanta Builder Grants cover up to half, and a couple of full seats each cohort. It's all covered on your call.
               </p>
-              <div className="text-left">
-                <ApplyForm />
-              </div>
             </SpotlightCard>
           </div>
         </FadeIn>
       </section>
+
+      {/* The application itself */}
+      <Dialog open={applyOpen} onOpenChange={setApplyOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Apply for Cohort 1</DialogTitle>
+            <DialogDescription>
+              30 seats, and they fill every cohort. Tuition varies — grants are covered on your call.
+            </DialogDescription>
+          </DialogHeader>
+          <ApplyForm />
+        </DialogContent>
+      </Dialog>
 
       {/* Footer */}
       <footer className="relative z-10 py-8 px-6 border-t border-border/30">
