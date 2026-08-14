@@ -70,6 +70,7 @@ import {
   threadParticipants,
   threadMessages,
   professionalPreferences,
+  roleDetails,
   directoryEntries,
   user,
   verification,
@@ -472,6 +473,7 @@ function publicMemberRole(
   row: typeof memberRoles.$inferSelect,
   prefs: typeof professionalPreferences.$inferSelect | null,
   org: { id: string; name: string; slug: string; kind: string } | null,
+  details?: typeof roleDetails.$inferSelect | null,
 ) {
   return {
     id: row.id,
@@ -495,19 +497,35 @@ function publicMemberRole(
           remote_pref: prefs.remotePref,
         }
       : null,
+    details: details
+      ? {
+          venture_stage: details.ventureStage,
+          needs: details.needs,
+          check_min: details.checkMin,
+          check_max: details.checkMax,
+          focus_stages: details.focusStages,
+          intro_appetite: details.introAppetite,
+          domains: details.domains,
+          engagement: details.engagement,
+          availability: details.availability,
+          hiring_roles: details.hiringRoles,
+          hiring_contact: details.hiringContact,
+        }
+      : null,
   };
 }
 
 /** The member's own personas. Never a route for looking at anybody else. */
 async function loadOwnRoles(db: Db, profileId: string) {
   const rows = await db
-    .select({ role: memberRoles, prefs: professionalPreferences, org: directoryEntries })
+    .select({ role: memberRoles, prefs: professionalPreferences, org: directoryEntries, details: roleDetails })
     .from(memberRoles)
     .leftJoin(professionalPreferences, eq(professionalPreferences.roleId, memberRoles.id))
+    .leftJoin(roleDetails, eq(roleDetails.roleId, memberRoles.id))
     .leftJoin(directoryEntries, eq(directoryEntries.id, memberRoles.entryId))
     .where(eq(memberRoles.profileId, profileId))
     .orderBy(desc(memberRoles.isPrimary), asc(memberRoles.createdAt));
-  return rows.map((r) => publicMemberRole(r.role, r.prefs, r.org));
+  return rows.map((r) => publicMemberRole(r.role, r.prefs, r.org, r.details));
 }
 
 appRoutes.get("/me/roles", async (c) => {
@@ -614,6 +632,92 @@ appRoutes.patch("/me/roles/:roleId/seeking", zValidator("json", seekingWriteSche
 
   return c.json({ roles: await loadOwnRoles(db, profile.id) });
 });
+
+/**
+ * The founder / investor / advisor / recruiter branch answers from onboarding.
+ *
+ * One endpoint rather than four: which columns are meaningful is decided by the
+ * role, and sending a field that doesn't belong to your role is rejected rather
+ * than quietly stored — an investor cannot set an advisor's availability, which
+ * is what gates whether founders may reach them.
+ */
+const roleDetailsWriteSchema = z.object({
+  venture_stage: z.string().trim().max(40).optional(),
+  needs: z.array(z.string().trim().max(40)).max(8).optional(),
+  check_min: z.number().int().nonnegative().optional(),
+  check_max: z.number().int().nonnegative().optional(),
+  focus_stages: z.array(z.string().trim().max(40)).max(8).optional(),
+  intro_appetite: z.enum(["none", "some", "all"]).optional(),
+  domains: z.array(z.string().trim().max(40)).max(12).optional(),
+  engagement: z.array(z.string().trim().max(40)).max(8).optional(),
+  availability: z.enum(["open", "intro_only", "closed"]).optional(),
+  hiring_roles: z.array(z.string().trim().max(80)).max(12).optional(),
+  hiring_contact: z.string().trim().max(40).optional(),
+});
+
+const FIELDS_BY_ROLE: Record<string, ReadonlyArray<keyof z.infer<typeof roleDetailsWriteSchema>>> = {
+  founder: ["venture_stage", "needs"],
+  investor: ["check_min", "check_max", "focus_stages", "intro_appetite"],
+  advisor: ["domains", "engagement", "availability"],
+  // A recruiter is a professional whose affiliation carries hiring authority —
+  // "hiring" is not its own persona (plan §3: persona, affiliation and status
+  // are separate axes).
+  professional: ["hiring_roles", "hiring_contact"],
+};
+
+appRoutes.patch(
+  "/me/roles/:roleId/details",
+  zValidator("json", roleDetailsWriteSchema),
+  async (c) => {
+    const { db, authUser } = await requireAppUser(c);
+    const profile = await ensureDefaultProfile(db, authUser);
+    const input = c.req.valid("json");
+
+    const [role] = await db
+      .select()
+      .from(memberRoles)
+      .where(and(eq(memberRoles.id, c.req.param("roleId")), eq(memberRoles.profileId, profile.id)))
+      .limit(1);
+    if (!role) throw new HttpError(404, "not_found", "Role not found.");
+
+    const allowed = FIELDS_BY_ROLE[role.role] ?? [];
+    const sent = Object.keys(input) as Array<keyof typeof input>;
+    const rejected = sent.filter((f) => !allowed.includes(f));
+    if (rejected.length > 0) {
+      throw new HttpError(400, "wrong_role",
+        `A ${role.role} role can't set: ${rejected.join(", ")}.`);
+    }
+
+    if (input.check_min !== undefined && input.check_max !== undefined
+      && input.check_min > input.check_max) {
+      throw new HttpError(400, "bad_range", "The smaller check goes first.");
+    }
+
+    const columns = {
+      ...(input.venture_stage !== undefined ? { ventureStage: input.venture_stage } : {}),
+      ...(input.needs !== undefined ? { needs: input.needs } : {}),
+      ...(input.check_min !== undefined ? { checkMin: input.check_min } : {}),
+      ...(input.check_max !== undefined ? { checkMax: input.check_max } : {}),
+      ...(input.focus_stages !== undefined ? { focusStages: input.focus_stages } : {}),
+      ...(input.intro_appetite !== undefined ? { introAppetite: input.intro_appetite } : {}),
+      ...(input.domains !== undefined ? { domains: input.domains } : {}),
+      ...(input.engagement !== undefined ? { engagement: input.engagement } : {}),
+      ...(input.availability !== undefined ? { availability: input.availability } : {}),
+      ...(input.hiring_roles !== undefined ? { hiringRoles: input.hiring_roles } : {}),
+      ...(input.hiring_contact !== undefined ? { hiringContact: input.hiring_contact } : {}),
+    };
+
+    await db
+      .insert(roleDetails)
+      .values({ roleId: role.id, ...columns })
+      .onConflictDoUpdate({
+        target: roleDetails.roleId,
+        set: { ...columns, updatedAt: new Date() },
+      });
+
+    return c.json({ roles: await loadOwnRoles(db, profile.id) });
+  },
+);
 
 appRoutes.delete("/me/roles/:roleId", async (c) => {
   const { db, authUser } = await requireAppUser(c);

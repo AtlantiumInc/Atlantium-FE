@@ -573,6 +573,40 @@ export const professionalPreferences = pgTable("professional_preferences", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const introAppetite = pgEnum("intro_appetite", ["none", "some", "all"]);
+export const advisorAvailability = pgEnum("advisor_availability", ["open", "intro_only", "closed"]);
+
+/**
+ * The founder / investor / advisor / recruiter branch answers.
+ *
+ * professional_preferences covers the professional branch; this covers the
+ * rest. Every column here either routes a member to someone or gates a
+ * capability — anything that merely decorates a profile stays in
+ * `profiles.registration_details` and does not earn a column.
+ */
+export const roleDetails = pgTable("role_details", {
+  roleId: uuid("role_id").primaryKey().references(() => memberRoles.id, { onDelete: "cascade" }),
+
+  ventureStage: text("venture_stage"),
+  needs: text("needs").array().notNull().default(sql`'{}'::text[]`),
+
+  checkMin: integer("check_min"),
+  checkMax: integer("check_max"),
+  focusStages: text("focus_stages").array().notNull().default(sql`'{}'::text[]`),
+  /** Whether the curation queue may point founders at this investor at all. */
+  introAppetite: introAppetite("intro_appetite").notNull().default("none"),
+
+  domains: text("domains").array().notNull().default(sql`'{}'::text[]`),
+  engagement: text("engagement").array().notNull().default(sql`'{}'::text[]`),
+  availability: advisorAvailability("availability").notNull().default("intro_only"),
+
+  hiringRoles: text("hiring_roles").array().notNull().default(sql`'{}'::text[]`),
+  hiringContact: text("hiring_contact"),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const memberRoleRelations = relations(memberRoles, ({ one }) => ({
   profile: one(profiles, { fields: [memberRoles.profileId], references: [profiles.id] }),
   entry: one(directoryEntries, { fields: [memberRoles.entryId], references: [directoryEntries.id] }),
@@ -580,6 +614,7 @@ export const memberRoleRelations = relations(memberRoles, ({ one }) => ({
     fields: [memberRoles.id],
     references: [professionalPreferences.roleId],
   }),
+  details: one(roleDetails, { fields: [memberRoles.id], references: [roleDetails.roleId] }),
 }));
 
 // ── P0B: trust primitives (plan §4.2, §4.3, §4.5) ───────────────────────────

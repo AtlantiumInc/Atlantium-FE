@@ -1,50 +1,49 @@
 import { useEffect, useCallback } from "react";
-import { AnimatePresence } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, ArrowRight, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAuth } from "../../contexts/AuthContext";
 import { useOnboardingForm } from "../../hooks/useOnboardingForm";
 import type { OnboardingFormData } from "../../lib/onboarding-schema";
+import {
+  CHECK_BANDS,
+  PERSONA_FOR_BRANCH,
+  type Branch,
+  type StepDef,
+} from "../../lib/onboarding-steps";
 import { api } from "../../lib/api";
 import { Button } from "../ui/button";
 import { OnboardingProgress } from "./OnboardingProgress";
 
 import { StepName } from "./steps/StepName";
-import { StepPersona } from "./steps/StepPersona";
-import { StepSeeking } from "./steps/StepSeeking";
-import { StepTimezone } from "./steps/StepTimezone";
-import { StepPrimaryGoal } from "./steps/StepPrimaryGoal";
-import { StepInterests } from "./steps/StepInterests";
-import { StepProjectStatus } from "./steps/StepProjectStatus";
-import { StepProjectDescription } from "./steps/StepProjectDescription";
-import { StepTechnicalLevel } from "./steps/StepTechnicalLevel";
-import { StepCommunityHopes } from "./steps/StepCommunityHopes";
-import { StepTimeCommitment } from "./steps/StepTimeCommitment";
-import { StepSuccessDefinition } from "./steps/StepSuccessDefinition";
 import { StepAvatar } from "./steps/StepAvatar";
+import { StepSeeking } from "./steps/StepSeeking";
 import { StepPricing } from "./steps/StepPricing";
+import { ChoiceStep, MultiStep, OrgStep, TextStep } from "./steps/GenericSteps";
 
 type RenderArgs = {
   step: React.ReactNode;
   nav: React.ReactNode;
   progress: React.ReactNode;
   formData: Partial<OnboardingFormData>;
+  /** 1-based position in the steps this member actually sees. */
   currentStep: number;
+  stepId?: string;
 };
 
 type Props = {
-  /** Called after the profile has been saved and auth refreshed. */
   onComplete?: () => void;
-  /** Page mode wraps this in its own layout; modal mode renders inline. */
   render?: (args: RenderArgs) => React.ReactNode;
 };
 
 /**
- * The member questionnaire. Every member completes it — the page at
- * /onboarding and the signup popup both drive this same flow, so a member who
- * joins from a job page answers exactly what a member who joins from the lab
- * does.
+ * The member questionnaire.
+ *
+ * Which questions get asked is decided by `onboarding-steps.ts`; this component
+ * renders whichever step the hook says is current and, at the end, turns the
+ * answers into the rows that actually do something — a persona, an affiliation
+ * claim, and the branch detail that routes the member to other people.
  */
 export function OnboardingFlow({ onComplete, render }: Props) {
   const { user, checkAuth } = useAuth();
@@ -55,14 +54,9 @@ export function OnboardingFlow({ onComplete, render }: Props) {
 
   const handleComplete = useCallback(
     async (data: OnboardingFormData) => {
-      const { first_name, last_name, avatar_url, membership_tier, ...registrationFields } = data;
-
-      const registrationDetails = {
-        ...registrationFields,
-        membership_tier,
-        is_completed: true,
-        onboarding_completed_at: new Date().toISOString(),
-      };
+      const {
+        first_name, last_name, avatar_url, membership_tier, headline, ...rest
+      } = data;
 
       const display_name = [first_name, last_name].filter(Boolean).join(" ");
 
@@ -71,45 +65,94 @@ export function OnboardingFlow({ onComplete, render }: Props) {
         last_name,
         display_name,
         avatar_url: avatar_url || googleAvatarUrl || null,
-        bio: (profile?.bio as string) || null,
+        // The headline is the sentence under their name everywhere, so it goes
+        // in the profile column the network already reads — not into the
+        // questionnaire blob where nothing would ever look for it.
+        bio: headline?.trim() || (profile?.bio as string) || null,
         location: (profile?.location as string) || null,
         website_url: (profile?.website_url as string) || null,
         linkedin_url: (profile?.linkedin_url as string) || null,
-        registration_details: registrationDetails,
+        registration_details: {
+          ...rest,
+          headline,
+          membership_tier,
+          is_completed: true,
+          onboarding_completed_at: new Date().toISOString(),
+        },
       });
 
-      // Persona is a first-class row, not a questionnaire answer (plan §3.2).
-      // It's written after the profile save so a member whose persona write
-      // fails still keeps their completed questionnaire — they'd be prompted to
-      // pick a persona again rather than losing the whole flow.
-      if (data.persona) {
-        try {
-          const { roles } = await api.createMemberRole({
-            role: data.persona,
-            is_primary: true,
-          });
-          const professionalRole = roles.find((r) => r.role === "professional");
-          if (data.persona === "professional" && professionalRole && data.seeking) {
-            await api.updateSeeking(professionalRole.id, {
+      // Everything below is best-effort on purpose: a member who has answered
+      // the questionnaire is done, and a failure here must not send them back
+      // through it. Anything that doesn't land can be set from their profile.
+      const branch = data.branch as Branch | undefined;
+      if (!branch) {
+        await checkAuth();
+        onComplete?.();
+        return;
+      }
+
+      try {
+        const persona = PERSONA_FOR_BRANCH[branch];
+        const { roles } = await api.createMemberRole({
+          role: persona,
+          is_primary: true,
+          // The affiliation only attaches to an entry that already exists;
+          // a proposed name goes through the claim queue below instead.
+          entry_id: data.org_entry_id ?? undefined,
+          title: data.org_title?.trim() || null,
+        });
+
+        const role = roles.find((r) => r.role === persona);
+        if (role) {
+          if (branch === "professional" && data.seeking) {
+            await api.updateSeeking(role.id, {
               seeking: data.seeking,
               // Absent an explicit choice this stays matched_only — the server
               // default. We never widen visibility on the member's behalf.
               ...(data.seeking_visibility ? { visibility: data.seeking_visibility } : {}),
             });
           }
-        } catch (error) {
-          console.error("Persona save failed; questionnaire was saved", error);
+
+          const details = detailsFor(branch, data);
+          if (details) await api.updateRoleDetails(role.id, details);
         }
+
+        // An org the member named but couldn't find, or one they can only claim
+        // with review, becomes a request rather than a silent no-op.
+        const relationshipFor: Record<Branch, string> = {
+          professional: "employee",
+          founder: "founder",
+          investor: "representative",
+          advisor: "employee",
+          hiring: "recruiter",
+        };
+        const claimsAuthority = branch === "founder" || branch === "investor" || branch === "hiring";
+        if (data.org_proposed_name?.trim()) {
+          await api.requestOrgClaim({
+            proposed_name: data.org_proposed_name.trim(),
+            relationship: relationshipFor[branch],
+            evidence: "Named during onboarding.",
+          });
+        } else if (data.org_entry_id && claimsAuthority) {
+          await api.requestOrgClaim({
+            entry_id: data.org_entry_id,
+            relationship: relationshipFor[branch],
+            evidence: "Claimed during onboarding.",
+          });
+        }
+      } catch (error) {
+        console.error("Persona/affiliation save failed; questionnaire was saved", error);
       }
 
       await checkAuth();
       onComplete?.();
     },
-    [googleAvatarUrl, checkAuth, onComplete, profile]
+    [googleAvatarUrl, checkAuth, onComplete, profile],
   );
 
   const {
-    currentStep,
+    step,
+    stepIndex,
     formData,
     errors,
     isSubmitting,
@@ -156,25 +199,58 @@ export function OnboardingFlow({ onComplete, render }: Props) {
   }, [handleNext]);
 
   const stepProps = { formData, errors, onUpdate: updateField };
-  const stepNode = (() => {
-    switch (currentStep) {
-      case 1: return <StepName {...stepProps} />;
-      case 2: return <StepPersona {...stepProps} />;
-      case 3: return <StepTimezone {...stepProps} />;
-      case 4: return <StepPrimaryGoal {...stepProps} />;
-      case 5: return <StepInterests {...stepProps} />;
-      case 6: return <StepSeeking {...stepProps} />;
-      case 7: return <StepProjectStatus {...stepProps} />;
-      case 8: return <StepProjectDescription {...stepProps} />;
-      case 9: return <StepTechnicalLevel {...stepProps} />;
-      case 10: return <StepCommunityHopes {...stepProps} />;
-      case 11: return <StepTimeCommitment {...stepProps} />;
-      case 12: return <StepSuccessDefinition {...stepProps} />;
-      case 13: return <StepAvatar {...stepProps} googleAvatarUrl={googleAvatarUrl} />;
-      case 14: return <StepPricing {...stepProps} />;
-      default: return null;
+  const field = step?.field as keyof OnboardingFormData | undefined;
+  const value = field ? formData[field] : undefined;
+  const setValue = (v: unknown) => field && updateField(field, v as never);
+
+  const stepNode = !step ? null : (
+    <motion.div
+      key={step.id}
+      initial={{ opacity: 0, x: 12 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -12 }}
+      transition={{ duration: 0.18 }}
+    >
+      {renderStep(step)}
+    </motion.div>
+  );
+
+  function renderStep(def: StepDef) {
+    switch (def.kind) {
+      case "identity":
+        return (
+          <div className="space-y-8">
+            <StepName {...stepProps} />
+            <StepAvatar {...stepProps} googleAvatarUrl={googleAvatarUrl} />
+          </div>
+        );
+      case "seeking":
+        return <StepSeeking {...stepProps} />;
+      case "pricing":
+        return <StepPricing {...stepProps} />;
+      case "multi":
+        return <MultiStep step={def} value={value} error={errors[def.field ?? ""]} onChange={setValue} />;
+      case "text":
+        return <TextStep step={def} value={value} error={errors[def.field ?? ""]} onChange={setValue} />;
+      case "org":
+        return (
+          <OrgStep
+            step={def}
+            value={value}
+            error={errors[def.field ?? ""]}
+            onChange={setValue}
+            title={formData.org_title}
+            onTitleChange={(v) => updateField("org_title", v)}
+            proposedName={formData.org_proposed_name}
+            onProposedNameChange={(v) => updateField("org_proposed_name", v)}
+            pickedName={formData.org_name}
+            onPickedNameChange={(v) => updateField("org_name", v)}
+          />
+        );
+      default:
+        return <ChoiceStep step={def} value={value} error={errors[def.field ?? ""]} onChange={setValue} />;
     }
-  })();
+  }
 
   const nav = (
     <div className="flex items-center justify-between pt-4">
@@ -187,15 +263,22 @@ export function OnboardingFlow({ onComplete, render }: Props) {
       >
         <ArrowLeft className="h-4 w-4" /> Back
       </Button>
-      <Button type="button" onClick={handleNext} disabled={isSubmitting} className="gap-2">
-        {isSubmitting ? (
-          <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</>
-        ) : isLastStep ? (
-          <>Finish <Check className="h-4 w-4" /></>
-        ) : (
-          <>Continue <ArrowRight className="h-4 w-4" /></>
+      <div className="flex items-center gap-2">
+        {step?.optional && !isLastStep && (
+          <Button type="button" variant="ghost" onClick={nextStep} disabled={isSubmitting}>
+            Skip
+          </Button>
         )}
-      </Button>
+        <Button type="button" onClick={handleNext} disabled={isSubmitting} className="gap-2">
+          {isSubmitting ? (
+            <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</>
+          ) : isLastStep ? (
+            <>Finish <Check className="h-4 w-4" /></>
+          ) : (
+            <>Continue <ArrowRight className="h-4 w-4" /></>
+          )}
+        </Button>
+      </div>
     </div>
   );
 
@@ -203,7 +286,9 @@ export function OnboardingFlow({ onComplete, render }: Props) {
     <OnboardingProgress currentStep={visibleStepNumber} totalSteps={totalVisibleSteps} />
   );
 
-  if (render) return <>{render({ step: stepNode, nav, progress, formData, currentStep })}</>;
+  if (render) {
+    return <>{render({ step: stepNode, nav, progress, formData, currentStep: stepIndex + 1, stepId: step?.id })}</>;
+  }
 
   return (
     <div className="space-y-6">
@@ -212,4 +297,43 @@ export function OnboardingFlow({ onComplete, render }: Props) {
       {nav}
     </div>
   );
+}
+
+/** Turns branch answers into the payload the role-details endpoint accepts. */
+function detailsFor(branch: Branch, data: OnboardingFormData) {
+  switch (branch) {
+    case "founder":
+      return {
+        ...(data.venture_stage ? { venture_stage: data.venture_stage } : {}),
+        ...(data.needs?.length ? { needs: data.needs } : {}),
+      };
+    case "investor": {
+      const band = data.check_band ? CHECK_BANDS[data.check_band] : undefined;
+      return {
+        ...(band?.min != null ? { check_min: band.min } : {}),
+        ...(band?.max != null ? { check_max: band.max } : {}),
+        ...(data.focus_stages?.length ? { focus_stages: data.focus_stages } : {}),
+        ...(data.intro_appetite ? { intro_appetite: data.intro_appetite } : {}),
+      };
+    }
+    case "advisor":
+      return {
+        ...(data.domains?.length ? { domains: data.domains } : {}),
+        ...(data.engagement?.length ? { engagement: data.engagement } : {}),
+        ...(data.availability ? { availability: data.availability } : {}),
+      };
+    case "hiring": {
+      const roles = (data.hiring_roles_text ?? "")
+        .split("\n")
+        .map((r) => r.trim())
+        .filter(Boolean)
+        .slice(0, 12);
+      return {
+        ...(roles.length ? { hiring_roles: roles } : {}),
+        ...(data.hiring_contact ? { hiring_contact: data.hiring_contact } : {}),
+      };
+    }
+    default:
+      return null;
+  }
 }

@@ -27,9 +27,9 @@ export function OnboardingPage() {
         toast.success("Welcome to Atlantium!");
         navigate("/dashboard", { replace: true });
       }}
-      render={({ step, nav, progress, formData, currentStep }) => (
+      render={({ step, nav, progress, formData, currentStep, stepId }) => (
         <OnboardingLayout
-          wide={currentStep === 14}
+          wide={stepId === "pricing"}
           progress={progress}
           preview={<ProfilePreview formData={formData} email={user?.email} currentStep={currentStep} />}
           onLogout={logout}

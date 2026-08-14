@@ -962,6 +962,26 @@ class ApiClient {
     return this.request("/me/roles", { method: "POST", body: JSON.stringify(body) }, ATLANTIUM_API_BASE_URL);
   }
 
+  /**
+   * The founder / investor / advisor / recruiter branch answers. The server
+   * rejects fields that don't belong to the role rather than storing them.
+   */
+  async updateRoleDetails(roleId: string, body: {
+    venture_stage?: string;
+    needs?: string[];
+    check_min?: number;
+    check_max?: number;
+    focus_stages?: string[];
+    intro_appetite?: "none" | "some" | "all";
+    domains?: string[];
+    engagement?: string[];
+    availability?: "open" | "intro_only" | "closed";
+    hiring_roles?: string[];
+    hiring_contact?: string;
+  }): Promise<{ roles: MemberRole[] }> {
+    return this.request(`/me/roles/${roleId}/details`, { method: "PATCH", body: JSON.stringify(body) }, ATLANTIUM_API_BASE_URL);
+  }
+
   async updateSeeking(roleId: string, body: {
     seeking?: "not_seeking" | "open" | "actively_looking";
     visibility?: "private" | "matched_only" | "verified_employers" | "all_members";

@@ -3,13 +3,8 @@ import { User, Crown, Calendar, Star } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import type { OnboardingFormData } from "../../lib/onboarding-schema";
-import {
-  getOptionLabel,
-  PRIMARY_GOAL_OPTIONS,
-  INTERESTS_OPTIONS,
-  TECHNICAL_LEVEL_OPTIONS,
-  TIME_COMMITMENT_OPTIONS,
-} from "../../lib/onboarding-options";
+import { getOptionLabel, INTERESTS_OPTIONS } from "../../lib/onboarding-options";
+import { BRANCH_OPTIONS } from "../../lib/onboarding-steps";
 
 interface ProfilePreviewProps {
   formData: Partial<OnboardingFormData>;
@@ -118,9 +113,10 @@ export function ProfilePreview({ formData, email, currentStep }: ProfilePreviewP
 
         {/* Profile Details */}
         <div className="space-y-4">
-          {/* Goal */}
+          {/* What they're working on — the line that shows under their
+              name everywhere once they're in. */}
           <AnimatePresence>
-            {formData.primary_goal && (
+            {formData.headline?.trim() && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
@@ -128,18 +124,16 @@ export function ProfilePreview({ formData, email, currentStep }: ProfilePreviewP
                 transition={{ duration: 0.2 }}
               >
                 <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                  Goal
+                  Working on
                 </p>
-                <p className="text-sm font-medium">
-                  {getOptionLabel(PRIMARY_GOAL_OPTIONS, formData.primary_goal)}
-                </p>
+                <p className="text-sm font-medium">{formData.headline}</p>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Technical Level */}
+          {/* The fork they picked, in their own words. */}
           <AnimatePresence>
-            {formData.technical_level && (
+            {formData.branch && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
@@ -147,13 +141,10 @@ export function ProfilePreview({ formData, email, currentStep }: ProfilePreviewP
                 transition={{ duration: 0.2 }}
               >
                 <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                  Experience
+                  Role
                 </p>
                 <p className="text-sm font-medium">
-                  {getOptionLabel(
-                    TECHNICAL_LEVEL_OPTIONS,
-                    formData.technical_level
-                  )}
+                  {BRANCH_OPTIONS.find((b) => b.value === formData.branch)?.label ?? formData.branch}
                 </p>
               </motion.div>
             )}
@@ -197,27 +188,6 @@ export function ProfilePreview({ formData, email, currentStep }: ProfilePreviewP
             )}
           </AnimatePresence>
 
-          {/* Time Commitment */}
-          <AnimatePresence>
-            {formData.time_commitment && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                  Time Available
-                </p>
-                <p className="text-sm font-medium">
-                  {getOptionLabel(
-                    TIME_COMMITMENT_OPTIONS,
-                    formData.time_commitment
-                  )}
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       </motion.div>
 

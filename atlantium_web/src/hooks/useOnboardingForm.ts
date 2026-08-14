@@ -1,18 +1,24 @@
-import { useReducer, useCallback, useEffect } from "react";
+import { useReducer, useCallback, useEffect, useMemo } from "react";
 import type { OnboardingFormData } from "../lib/onboarding-schema";
-import {
-  validateStep,
-  shouldShowStep,
-  getNextStep,
-  getPrevStep,
-} from "../lib/onboarding-schema";
+import { nameSchema } from "../lib/onboarding-schema";
+import { isAnswered, stepsFor, type Branch, type StepDef } from "../lib/onboarding-steps";
 import { detectUserTimezone } from "../lib/onboarding-options";
 
-const STORAGE_KEY = "atlantium_onboarding_progress";
-const TOTAL_STEPS = 14;
+/**
+ * Drives the questionnaire off the step registry.
+ *
+ * The old version walked a fixed range of fourteen numbers and asked
+ * `shouldShowStep` whether to skip each one, which meant the flow's real shape
+ * — what a founder answers versus an investor — was spread across a switch, a
+ * schema map and a predicate. Position is now an index into the steps that
+ * apply to this member, so changing a branch changes the list and nothing else.
+ */
+// Bumped when the step model changed; a restored index from the old numeric
+// flow would land someone on an unrelated question.
+const STORAGE_KEY = "atlantium_onboarding_progress_v2";
 
 interface OnboardingState {
-  currentStep: number;
+  stepIndex: number;
   formData: Partial<OnboardingFormData>;
   errors: Record<string, string>;
   isSubmitting: boolean;
@@ -20,13 +26,11 @@ interface OnboardingState {
 }
 
 type OnboardingAction =
-  | { type: "SET_STEP"; step: number }
+  | { type: "SET_STEP"; index: number }
   | { type: "UPDATE_FIELD"; field: keyof OnboardingFormData; value: unknown }
   | { type: "UPDATE_FIELDS"; fields: Partial<OnboardingFormData> }
   | { type: "SET_ERRORS"; errors: Record<string, string> }
   | { type: "CLEAR_ERRORS" }
-  | { type: "NEXT_STEP" }
-  | { type: "PREV_STEP" }
   | { type: "SET_SUBMITTING"; isSubmitting: boolean }
   | { type: "SET_COMPLETE" }
   | { type: "RESTORE_STATE"; state: Partial<OnboardingState> }
@@ -34,25 +38,22 @@ type OnboardingAction =
 
 function getInitialState(): OnboardingState {
   return {
-    currentStep: 1,
+    stepIndex: 0,
     formData: {
       first_name: "",
       last_name: "",
       avatar_url: "",
       timezone: detectUserTimezone(),
-      is_georgia_resident: false,
-      primary_goal: undefined,
       interests: [],
-      persona: undefined,
+      branch: undefined,
+      headline: "",
       seeking: undefined,
       seeking_visibility: undefined,
       membership_tier: undefined,
-      working_on_project: undefined,
-      project_description: "",
-      technical_level: undefined,
-      community_hopes: [],
-      time_commitment: undefined,
-      success_definition: "",
+      needs: [],
+      focus_stages: [],
+      domains: [],
+      engagement: [],
     },
     errors: {},
     isSubmitting: false,
@@ -60,64 +61,30 @@ function getInitialState(): OnboardingState {
   };
 }
 
-function onboardingReducer(
-  state: OnboardingState,
-  action: OnboardingAction
-): OnboardingState {
+function onboardingReducer(state: OnboardingState, action: OnboardingAction): OnboardingState {
   switch (action.type) {
     case "SET_STEP":
-      return { ...state, currentStep: action.step, errors: {} };
-
+      return { ...state, stepIndex: action.index, errors: {} };
     case "UPDATE_FIELD":
-      return {
-        ...state,
-        formData: { ...state.formData, [action.field]: action.value },
-        errors: {},
-      };
-
+      return { ...state, formData: { ...state.formData, [action.field]: action.value }, errors: {} };
     case "UPDATE_FIELDS":
-      return {
-        ...state,
-        formData: { ...state.formData, ...action.fields },
-        errors: {},
-      };
-
+      return { ...state, formData: { ...state.formData, ...action.fields }, errors: {} };
     case "SET_ERRORS":
       return { ...state, errors: action.errors };
-
     case "CLEAR_ERRORS":
       return { ...state, errors: {} };
-
-    case "NEXT_STEP": {
-      const nextStep = getNextStep(
-        state.currentStep,
-        state.formData,
-        TOTAL_STEPS
-      );
-      return { ...state, currentStep: nextStep, errors: {} };
-    }
-
-    case "PREV_STEP": {
-      const prevStep = getPrevStep(state.currentStep, state.formData);
-      return { ...state, currentStep: prevStep, errors: {} };
-    }
-
     case "SET_SUBMITTING":
       return { ...state, isSubmitting: action.isSubmitting };
-
     case "SET_COMPLETE":
       return { ...state, isComplete: true };
-
     case "RESTORE_STATE":
       return {
         ...state,
-        currentStep: action.state.currentStep ?? state.currentStep,
+        stepIndex: action.state.stepIndex ?? state.stepIndex,
         formData: { ...state.formData, ...action.state.formData },
       };
-
     case "RESET":
       return getInitialState();
-
     default:
       return state;
   }
@@ -129,187 +96,144 @@ interface UseOnboardingFormOptions {
 }
 
 export function useOnboardingForm(options: UseOnboardingFormOptions = {}) {
+  // The draft is restored during initialization, not in an effect. As an effect
+  // it raced the persist effect below — that one is declared first, so on every
+  // mount it overwrote the saved draft with a blank one before the restore
+  // could read it, and a refresh quietly lost every answer.
   const [state, dispatch] = useReducer(onboardingReducer, undefined, () => {
     const initial = getInitialState();
-    // Merge initial data if provided (e.g., from Google auth)
-    if (options.initialData) {
-      initial.formData = { ...initial.formData, ...options.initialData };
-    }
-    return initial;
-  });
+    if (options.initialData) initial.formData = { ...initial.formData, ...options.initialData };
 
-  // Persist state to sessionStorage
-  useEffect(() => {
-    if (!state.isComplete) {
-      sessionStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          currentStep: state.currentStep,
-          formData: state.formData,
-        })
-      );
-    }
-  }, [state.currentStep, state.formData, state.isComplete]);
-
-  // Restore state from sessionStorage on mount
-  useEffect(() => {
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Only restore if we have saved data and options.initialData doesn't override
-        if (parsed.formData) {
-          dispatch({
-            type: "RESTORE_STATE",
-            state: {
-              currentStep: parsed.currentStep,
-              formData: {
-                ...parsed.formData,
-                // Always use initialData for fields that come from auth
-                ...(options.initialData?.first_name && {
-                  first_name: options.initialData.first_name,
-                }),
-                ...(options.initialData?.last_name && {
-                  last_name: options.initialData.last_name,
-                }),
-                ...(options.initialData?.avatar_url && {
-                  avatar_url: options.initialData.avatar_url,
-                }),
-              },
-            },
-          });
+        if (parsed?.formData) {
+          initial.formData = {
+            ...initial.formData,
+            ...parsed.formData,
+            // Auth-provided fields always win over anything stored.
+            ...(options.initialData?.first_name && { first_name: options.initialData.first_name }),
+            ...(options.initialData?.last_name && { last_name: options.initialData.last_name }),
+            ...(options.initialData?.avatar_url && { avatar_url: options.initialData.avatar_url }),
+          };
+          if (typeof parsed.stepIndex === "number") initial.stepIndex = parsed.stepIndex;
         }
       }
     } catch {
-      // Ignore parse errors
+      // A corrupt draft is not worth failing the flow over.
     }
-  }, []);
+
+    return initial;
+  });
+
+  const steps = useMemo(
+    () => stepsFor(state.formData.branch as Branch | undefined),
+    [state.formData.branch],
+  );
+  // Changing a branch shortens the list; clamp so a back-then-switch can't
+  // land past the end.
+  const stepIndex = Math.min(state.stepIndex, steps.length - 1);
+  const step: StepDef | undefined = steps[stepIndex];
+
+  useEffect(() => {
+    if (!state.isComplete) {
+      sessionStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ stepIndex: state.stepIndex, formData: state.formData }),
+      );
+    }
+  }, [state.stepIndex, state.formData, state.isComplete]);
 
   const updateField = useCallback(
-    <K extends keyof OnboardingFormData>(
-      field: K,
-      value: OnboardingFormData[K]
-    ) => {
+    <K extends keyof OnboardingFormData>(field: K, value: OnboardingFormData[K]) => {
       dispatch({ type: "UPDATE_FIELD", field, value });
     },
-    []
+    [],
   );
 
   const updateFields = useCallback((fields: Partial<OnboardingFormData>) => {
     dispatch({ type: "UPDATE_FIELDS", fields });
   }, []);
 
-  const goToStep = useCallback((step: number) => {
-    dispatch({ type: "SET_STEP", step });
+  const goToStep = useCallback((index: number) => {
+    dispatch({ type: "SET_STEP", index });
   }, []);
 
   const validateCurrentStep = useCallback((): boolean => {
-    const result = validateStep(state.currentStep, state.formData);
-    if (!result.success && result.errors) {
-      const errorMap: Record<string, string> = {};
-      result.errors.issues.forEach((issue) => {
-        const path = issue.path.join(".");
-        errorMap[path] = issue.message;
-      });
-      dispatch({ type: "SET_ERRORS", errors: errorMap });
+    if (!step) return true;
+
+    // Identity is the one screen with real field-level rules; everything else
+    // is "did they answer it", which the registry already describes.
+    if (step.kind === "identity") {
+      const result = nameSchema.safeParse(state.formData);
+      if (!result.success) {
+        const errorMap: Record<string, string> = {};
+        result.error.issues.forEach((issue) => { errorMap[issue.path.join(".")] = issue.message; });
+        dispatch({ type: "SET_ERRORS", errors: errorMap });
+        return false;
+      }
+      dispatch({ type: "CLEAR_ERRORS" });
+      return true;
+    }
+
+    const value = step.field
+      ? (state.formData as Record<string, unknown>)[step.field]
+      : undefined;
+    if (!isAnswered(step, value)) {
+      dispatch({ type: "SET_ERRORS", errors: { [step.field ?? step.id]: "Pick one to keep going." } });
       return false;
     }
     dispatch({ type: "CLEAR_ERRORS" });
     return true;
-  }, [state.currentStep, state.formData]);
+  }, [step, state.formData]);
 
   const nextStep = useCallback(() => {
-    if (validateCurrentStep()) {
-      dispatch({ type: "NEXT_STEP" });
-      return true;
-    }
-    return false;
-  }, [validateCurrentStep]);
+    if (!validateCurrentStep()) return false;
+    dispatch({ type: "SET_STEP", index: Math.min(stepIndex + 1, steps.length - 1) });
+    return true;
+  }, [validateCurrentStep, stepIndex, steps.length]);
 
   const prevStep = useCallback(() => {
-    dispatch({ type: "PREV_STEP" });
-  }, []);
+    dispatch({ type: "SET_STEP", index: Math.max(stepIndex - 1, 0) });
+  }, [stepIndex]);
 
   const submit = useCallback(async () => {
-    // Validate all required fields before submit
-    const fullValidation = validateStep(state.currentStep, state.formData);
-    if (!fullValidation.success && fullValidation.errors) {
-      const errorMap: Record<string, string> = {};
-      fullValidation.errors.issues.forEach((issue) => {
-        const path = issue.path.join(".");
-        errorMap[path] = issue.message;
-      });
-      dispatch({ type: "SET_ERRORS", errors: errorMap });
-      return false;
-    }
-
+    if (!validateCurrentStep()) return false;
     dispatch({ type: "SET_SUBMITTING", isSubmitting: true });
-
     try {
-      if (options.onComplete) {
-        await options.onComplete(state.formData as OnboardingFormData);
-      }
+      await options.onComplete?.(state.formData as OnboardingFormData);
       dispatch({ type: "SET_COMPLETE" });
-      // Clear storage on successful completion
       sessionStorage.removeItem(STORAGE_KEY);
       return true;
     } catch (error) {
       dispatch({ type: "SET_SUBMITTING", isSubmitting: false });
       throw error;
     }
-  }, [state.formData, state.currentStep, options]);
+  }, [state.formData, validateCurrentStep, options]);
 
   const reset = useCallback(() => {
     sessionStorage.removeItem(STORAGE_KEY);
     dispatch({ type: "RESET" });
   }, []);
 
-  // Calculate visible step number (accounting for skipped steps)
-  const getVisibleStepNumber = useCallback((): number => {
-    let visibleStep = 0;
-    for (let i = 1; i <= state.currentStep; i++) {
-      if (shouldShowStep(i, state.formData)) {
-        visibleStep++;
-      }
-    }
-    return visibleStep;
-  }, [state.currentStep, state.formData]);
-
-  const getTotalVisibleSteps = useCallback((): number => {
-    let total = 0;
-    for (let i = 1; i <= TOTAL_STEPS; i++) {
-      if (shouldShowStep(i, state.formData)) {
-        total++;
-      }
-    }
-    return total;
-  }, [state.formData]);
-
-  const isFirstStep = state.currentStep === 1;
-  const isLastStep = state.currentStep === TOTAL_STEPS;
-  const canGoBack = !isFirstStep;
-  const shouldShowCurrentStep = shouldShowStep(
-    state.currentStep,
-    state.formData
-  );
-
   return {
-    // State
-    currentStep: state.currentStep,
+    step,
+    steps,
+    stepIndex,
     formData: state.formData,
     errors: state.errors,
     isSubmitting: state.isSubmitting,
     isComplete: state.isComplete,
 
-    // Computed
-    isFirstStep,
-    isLastStep,
-    canGoBack,
-    shouldShowCurrentStep,
-    visibleStepNumber: getVisibleStepNumber(),
-    totalVisibleSteps: getTotalVisibleSteps(),
+    isFirstStep: stepIndex === 0,
+    isLastStep: stepIndex === steps.length - 1,
+    canGoBack: stepIndex > 0,
+    // 1-based for display. Before a branch is picked this counts the spine
+    // plus pricing, so the number moves down when they choose, never up.
+    visibleStepNumber: stepIndex + 1,
+    totalVisibleSteps: steps.length,
 
-    // Actions
     updateField,
     updateFields,
     goToStep,
