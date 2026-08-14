@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion } from "motion/react";
 import {
-  ChevronLeft, Loader2, Landmark, ExternalLink, CalendarClock, Building2, CheckCircle2, ShieldCheck, Globe,
+  ChevronLeft, Loader2, Landmark, ExternalLink, CalendarClock, Building2, CheckCircle2, ShieldCheck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -239,19 +239,17 @@ export function DirectoryEntryPage() {
                 <h2 className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2 inline-flex items-center gap-1.5">
                   <ShieldCheck className="h-3 w-3" /> Source
                 </h2>
-                {provenance.map((p) => (
-                  <div key={p.source} className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <span className="capitalize">{p.source.replace(/_/g, " ")}</span>
-                    {p.source_url && (
-                      <a href={p.source_url} target="_blank" rel="noreferrer noopener" className="text-cyan-400 hover:text-cyan-300 inline-flex items-center gap-1">
-                        <Globe className="h-3 w-3" /> official page
-                      </a>
-                    )}
-                    <span className="opacity-60">
-                      last checked {new Date(p.last_seen_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                    </span>
-                  </div>
-                ))}
+                {/* Deliberately unbranded: where a listing came from is ops
+                    detail, and a third-party name here reads as someone else's
+                    endorsement. The freshness date is the part a reader needs. */}
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span>Verified listing</span>
+                  <span className="opacity-60">
+                    · last checked {new Date(
+                      provenance.reduce((a, p) => (p.last_seen_at > a ? p.last_seen_at : a), provenance[0].last_seen_at),
+                    ).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  </span>
+                </div>
                 <p className="text-[11px] text-muted-foreground/70 mt-2">
                   Always confirm amounts and deadlines on the funder's page before applying.
                 </p>
