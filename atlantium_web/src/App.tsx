@@ -20,7 +20,7 @@ import { DiscoverPage } from "@/pages/DiscoverPage";
 import { AdminIntroductionsPage } from "@/pages/admin/AdminIntroductionsPage";
 import { AdminOrgClaimsPage } from "@/pages/admin/AdminOrgClaimsPage";
 import { AdminServicesPage } from "@/pages/admin/AdminServicesPage";
-import { TrainingApplyPage } from "@/pages/TrainingApplyPage";
+
 import { OrgClaimPage } from "@/pages/OrgClaimPage";
 import { AdminProtectedRoute } from "@/components/admin/AdminProtectedRoute";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -115,7 +115,7 @@ function AppRoutes() {
       <Route path="/directory" element={<GrantsPage />} />
       <Route path="/directory/:kind/:slug" element={<DirectoryEntryPage />} />
       <Route path="/training" element={<TrainingPage />} />
-      <Route path="/training/apply" element={<TrainingApplyPage />} />
+      <Route path="/training/apply" element={<Navigate to="/training#apply" replace />} />
       <Route path="/pricing" element={<PublicPricingPage />} />
       <Route path="/index/:slug" element={<ArticleDetailPage />} />
       <Route path="/ai-engineer" element={<AIEngineerPage />} />

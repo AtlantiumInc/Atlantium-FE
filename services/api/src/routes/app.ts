@@ -2280,6 +2280,27 @@ appRoutes.post("/service-requests", zValidator("json", serviceRequestSchema), as
   return c.json({ request: { id: row.id, status: row.status } });
 });
 
+/**
+ * A member's own live request — so the inline form can show "you're in the
+ * queue" instead of a blank form that looks like the application vanished.
+ */
+appRoutes.get("/service-requests/mine", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const kind = c.req.query("kind");
+  if (!kind || !(kind in SERVICES)) throw new HttpError(400, "bad_kind", "Unknown service.");
+  const [row] = await db.select().from(serviceRequests).where(and(
+    eq(serviceRequests.kind, kind),
+    or(
+      eq(serviceRequests.userId, authUser.id),
+      sql`lower(${serviceRequests.email}) = ${authUser.email.toLowerCase()}`,
+    ),
+    inArray(serviceRequests.status, ["new", "called", "offered", "paid", "fulfilled"]),
+  )).orderBy(desc(serviceRequests.createdAt)).limit(1);
+  return c.json({
+    request: row ? { id: row.id, status: row.status, created_at: row.createdAt.toISOString() } : null,
+  });
+});
+
 appRoutes.get("/admin/service-requests", async (c) => {
   const { db } = await requireAdminUser(c);
   const kind = c.req.query("kind");

@@ -8,6 +8,7 @@ import SpotlightCard from "@/components/ui/SpotlightCard";
 import ShinyText from "@/components/ui/ShinyText";
 import Aurora from "@/components/Aurora";
 import { api, type JobPosting } from "@/lib/api";
+import { ApplyForm } from "@/components/training/ApplyForm";
 import rawJobs from "@/data/jobs.json";
 import {
   ArrowRight,
@@ -205,8 +206,22 @@ const outcomes = [
 
 // ── Component ────────────────────────────────────────────────────────────────
 export function TrainingPage() {
+  const scrollToApply = () =>
+    document.getElementById("apply")?.scrollIntoView({ behavior: "smooth", block: "start" });
+
   const [featuredJobs, setFeaturedJobs] = useState<Job[]>(FALLBACK_FEATURED);
   const [totalJobs, setTotalJobs] = useState(allJobs.length);
+
+  // Old /training/apply links redirect here with #apply — land them on the
+  // form. One scroll isn't enough: the sections above are still loading and
+  // reflowing, so re-anchor a few times while the page settles.
+  useEffect(() => {
+    if (window.location.hash !== "#apply") return;
+    const timers = [0, 250, 600, 1200].map((ms) =>
+      setTimeout(() => document.getElementById("apply")?.scrollIntoView({ block: "start" }), ms),
+    );
+    return () => timers.forEach(clearTimeout);
+  }, []);
 
   useEffect(() => {
     api.getJobPostingsPaged({ status: "active", limit: 30 })
@@ -261,7 +276,7 @@ export function TrainingPage() {
               { icon: Calendar, label: "8 Weeks" },
               { icon: Clock,    label: "Live Sessions" },
               { icon: Code,     label: "A Real Client Build" },
-              { icon: Star,     label: "12 Seats" },
+              { icon: Star,     label: "Seats Fill Every Cohort" },
             ].map(({ icon: Icon, label }) => (
               <div key={label} className="flex items-center gap-1.5">
                 <Icon className="h-3.5 w-3.5 text-cyan-500" />
@@ -271,12 +286,14 @@ export function TrainingPage() {
           </div>
 
           <div className="flex flex-wrap justify-center gap-3">
-            <Link to="/training/apply">
-              <Button size="lg" className="gap-2 bg-white text-black hover:bg-gray-100 shadow-lg shadow-black/20 border-0 text-base">
-                Apply for Cohort 1
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
+            <Button
+              size="lg"
+              onClick={scrollToApply}
+              className="gap-2 bg-white text-black hover:bg-gray-100 shadow-lg shadow-black/20 border-0 text-base"
+            >
+              Apply for Cohort 1
+              <ArrowRight className="h-4 w-4" />
+            </Button>
           </div>
         </motion.div>
       </section>
@@ -448,12 +465,10 @@ export function TrainingPage() {
                 <p className="text-muted-foreground leading-relaxed mb-6">
                   Whether you're pivoting careers, leveling up from junior, or an experienced dev who wants to go AI-native — this program meets you where you are.
                 </p>
-                <Link to="/training/apply">
-                  <Button className="gap-2 bg-white text-black hover:bg-gray-100 border-0">
-                    Apply for Cohort 1
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
+                <Button onClick={scrollToApply} className="gap-2 bg-white text-black hover:bg-gray-100 border-0">
+                  Apply for Cohort 1
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
               </div>
               <div className="space-y-3">
                 {[
@@ -476,8 +491,8 @@ export function TrainingPage() {
         </FadeIn>
       </section>
 
-      {/* ── Final CTA ── */}
-      <section className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
+      {/* ── Apply, inline — the pitch and the form are one page ── */}
+      <section id="apply" className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
         <FadeIn>
           <div className="relative overflow-hidden rounded-2xl">
             {/* Gradient border */}
@@ -488,18 +503,17 @@ export function TrainingPage() {
                 <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">Cohort 1 — Limited Spots</span>
               </div>
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
-                Ready to Build?
+                Apply for Cohort 1
               </h2>
-              <p className="text-muted-foreground text-lg max-w-xl mx-auto mb-8">
-                Apply in two minutes. Kleveland calls every applicant personally — usually the same day.
+              <p className="text-muted-foreground text-lg max-w-xl mx-auto mb-2">
+                Seats fill every cohort. Apply in two minutes — Kleveland calls every applicant personally, usually the same day.
               </p>
-              <Link to="/training/apply">
-                <Button size="lg" className="gap-2 bg-white text-black hover:bg-gray-100 shadow-xl shadow-black/20 border-0 text-base px-8">
-                  Apply for Cohort 1
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-              <p className="text-xs text-muted-foreground mt-4">No payment to apply. Every applicant gets a call — tuition and grants are covered there.</p>
+              <p className="text-xs text-muted-foreground mb-10">
+                Tuition varies — Atlanta Builder Grants cover up to half, and a couple of full seats each cohort. It's all covered on your call.
+              </p>
+              <div className="text-left">
+                <ApplyForm />
+              </div>
             </SpotlightCard>
           </div>
         </FadeIn>

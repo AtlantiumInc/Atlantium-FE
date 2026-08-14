@@ -920,6 +920,12 @@ class ApiClient {
     return this.request("/service-requests", { method: "POST", body: JSON.stringify(input) }, ATLANTIUM_API_BASE_URL);
   }
 
+  async getMyServiceRequest(kind: string): Promise<{
+    request: { id: string; status: string; created_at: string } | null;
+  }> {
+    return this.request(`/service-requests/mine?kind=${encodeURIComponent(kind)}`, { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
   async getServiceRequests(kind?: string): Promise<{
     requests: Array<{
       id: string; kind: string; service: string; name: string; email: string;
