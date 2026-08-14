@@ -275,16 +275,18 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
                 onClick={() => setPlatformOpen((o) => !o)}
                 aria-label={platformOpen ? "Close menu" : "Open menu"}
                 aria-expanded={platformOpen}
-                className={`group relative h-11 w-11 rounded-full flex items-center justify-center border transition-all duration-300 bg-[#0a1223] ${
+                className={`group relative h-11 w-11 rounded-full overflow-hidden border transition-all duration-300 bg-[#0a1223] ${
                   platformOpen
                     ? "border-cyan-400/60 shadow-[0_0_24px_rgba(0,212,255,0.25)]"
                     : "border-border/60 hover:border-cyan-400/40 hover:shadow-[0_0_18px_rgba(0,212,255,0.15)]"
                 }`}
               >
+                {/* logo.png carries its own square tile — fill the circle and
+                    let the round crop eat the corners */}
                 <img
                   src="/logo.png"
                   alt="Atlantium"
-                  className={`h-8 w-8 transition-transform duration-300 ${platformOpen ? "scale-90" : "group-hover:scale-105"}`}
+                  className={`h-full w-full object-cover transition-transform duration-300 ${platformOpen ? "scale-110" : "group-hover:scale-110"}`}
                 />
                 {/* idle ping advertises that the mark is a control, not a decoration */}
                 {!platformOpen && (
