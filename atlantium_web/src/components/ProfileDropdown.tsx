@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Trash2, Loader2, ExternalLink, Pencil, ChevronDown } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Trash2, Loader2, ExternalLink, Pencil, ChevronDown, BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -255,6 +256,17 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
                 <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               </div>
             </div>
+
+            {/* Company verification — the only entry point besides the toast a
+                founder hits when outreach is blocked. */}
+            <Link
+              to="/company-claim"
+              onClick={() => setIsEditOpen(false)}
+              className="group w-full py-2 px-4 flex items-center justify-center gap-2 text-sm text-muted-foreground rounded-lg transition-all duration-300 hover:text-foreground hover:bg-muted/50"
+            >
+              <BadgeCheck className="h-4 w-4" />
+              <span>Your company</span>
+            </Link>
 
             {/* Manage Billing */}
             <button

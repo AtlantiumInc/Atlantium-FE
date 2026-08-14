@@ -6,6 +6,7 @@ import { MemberBadges } from "@/components/network/MemberBadges";
 import { OutreachDialog } from "@/components/network/OutreachDialog";
 import { IntroRequestDialog } from "@/components/network/IntroRequestDialog";
 import { api, type MemberCard, type OutreachStatus } from "@/lib/api";
+import { MemberShell } from "@/components/MemberShell";
 import { toast } from "sonner";
 
 export function MemberProfilePage() {
@@ -37,16 +38,22 @@ export function MemberProfilePage() {
   useEffect(() => { void load(); }, [load]);
 
   if (isLoading) {
-    return <div className="flex justify-center py-24 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>;
+    return (
+      <MemberShell>
+        <div className="flex justify-center py-24 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>
+      </MemberShell>
+    );
   }
 
   if (notFound || !member) {
     return (
-      <div className="mx-auto max-w-2xl px-6 py-24 text-center">
+      <MemberShell>
+        <div className="mx-auto max-w-2xl px-6 py-24 text-center">
         <p className="text-lg font-semibold">Member not found</p>
         <p className="mt-1 text-sm text-muted-foreground">This profile isn't available to you.</p>
-        <Link to="/network"><Button variant="outline" className="mt-6 gap-2"><ArrowLeft className="h-4 w-4" /> Your network</Button></Link>
-      </div>
+          <Link to="/network"><Button variant="outline" className="mt-6 gap-2"><ArrowLeft className="h-4 w-4" /> Your network</Button></Link>
+        </div>
+      </MemberShell>
     );
   }
 
@@ -54,6 +61,7 @@ export function MemberProfilePage() {
   const initials = member.display_name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
 
   return (
+    <MemberShell title={member.display_name}>
     <div className="mx-auto w-full max-w-3xl">
       <Link to="/network" className="mb-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-3.5 w-3.5" /> Your network
@@ -165,6 +173,7 @@ export function MemberProfilePage() {
         />
       )}
     </div>
+    </MemberShell>
   );
 }
 

@@ -18,6 +18,8 @@ import { MemberProfilePage } from "@/pages/MemberProfilePage";
 import { MessagesPage } from "@/pages/MessagesPage";
 import { DiscoverPage } from "@/pages/DiscoverPage";
 import { AdminIntroductionsPage } from "@/pages/admin/AdminIntroductionsPage";
+import { AdminOrgClaimsPage } from "@/pages/admin/AdminOrgClaimsPage";
+import { OrgClaimPage } from "@/pages/OrgClaimPage";
 import { AdminProtectedRoute } from "@/components/admin/AdminProtectedRoute";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoginPage } from "@/pages/LoginPage";
@@ -213,12 +215,18 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/company-claim"
+        element={
+          <ProtectedRoute>
+            <OrgClaimPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/members/:profileId"
         element={
           <ProtectedRoute>
-            <MemberShell>
-              <MemberProfilePage />
-            </MemberShell>
+            <MemberProfilePage />
           </ProtectedRoute>
         }
       />
@@ -248,6 +256,7 @@ function AppRoutes() {
         <Route path="users" element={<AdminUsersPage />} />
         <Route path="approvals" element={<Navigate to="/admin/users" replace />} />
         <Route path="introductions" element={<AdminIntroductionsPage />} />
+        <Route path="org-claims" element={<AdminOrgClaimsPage />} />
         <Route path="partnerships" element={<DashboardPage embedded />} />
         <Route path="gtm" element={<AdminGTMPage />} />
       </Route>

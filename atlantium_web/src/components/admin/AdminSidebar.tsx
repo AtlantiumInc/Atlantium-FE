@@ -14,6 +14,7 @@ import {
   Rocket,
   X,
   PenLine,
+  BadgeCheck,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -83,6 +84,12 @@ export function AdminSidebar({
       path: "/admin/introductions",
       icon: <Handshake size={20} />,
       label: "Introductions",
+    },
+    {
+      id: "org-claims",
+      path: "/admin/org-claims",
+      icon: <BadgeCheck size={20} />,
+      label: "Company claims",
     },
     {
       id: "gtm",

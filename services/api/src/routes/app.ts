@@ -63,6 +63,7 @@ import {
   dmPolicies,
   dmRequests,
   introductions,
+  orgRequests,
   entitlementGrants,
   billingEvents,
   threads,
@@ -2029,6 +2030,204 @@ appRoutes.get("/admin/introductions/funnel", async (c) => {
   });
 });
 
+
+
+// ── Org claims: how a founder gets the authority the rules require (§4.6) ───
+
+appRoutes.get("/me/org-requests", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const me = await ensureDefaultProfile(db, authUser);
+
+  const [requests, memberships] = await Promise.all([
+    db.select({ req: orgRequests, org: directoryEntries })
+      .from(orgRequests)
+      .leftJoin(directoryEntries, eq(directoryEntries.id, orgRequests.entryId))
+      .where(eq(orgRequests.profileId, me.id))
+      .orderBy(desc(orgRequests.createdAt)),
+    db.select({ membership: orgMemberships, org: directoryEntries })
+      .from(orgMemberships)
+      .innerJoin(directoryEntries, eq(directoryEntries.id, orgMemberships.entryId))
+      .where(and(eq(orgMemberships.profileId, me.id), eq(orgMemberships.isCurrent, true))),
+  ]);
+
+  return c.json({
+    requests: requests.map(({ req, org }) => ({
+      id: req.id,
+      kind: req.kind,
+      status: req.status,
+      relationship: req.relationship,
+      org_name: org?.name ?? (req.proposed as { name?: string }).name ?? "—",
+      decision_note: req.decisionNote,
+      created_at: req.createdAt.toISOString(),
+    })),
+    // What they already hold, so the UI can say "you're set" rather than
+    // inviting a second claim on the same company.
+    memberships: memberships.map(({ membership, org }) => ({
+      id: membership.id,
+      org: { id: org.id, name: org.name, slug: org.slug },
+      relationship: membership.relationship,
+      authority: membership.authority,
+    })),
+  });
+});
+
+appRoutes.post(
+  "/org-requests",
+  zValidator("json", z.object({
+    entry_id: z.string().uuid().optional(),
+    proposed_name: z.string().trim().min(2).max(120).optional(),
+    proposed_website: z.string().trim().max(200).optional(),
+    relationship: z.enum(["founder", "executive", "recruiter", "representative", "employee"]).default("founder"),
+    evidence: z.string().trim().max(1000).optional(),
+  })),
+  async (c) => {
+    const { db, authUser } = await requireAppUser(c);
+    const me = await ensureDefaultProfile(db, authUser);
+    const input = c.req.valid("json");
+
+    if (!input.entry_id && !input.proposed_name) {
+      throw new HttpError(400, "org_required", "Pick your company, or tell us its name so we can add it.");
+    }
+
+    if (input.entry_id) {
+      const [entry] = await db.select({ id: directoryEntries.id })
+        .from(directoryEntries).where(eq(directoryEntries.id, input.entry_id)).limit(1);
+      if (!entry) throw new HttpError(404, "not_found", "That organization isn't in the directory.");
+
+      const [already] = await db.select({ id: orgMemberships.id }).from(orgMemberships)
+        .where(and(
+          eq(orgMemberships.profileId, me.id),
+          eq(orgMemberships.entryId, input.entry_id),
+          eq(orgMemberships.isCurrent, true),
+          ne(orgMemberships.authority, "none"),
+        )).limit(1);
+      if (already) throw new HttpError(409, "already_claimed", "You already represent this organization.");
+    }
+
+    try {
+      const [row] = await db.insert(orgRequests).values({
+        kind: input.entry_id ? "claim" : "create",
+        profileId: me.id,
+        entryId: input.entry_id ?? null,
+        proposed: input.entry_id ? {} : { name: input.proposed_name, website: input.proposed_website },
+        relationship: input.relationship,
+        evidence: input.evidence ?? null,
+      }).returning();
+      return c.json({ request: { id: row.id, status: row.status, kind: row.kind } });
+    } catch {
+      throw new HttpError(409, "already_requested", "You already have a request pending for this organization.");
+    }
+  },
+);
+
+appRoutes.get("/admin/org-requests", async (c) => {
+  const { db } = await requireAdminUser(c);
+  const rows = await db
+    .select({ req: orgRequests, org: directoryEntries, profile: profiles })
+    .from(orgRequests)
+    .leftJoin(directoryEntries, eq(directoryEntries.id, orgRequests.entryId))
+    .innerJoin(profiles, eq(profiles.id, orgRequests.profileId))
+    .where(eq(orgRequests.status, "pending"))
+    .orderBy(asc(orgRequests.createdAt))
+    .limit(100);
+
+  return c.json({
+    requests: rows.map(({ req, org, profile }) => ({
+      id: req.id,
+      kind: req.kind,
+      relationship: req.relationship,
+      evidence: req.evidence,
+      member: { profile_id: profile.id, name: profile.displayName },
+      org: org ? { id: org.id, name: org.name, slug: org.slug } : null,
+      proposed: req.proposed,
+      created_at: req.createdAt.toISOString(),
+    })),
+  });
+});
+
+appRoutes.post(
+  "/admin/org-requests/:id/decide",
+  zValidator("json", z.object({
+    approve: z.boolean(),
+    // Employment is not authority (§4.4): approving a claim says what they may
+    // DO, and that is an explicit choice rather than a default.
+    authority: z.enum(["none", "page_editor", "hiring", "admin"]).default("admin"),
+    note: z.string().trim().max(500).optional(),
+  })),
+  async (c) => {
+    const { db, authUser } = await requireAdminUser(c);
+    const input = c.req.valid("json");
+
+    const [row] = await db.select().from(orgRequests)
+      .where(and(eq(orgRequests.id, c.req.param("id")), eq(orgRequests.status, "pending")))
+      .limit(1);
+    if (!row) throw new HttpError(404, "not_found", "Request not found.");
+
+    const now = new Date();
+    if (!input.approve) {
+      await db.update(orgRequests)
+        .set({ status: "rejected", decidedBy: authUser.id, decidedAt: now, decisionNote: input.note ?? null })
+        .where(eq(orgRequests.id, row.id));
+      return c.json({ status: "rejected" });
+    }
+
+    // A 'create' request adds the organization the member named. Slugified so
+    // it lands in the same namespace the scrapers use.
+    let entryId = row.entryId;
+    if (!entryId) {
+      const proposed = row.proposed as { name?: string; website?: string };
+      const name = proposed.name?.trim();
+      if (!name) throw new HttpError(400, "missing_name", "That request has no organization name.");
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
+      const [created] = await db.insert(directoryEntries).values({
+        kind: "company",
+        slug,
+        name,
+        website: proposed.website ?? null,
+      }).onConflictDoNothing().returning();
+      if (created) {
+        entryId = created.id;
+      } else {
+        const [existing] = await db.select({ id: directoryEntries.id }).from(directoryEntries)
+          .where(and(eq(directoryEntries.kind, "company"), eq(directoryEntries.slug, slug))).limit(1);
+        entryId = existing?.id ?? null;
+      }
+      if (!entryId) throw new HttpError(500, "create_failed", "Couldn't create that organization.");
+    }
+
+    const [membership] = await db.insert(orgMemberships).values({
+      profileId: row.profileId,
+      entryId,
+      relationship: row.relationship,
+      authority: input.authority,
+    }).onConflictDoNothing().returning();
+
+    const resolved = membership ?? (await db.select().from(orgMemberships)
+      .where(and(
+        eq(orgMemberships.profileId, row.profileId),
+        eq(orgMemberships.entryId, entryId),
+        eq(orgMemberships.relationship, row.relationship),
+      )).limit(1))[0];
+
+    // Approving a claim IS the verification — record it as one so the grant has
+    // an author, an evidence trail and a revocation path.
+    if (resolved && input.authority !== "none") {
+      await grantVerification(db, {
+        subject: { orgMembershipId: resolved.id },
+        verification: "org_authority",
+        evidence: "admin_review",
+        evidenceRef: row.evidence ?? null,
+        grantedBy: authUser.id,
+      });
+    }
+
+    await db.update(orgRequests)
+      .set({ status: "approved", decidedBy: authUser.id, decidedAt: now, decisionNote: input.note ?? null })
+      .where(eq(orgRequests.id, row.id));
+
+    return c.json({ status: "approved", entry_id: entryId, authority: input.authority });
+  },
+);
 
 appRoutes.post(
   "/profile/edit",

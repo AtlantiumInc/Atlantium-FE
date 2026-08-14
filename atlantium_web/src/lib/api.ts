@@ -872,6 +872,45 @@ class ApiClient {
     return this.request("/admin/introductions/funnel", { method: "GET" }, ATLANTIUM_API_BASE_URL);
   }
 
+  // ── Org claims ────────────────────────────────────────────────────────────
+
+  async getMyOrgRequests(): Promise<{
+    requests: Array<{
+      id: string; kind: "claim" | "create"; status: string; relationship: string;
+      org_name: string; decision_note: string | null; created_at: string;
+    }>;
+    memberships: Array<{
+      id: string; org: { id: string; name: string; slug: string };
+      relationship: string; authority: string;
+    }>;
+  }> {
+    return this.request("/me/org-requests", { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async requestOrgClaim(input: {
+    entry_id?: string; proposed_name?: string; proposed_website?: string;
+    relationship?: string; evidence?: string;
+  }): Promise<{ request: { id: string; status: string; kind: string } }> {
+    return this.request("/org-requests", { method: "POST", body: JSON.stringify(input) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async getOrgRequestQueue(): Promise<{
+    requests: Array<{
+      id: string; kind: "claim" | "create"; relationship: string; evidence: string | null;
+      member: { profile_id: string; name: string };
+      org: { id: string; name: string; slug: string } | null;
+      proposed: { name?: string; website?: string };
+      created_at: string;
+    }>;
+  }> {
+    return this.request("/admin/org-requests", { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async decideOrgRequest(id: string, approve: boolean, authority = "admin", note?: string) {
+    return this.request<{ status: string }>(`/admin/org-requests/${id}/decide`,
+      { method: "POST", body: JSON.stringify({ approve, authority, note }) }, ATLANTIUM_API_BASE_URL);
+  }
+
   // ── P1b: billing ──────────────────────────────────────────────────────────
 
   async getBillingConfig(): Promise<{
@@ -1825,6 +1864,8 @@ class ApiClient {
 
   async getDirectory(params?: {
     kind?: string;
+    /** Match the name only — for pickers, where a summary hit is noise. */
+    name_only?: "1";
     category?: string;
     tag?: string;
     q?: string;

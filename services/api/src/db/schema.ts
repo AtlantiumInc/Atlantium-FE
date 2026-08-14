@@ -775,3 +775,26 @@ export const introductions = pgTable("introductions", {
   statusIdx: index("introductions_status_idx").on(table.status, table.createdAt),
   targetIdx: index("introductions_target_idx").on(table.targetProfileId, table.status),
 }));
+
+// ── Org claims (plan §4.6) ──────────────────────────────────────────────────
+
+export const orgRequestKind = pgEnum("org_request_kind", ["claim", "create"]);
+export const orgRequestStatus = pgEnum("org_request_status", ["pending", "approved", "rejected", "withdrawn"]);
+
+/** How a member gets the authority that founder/rep features require. */
+export const orgRequests = pgTable("org_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kind: orgRequestKind("kind").notNull(),
+  profileId: uuid("profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  entryId: uuid("entry_id").references(() => directoryEntries.id, { onDelete: "cascade" }),
+  proposed: jsonb("proposed").$type<Record<string, unknown>>().notNull().default({}),
+  relationship: orgRelationship("relationship").notNull().default("founder"),
+  evidence: text("evidence"),
+  status: orgRequestStatus("status").notNull().default("pending"),
+  decidedBy: text("decided_by").references(() => user.id, { onDelete: "set null" }),
+  decidedAt: timestamp("decided_at", { withTimezone: true }),
+  decisionNote: text("decision_note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  statusIdx: index("org_requests_status_idx").on(table.status, table.createdAt),
+}));
