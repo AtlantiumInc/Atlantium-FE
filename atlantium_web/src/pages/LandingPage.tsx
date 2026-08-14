@@ -409,8 +409,7 @@ export function LandingPage() {
 
                 {/* Subhead */}
                 <p className="text-muted-foreground text-lg mb-8 mx-auto">
-                  The rooms Atlanta tech actually runs on — investors, founders,
-                  and the people they hire — with the doors left open.
+                  Atlanta's premier technology network — where the city's sharpest technologists connect, level up, and get hired.
                 </p>
 
                 {/* CTAs */}
