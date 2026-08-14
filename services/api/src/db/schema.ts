@@ -672,6 +672,8 @@ export const memberConnections = pgTable("member_connections", {
   /** Provenance: how this relationship came to exist (§8A.7). */
   source: connectionSource("source").notNull().default("direct"),
   introducedByProfileId: uuid("introduced_by_profile_id").references(() => profiles.id, { onDelete: "set null" }),
+  /** WHICH introduction created this edge — source alone can't reconstruct it. */
+  introductionId: uuid("introduction_id"),
   message: text("message"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   acceptedAt: timestamp("accepted_at", { withTimezone: true }),
@@ -744,3 +746,32 @@ export const entitlementGrants = pgTable("entitlement_grants", {
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
   revokedReason: text("revoked_reason"),
 });
+
+// ── P1 S5: curated introductions (plan §8.3, §8A.7) ─────────────────────────
+
+export const introductionStatus = pgEnum("introduction_status", [
+  "pending_review", "rejected", "awaiting_target", "accepted", "declined", "withdrawn", "expired",
+]);
+export const introductionOutcome = pgEnum("introduction_outcome", [
+  "unknown", "no_response", "met", "ongoing", "hired", "invested", "dead",
+]);
+
+export const introductions = pgTable("introductions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  requesterProfileId: uuid("requester_profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  targetProfileId: uuid("target_profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  /** NULL = Atlantium itself rather than a member vouching. */
+  facilitatorUserId: text("facilitator_user_id").references(() => user.id, { onDelete: "set null" }),
+  reason: text("reason").notNull(),
+  context: jsonb("context").$type<Record<string, unknown>>().notNull().default({}),
+  status: introductionStatus("status").notNull().default("pending_review"),
+  reviewNote: text("review_note"),
+  outcome: introductionOutcome("outcome").notNull().default("unknown"),
+  outcomeNote: text("outcome_note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  respondedAt: timestamp("responded_at", { withTimezone: true }),
+}, (table) => ({
+  statusIdx: index("introductions_status_idx").on(table.status, table.createdAt),
+  targetIdx: index("introductions_target_idx").on(table.targetProfileId, table.status),
+}));

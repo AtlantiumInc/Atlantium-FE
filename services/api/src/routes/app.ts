@@ -6,7 +6,7 @@ import type { Context } from "hono";
 import { z } from "zod";
 import { sendOtpEmail } from "../lib/email";
 import { grantVerification, revokeVerification } from "../lib/verification";
-import { canInitiate, outreachStatus } from "../lib/outreach";
+import { areConnected, canInitiate, outreachStatus } from "../lib/outreach";
 import { entitlementsFor } from "../lib/entitlements";
 import {
   attachPaymentMethod,
@@ -62,6 +62,7 @@ import {
   memberBlocks,
   dmPolicies,
   dmRequests,
+  introductions,
   billingEvents,
   threads,
   threadParticipants,
@@ -1609,6 +1610,252 @@ appRoutes.post(
     });
   },
 );
+
+
+// ── P1 S5: curated introductions (plan §8.3, §8A.7) ─────────────────────────
+// The sanctioned path through a door that is deliberately locked: founders
+// cannot cold-pitch investors, so this is how that conversation happens at all.
+
+function publicIntroduction(
+  row: typeof introductions.$inferSelect,
+  viewerProfileId: string,
+  other?: { display_name: string } | null,
+) {
+  const outgoing = row.requesterProfileId === viewerProfileId;
+  return {
+    id: row.id,
+    direction: outgoing ? "outgoing" : "incoming",
+    status: row.status,
+    reason: row.reason,
+    other_name: other?.display_name ?? "A member",
+    other_profile_id: outgoing ? row.targetProfileId : row.requesterProfileId,
+    created_at: row.createdAt.toISOString(),
+    // The target must not learn an intro exists until curation lets it through.
+    visible_to_target: row.status !== "pending_review" && row.status !== "rejected",
+  };
+}
+
+appRoutes.post(
+  "/introductions/requests",
+  zValidator("json", z.object({
+    profile_id: z.string().uuid(),
+    reason: z.string().trim().min(20).max(1500),
+  })),
+  async (c) => {
+    const { db, authUser } = await requireAppUser(c);
+    const me = await ensureDefaultProfile(db, authUser);
+    const input = c.req.valid("json");
+    if (input.profile_id === me.id) throw new HttpError(400, "self_intro", "You can't request an introduction to yourself.");
+
+    const [target] = await db.select().from(profiles).where(eq(profiles.id, input.profile_id)).limit(1);
+    if (!target) throw new HttpError(404, "not_found", "Member not found.");
+
+    // A block outranks everything, including the intro path.
+    const [blocked] = await db.select({ b: memberBlocks.blockerProfileId }).from(memberBlocks)
+      .where(or(
+        and(eq(memberBlocks.blockerProfileId, me.id), eq(memberBlocks.blockedProfileId, target.id)),
+        and(eq(memberBlocks.blockerProfileId, target.id), eq(memberBlocks.blockedProfileId, me.id)),
+      )).limit(1);
+    if (blocked) throw new HttpError(404, "not_found", "Member not found.");
+
+    if (await areConnected(db, me.id, target.id)) {
+      throw new HttpError(409, "already_connected", "You're already connected — just message them.");
+    }
+
+    // An intro request is an attempt to create an edge, so it draws on the same
+    // outreach budget as DMs and connections. Otherwise it becomes the free
+    // path that everything else was rationed to prevent.
+    const budget = await outreachStatus(db, me.id, authUser.id);
+    if (!budget.mayInitiate) {
+      throw new HttpError(403, "upgrade_required", "Requesting introductions is part of paid membership.");
+    }
+    if (budget.penalised) {
+      throw new HttpError(403, "outreach_paused", "Outreach is paused while your recent requests go unanswered.");
+    }
+
+    try {
+      const [row] = await db.insert(introductions).values({
+        requesterProfileId: me.id,
+        targetProfileId: target.id,
+        reason: input.reason,
+      }).returning();
+      return c.json({ introduction: publicIntroduction(row, me.id, { display_name: target.displayName }) });
+    } catch {
+      throw new HttpError(409, "already_requested", "You already have an introduction pending with this member.");
+    }
+  },
+);
+
+appRoutes.get("/me/introductions", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const me = await ensureDefaultProfile(db, authUser);
+  const rows = await db
+    .select({ intro: introductions, requester: profiles })
+    .from(introductions)
+    .innerJoin(profiles, eq(profiles.id, introductions.requesterProfileId))
+    .where(or(
+      eq(introductions.requesterProfileId, me.id),
+      // Incoming only once curation has let it through — an intro under review
+      // must be invisible to its target, or curation means nothing.
+      and(
+        eq(introductions.targetProfileId, me.id),
+        inArray(introductions.status, ["awaiting_target", "accepted", "declined"]),
+      ),
+    ))
+    .orderBy(desc(introductions.createdAt))
+    .limit(100);
+
+  const withNames = await Promise.all(rows.map(async ({ intro }) => {
+    const otherId = intro.requesterProfileId === me.id ? intro.targetProfileId : intro.requesterProfileId;
+    const [other] = await db.select({ display_name: profiles.displayName }).from(profiles)
+      .where(eq(profiles.id, otherId)).limit(1);
+    return publicIntroduction(intro, me.id, other);
+  }));
+  return c.json({ introductions: withNames });
+});
+
+/** The target's decision. Acceptance is the second half of two-sided consent. */
+appRoutes.post(
+  "/introductions/:id/respond",
+  zValidator("json", z.object({ accept: z.boolean() })),
+  async (c) => {
+    const { db, authUser } = await requireAppUser(c);
+    const me = await ensureDefaultProfile(db, authUser);
+    const accept = c.req.valid("json").accept;
+
+    const [row] = await db.select().from(introductions)
+      .where(and(
+        eq(introductions.id, c.req.param("id")),
+        eq(introductions.targetProfileId, me.id),
+        eq(introductions.status, "awaiting_target"),
+      )).limit(1);
+    if (!row) throw new HttpError(404, "not_found", "Introduction not found.");
+
+    const now = new Date();
+    if (!accept) {
+      await db.update(introductions).set({ status: "declined", respondedAt: now })
+        .where(eq(introductions.id, row.id));
+      return c.json({ accepted: false });
+    }
+
+    // Both sides have now explicitly agreed to meet, so the connection is
+    // created immediately — no request flow, and deliberately no cooling-off
+    // period (§8A.4): the flow exists to establish consent, and consent is what
+    // just happened.
+    const [connection] = await db.insert(memberConnections).values({
+      requesterProfileId: row.requesterProfileId,
+      recipientProfileId: row.targetProfileId,
+      status: "accepted",
+      source: "atlantium_intro",
+      introductionId: row.id,
+      acceptedAt: now,
+    }).onConflictDoNothing().returning();
+
+    await db.update(introductions).set({ status: "accepted", respondedAt: now })
+      .where(eq(introductions.id, row.id));
+
+    return c.json({ accepted: true, connection_id: connection?.id ?? null });
+  },
+);
+
+// ── Curation (admin) ────────────────────────────────────────────────────────
+
+appRoutes.get("/admin/introductions", async (c) => {
+  const { db } = await requireAdminUser(c);
+  const rows = await db
+    .select({ intro: introductions })
+    .from(introductions)
+    .where(eq(introductions.status, "pending_review"))
+    .orderBy(asc(introductions.createdAt))
+    .limit(100);
+
+  const detailed = await Promise.all(rows.map(async ({ intro }) => {
+    const [requester] = await db.select({ name: profiles.displayName }).from(profiles)
+      .where(eq(profiles.id, intro.requesterProfileId)).limit(1);
+    const [target] = await db.select({ name: profiles.displayName }).from(profiles)
+      .where(eq(profiles.id, intro.targetProfileId)).limit(1);
+    return {
+      id: intro.id,
+      reason: intro.reason,
+      requester: { profile_id: intro.requesterProfileId, name: requester?.name ?? "—" },
+      target: { profile_id: intro.targetProfileId, name: target?.name ?? "—" },
+      created_at: intro.createdAt.toISOString(),
+    };
+  }));
+  return c.json({ introductions: detailed });
+});
+
+appRoutes.post(
+  "/admin/introductions/:id/decide",
+  zValidator("json", z.object({ approve: z.boolean(), note: z.string().trim().max(500).optional() })),
+  async (c) => {
+    const { db, authUser } = await requireAdminUser(c);
+    const input = c.req.valid("json");
+    const [row] = await db.select().from(introductions)
+      .where(and(eq(introductions.id, c.req.param("id")), eq(introductions.status, "pending_review")))
+      .limit(1);
+    if (!row) throw new HttpError(404, "not_found", "Introduction not found.");
+
+    const [updated] = await db.update(introductions)
+      .set({
+        // Curation is what protects the target's inbox: rejected requests never
+        // become visible to them at all.
+        status: input.approve ? "awaiting_target" : "rejected",
+        reviewNote: input.note ?? null,
+        facilitatorUserId: authUser.id,
+        reviewedAt: new Date(),
+      })
+      .where(eq(introductions.id, row.id))
+      .returning();
+    return c.json({ status: updated.status });
+  },
+);
+
+/** Attribution: what the introduction actually became. */
+appRoutes.post(
+  "/admin/introductions/:id/outcome",
+  zValidator("json", z.object({
+    outcome: z.enum(["unknown", "no_response", "met", "ongoing", "hired", "invested", "dead"]),
+    note: z.string().trim().max(500).optional(),
+  })),
+  async (c) => {
+    const { db } = await requireAdminUser(c);
+    const input = c.req.valid("json");
+    const [updated] = await db.update(introductions)
+      .set({ outcome: input.outcome, outcomeNote: input.note ?? null })
+      .where(eq(introductions.id, c.req.param("id")))
+      .returning();
+    if (!updated) throw new HttpError(404, "not_found", "Introduction not found.");
+    return c.json({ outcome: updated.outcome });
+  },
+);
+
+/** The scoreboard the intro product is actually judged by. */
+appRoutes.get("/admin/introductions/funnel", async (c) => {
+  const { db } = await requireAdminUser(c);
+  const rows = await db
+    .select({ status: introductions.status, outcome: introductions.outcome, n: sql<number>`count(*)::int` })
+    .from(introductions)
+    .groupBy(introductions.status, introductions.outcome);
+
+  const byStatus: Record<string, number> = {};
+  const byOutcome: Record<string, number> = {};
+  for (const r of rows) {
+    byStatus[r.status] = (byStatus[r.status] ?? 0) + r.n;
+    if (r.outcome !== "unknown") byOutcome[r.outcome] = (byOutcome[r.outcome] ?? 0) + r.n;
+  }
+  const [connections] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(memberConnections)
+    .where(sql`${memberConnections.introductionId} IS NOT NULL`);
+
+  return c.json({
+    requested: Object.values(byStatus).reduce((a, b) => a + b, 0),
+    by_status: byStatus,
+    connections_from_intros: connections?.n ?? 0,
+    outcomes: byOutcome,
+  });
+});
 
 appRoutes.post(
   "/profile/edit",
