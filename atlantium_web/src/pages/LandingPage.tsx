@@ -17,6 +17,7 @@ import {
   MessageSquare,
   CheckCircle2,
   Radio,
+  Landmark,
 } from "lucide-react";
 import { motion, useAnimationFrame } from "motion/react";
 import { useEffect, useRef, useState } from "react";
@@ -327,6 +328,15 @@ function FocusGroupsCard() {
 
 export function LandingPage() {
   const [freshJobCount, setFreshJobCount] = useState(0);
+  // Live counts for The Network card — the numbers ARE the pitch, so they come
+  // from the same API the directory itself reads, never hardcoded.
+  const [networkCounts, setNetworkCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    api.getDirectory({ limit: 1 })
+      .then((r) => setNetworkCounts(r.counts ?? {}))
+      .catch(() => { /* the card shows em-dashes until the numbers arrive */ });
+  }, []);
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -399,7 +409,8 @@ export function LandingPage() {
 
                 {/* Subhead */}
                 <p className="text-muted-foreground text-lg mb-8 mx-auto">
-                  Atlanta's premier technology network — where the city's sharpest technologists connect, level up, and get hired.
+                  The rooms Atlanta tech actually runs on — investors, founders,
+                  and the people they hire — with the doors left open.
                 </p>
 
                 {/* CTAs */}
@@ -683,7 +694,7 @@ export function LandingPage() {
             </SpotlightCard>
           </motion.div>
 
-          {/* Office Hours Card */}
+          {/* The Network — the directory is the aristocracy, and the door is open */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -691,29 +702,52 @@ export function LandingPage() {
             className="col-span-12 lg:col-span-4 row-span-2"
           >
             <SpotlightCard
-              className="h-full p-6 overflow-hidden flex flex-col"
-              spotlightColor="rgba(245, 158, 11, 0.15)"
+              className="h-full p-6 flex flex-col"
+              spotlightColor="rgba(139, 92, 246, 0.15)"
             >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-10 w-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                  <Video className="h-5 w-5 text-amber-500" />
+              <div className="flex items-center gap-3 mb-1">
+                <div className="h-10 w-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+                  <Landmark className="h-5 w-5 text-violet-400" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-foreground">Office Hours</h3>
-                  <p className="text-xs text-muted-foreground">Daily live sessions with experts</p>
+                  <h3 className="text-lg font-bold text-foreground">The Network</h3>
+                  <p className="text-xs text-muted-foreground">Atlanta's capital map — open to all</p>
                 </div>
               </div>
-              {/* GIF Container */}
-              <div className="relative rounded-lg overflow-hidden bg-muted/30 border border-border/50 flex-1">
-                <img
-                  src="https://media.giphy.com/media/Is1O1TWV0LEJi/giphy.gif"
-                  alt="Office Hours"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <p className="text-sm text-muted-foreground mt-4 leading-relaxed">
-                Drop in daily for live Q&A with founders, engineers, and AI practitioners building on the frontier.
+
+              <p className="text-sm text-muted-foreground leading-relaxed mt-4">
+                The rooms that used to require an introduction. Every investor
+                writing checks in the Southeast, every accelerator, every company
+                hiring — profiled, verified, and free to browse.
               </p>
+
+              <div className="grid grid-cols-2 gap-3 mt-5 flex-1">
+                {[
+                  { n: networkCounts.investor ?? 0, label: "Investors" },
+                  { n: networkCounts.resource ?? 0, label: "Accelerators & programs" },
+                  { n: networkCounts.company ?? 0, label: "Companies hiring" },
+                  { n: networkCounts.grant ?? 0, label: "Grants & credits" },
+                ].map((stat) => (
+                  <div
+                    key={stat.label}
+                    className="rounded-xl border border-border/40 bg-background/40 px-4 py-3 flex flex-col justify-center"
+                  >
+                    <p className="text-2xl font-bold tracking-tight text-foreground">
+                      {stat.n > 0 ? stat.n : "—"}
+                    </p>
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">
+                      {stat.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <Link to="/directory" className="mt-5">
+                <Button variant="outline" className="w-full gap-2 border-violet-500/40 text-violet-300 hover:bg-violet-500/10">
+                  Enter the Directory
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
             </SpotlightCard>
           </motion.div>
 
