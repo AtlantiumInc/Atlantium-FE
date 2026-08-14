@@ -2,8 +2,31 @@ import { neon } from "@neondatabase/serverless";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) throw new Error("DATABASE_URL is required.");
+/**
+ * Target selection.
+ *
+ * `--prod` and `--dev` read the connection string out of the local env files
+ * themselves, so nobody has to splice credentials into a shell command to run a
+ * migration. DATABASE_URL still wins when it's set, for CI and one-off branches.
+ */
+const ENV_FILES: Record<string, string> = { prod: ".dev.vars.main.bak", dev: ".dev.vars" };
+
+async function urlFromEnvFile(target: string) {
+  const contents = await readFile(join(process.cwd(), ENV_FILES[target]), "utf8");
+  const line = contents.split(/\r?\n/).find((l) => l.trimStart().startsWith("DATABASE_URL="));
+  if (!line) throw new Error(`No DATABASE_URL in ${ENV_FILES[target]}`);
+  return line.slice(line.indexOf("=") + 1).trim().replace(/^["']|["']$/g, "");
+}
+
+const target = process.argv.find((a) => a === "--prod" || a === "--dev")?.slice(2);
+const databaseUrl = process.env.DATABASE_URL ?? (target ? await urlFromEnvFile(target) : undefined);
+if (!databaseUrl) {
+  throw new Error("Pass --prod or --dev (reads the matching env file), or set DATABASE_URL.");
+}
+
+// Name the target. A silent prod migration is how you find out afterwards that
+// it went to the wrong database.
+console.log(`→ ${target ?? "DATABASE_URL"} (${databaseUrl.replace(/\/\/[^@]*@/, "//")})`);
 
 const sql = neon(databaseUrl);
 
