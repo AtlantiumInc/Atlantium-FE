@@ -26,7 +26,7 @@ const solutionItems = [
   {
     to: "/training",
     label: "AI Engineer Training",
-    description: "4-week hands-on program — build enterprise apps, daily office hours, warm introductions",
+    description: "8-week AI engineering intensive — live sessions, a real client build, warm introductions",
     icon: GraduationCap,
     image: "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=400&h=250&fit=crop&q=80",
   },

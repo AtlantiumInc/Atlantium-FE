@@ -833,3 +833,36 @@ export const orgRequests = pgTable("org_requests", {
 }, (table) => ({
   statusIdx: index("org_requests_status_idx").on(table.status, table.createdAt),
 }));
+
+// ── Service requests: the phone-call sales pipeline (training cohort first) ──
+
+export const serviceRequestStatus = pgEnum("service_request_status", [
+  "new", "called", "offered", "paid", "fulfilled", "passed",
+]);
+
+/**
+ * One pipeline for everything sold over a call. `kind` is text validated
+ * against the code registry in lib/service-requests.ts — adding a service is a
+ * registry entry, never a migration. Answers are display-only jsonb; the
+ * pipeline is typed because the queue filters on it.
+ */
+export const serviceRequests = pgTable("service_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kind: text("kind").notNull(),
+  userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+  profileId: uuid("profile_id").references(() => profiles.id, { onDelete: "set null" }),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  answers: jsonb("answers").$type<Record<string, unknown>>().notNull().default({}),
+  status: serviceRequestStatus("status").notNull().default("new"),
+  offerCents: integer("offer_cents"),
+  paymentLinkUrl: text("payment_link_url"),
+  stripeSessionId: text("stripe_session_id"),
+  note: text("note"),
+  calledAt: timestamp("called_at", { withTimezone: true }),
+  paidAt: timestamp("paid_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  queueIdx: index("service_requests_queue_idx").on(table.kind, table.status, table.createdAt),
+}));

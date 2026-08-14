@@ -911,6 +911,38 @@ class ApiClient {
       { method: "POST", body: JSON.stringify({ approve, authority, note }) }, ATLANTIUM_API_BASE_URL);
   }
 
+  // ── Service requests (training cohort etc.) ───────────────────────────────
+
+  async submitServiceRequest(input: {
+    kind: string; name: string; email: string; phone?: string;
+    answers?: Record<string, string>;
+  }): Promise<{ request: { id: string; status: string }; duplicate?: boolean }> {
+    return this.request("/service-requests", { method: "POST", body: JSON.stringify(input) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async getServiceRequests(kind?: string): Promise<{
+    requests: Array<{
+      id: string; kind: string; service: string; name: string; email: string;
+      phone: string | null; answers: Record<string, string>;
+      status: "new" | "called" | "offered" | "paid" | "fulfilled" | "passed";
+      offer_cents: number | null; payment_link_url: string | null; note: string | null;
+      member: { profile_id: string; name: string | null } | null;
+      called_at: string | null; paid_at: string | null; created_at: string;
+    }>;
+  }> {
+    const q = kind ? `?kind=${encodeURIComponent(kind)}` : "";
+    return this.request(`/admin/service-requests${q}`, { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async updateServiceRequest(id: string, body: { status?: string; offer_cents?: number; note?: string }) {
+    return this.request<{ status: string }>(`/admin/service-requests/${id}/update`,
+      { method: "POST", body: JSON.stringify(body) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async createServiceRequestPaymentLink(id: string): Promise<{ url: string }> {
+    return this.request(`/admin/service-requests/${id}/payment-link`, { method: "POST" }, ATLANTIUM_API_BASE_URL);
+  }
+
   // ── P1b: billing ──────────────────────────────────────────────────────────
 
   async getBillingConfig(): Promise<{

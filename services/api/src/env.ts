@@ -6,6 +6,8 @@ export type Env = {
   AUTH_BASE_URL?: string;
   ALLOWED_ORIGINS?: string;
   RESEND_API_KEY?: string;
+  /** Where new service-request alerts go. Defaults to team@atlantium.ai. */
+  SERVICE_REQUEST_NOTIFY_EMAIL?: string;
   RESEND_FROM?: string;
   DEBUG_AUTH_CODES?: string;
   /** Billing (P1b). Set with `wrangler secret put` — never committed. */

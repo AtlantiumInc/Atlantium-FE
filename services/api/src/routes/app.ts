@@ -14,6 +14,7 @@ import {
   createSubscription,
   ensureCustomer,
   createCheckoutSession,
+  createOneTimeCheckout,
   createPortalSession,
   getSubscription,
   normalizeStatus,
@@ -64,6 +65,7 @@ import {
   dmRequests,
   introductions,
   orgRequests,
+  serviceRequests,
   entitlementGrants,
   billingEvents,
   threads,
@@ -78,6 +80,7 @@ import {
 import type { Env } from "../env";
 import { adminEmails, isDebugAuthCodes, requireEnv } from "../env";
 import { createAuth, getAuthSession } from "../lib/auth";
+import { SERVICES, notifyServiceRequest } from "../lib/service-requests";
 import { HttpError } from "../lib/http";
 import {
   getRecord,
@@ -1323,7 +1326,20 @@ appRoutes.post("/billing/webhook", async (c) => {
     const object = event.data.object;
     switch (event.type) {
       case "checkout.session.completed": {
-        const userId = (object.client_reference_id ?? (object.metadata as Record<string, string>)?.user_id) as string | undefined;
+        const meta = (object.metadata ?? {}) as Record<string, string>;
+
+        // A service-request payment (training tuition etc.) — one-time, not a
+        // subscription. Marked paid only here, from a verified event, never
+        // from the success redirect.
+        if (meta.service_request_id) {
+          await db
+            .update(serviceRequests)
+            .set({ status: "paid", paidAt: new Date(), stripeSessionId: object.id as string })
+            .where(eq(serviceRequests.id, meta.service_request_id));
+          break;
+        }
+
+        const userId = (object.client_reference_id ?? meta.user_id) as string | undefined;
         const subscriptionId = object.subscription as string | undefined;
         if (userId && subscriptionId) {
           const sub = await getSubscription(c.env, subscriptionId);
@@ -2202,6 +2218,152 @@ appRoutes.get("/admin/introductions/funnel", async (c) => {
 
 
 // ── Org claims: how a founder gets the authority the rules require (§4.6) ───
+
+
+// ── Service requests: the phone-call pipeline (training cohort first) ────────
+
+const serviceRequestSchema = z.object({
+  kind: z.string().refine((k) => k in SERVICES, "Unknown service."),
+  name: z.string().trim().min(2).max(80),
+  email: z.string().trim().email().max(120),
+  phone: z.string().trim().min(7).max(24).optional(),
+  answers: z.record(z.string(), z.string().max(600)).default({}),
+});
+
+/**
+ * Public on purpose — the leads come off the job board, logged out. A session
+ * at submit time links the request to the member, nothing more.
+ */
+appRoutes.post("/service-requests", zValidator("json", serviceRequestSchema), async (c) => {
+  const input = c.req.valid("json");
+  const db = createDb(c.env);
+  const service = SERVICES[input.kind];
+
+  // Only the questions the service actually asks survive into the row.
+  const answers = Object.fromEntries(
+    Object.entries(input.answers).filter(([k]) => service.questions.includes(k)),
+  );
+
+  const session = await getAuthSession(c.env, c.req.raw).catch(() => null);
+  let profileId: string | null = null;
+  if (session?.user?.id) {
+    const [p] = await db.select({ id: profiles.id }).from(profiles)
+      .where(eq(profiles.ownerUserId, session.user.id)).limit(1);
+    profileId = p?.id ?? null;
+  }
+
+  // Mashing submit — or applying twice in a week — must not stack queue rows.
+  // A live request for the same service+email is THE request.
+  const [existing] = await db.select().from(serviceRequests).where(and(
+    eq(serviceRequests.kind, input.kind),
+    sql`lower(${serviceRequests.email}) = ${input.email.toLowerCase()}`,
+    inArray(serviceRequests.status, ["new", "called", "offered"]),
+  )).limit(1);
+  if (existing) return c.json({ request: { id: existing.id, status: existing.status }, duplicate: true });
+
+  const [row] = await db.insert(serviceRequests).values({
+    kind: input.kind,
+    userId: session?.user?.id ?? null,
+    profileId,
+    name: input.name,
+    email: input.email,
+    phone: input.phone ?? null,
+    answers,
+  }).returning();
+
+  // The alert races nothing: the row is already committed, so a mail failure
+  // costs speed, never the lead.
+  c.executionCtx.waitUntil(notifyServiceRequest(c.env, {
+    kind: input.kind, name: row.name, email: row.email, phone: row.phone, answers,
+  }).catch(() => undefined));
+
+  return c.json({ request: { id: row.id, status: row.status } });
+});
+
+appRoutes.get("/admin/service-requests", async (c) => {
+  const { db } = await requireAdminUser(c);
+  const kind = c.req.query("kind");
+  const rows = await db
+    .select({ req: serviceRequests, memberName: profiles.displayName })
+    .from(serviceRequests)
+    .leftJoin(profiles, eq(profiles.id, serviceRequests.profileId))
+    .where(kind ? eq(serviceRequests.kind, kind) : undefined)
+    .orderBy(desc(serviceRequests.createdAt))
+    .limit(200);
+  return c.json({
+    requests: rows.map(({ req, memberName }) => ({
+      id: req.id,
+      kind: req.kind,
+      service: SERVICES[req.kind]?.title ?? req.kind,
+      name: req.name,
+      email: req.email,
+      phone: req.phone,
+      answers: req.answers,
+      status: req.status,
+      offer_cents: req.offerCents,
+      payment_link_url: req.paymentLinkUrl,
+      note: req.note,
+      member: req.profileId ? { profile_id: req.profileId, name: memberName } : null,
+      called_at: req.calledAt?.toISOString() ?? null,
+      paid_at: req.paidAt?.toISOString() ?? null,
+      created_at: req.createdAt.toISOString(),
+    })),
+  });
+});
+
+const serviceRequestUpdateSchema = z.object({
+  status: z.enum(["new", "called", "offered", "paid", "fulfilled", "passed"]).optional(),
+  offer_cents: z.number().int().min(100).max(2_000_000).optional(),
+  note: z.string().max(2000).optional(),
+});
+
+appRoutes.post(
+  "/admin/service-requests/:id/update",
+  zValidator("json", serviceRequestUpdateSchema),
+  async (c) => {
+    const { db } = await requireAdminUser(c);
+    const input = c.req.valid("json");
+    const [updated] = await db.update(serviceRequests).set({
+      ...(input.status !== undefined ? { status: input.status } : {}),
+      ...(input.status === "called" ? { calledAt: new Date() } : {}),
+      ...(input.offer_cents !== undefined ? { offerCents: input.offer_cents } : {}),
+      ...(input.note !== undefined ? { note: input.note } : {}),
+    }).where(eq(serviceRequests.id, c.req.param("id"))).returning();
+    if (!updated) throw new HttpError(404, "not_found", "Request not found.");
+    return c.json({ status: updated.status });
+  },
+);
+
+/**
+ * The close-on-the-call button. Generates a checkout link at the offer amount —
+ * the grant is already baked into the number, so the lead sees one price, paid
+ * in full. The link is stored so it can be re-copied or re-sent.
+ */
+appRoutes.post("/admin/service-requests/:id/payment-link", async (c) => {
+  const { db } = await requireAdminUser(c);
+  const [row] = await db.select().from(serviceRequests)
+    .where(eq(serviceRequests.id, c.req.param("id"))).limit(1);
+  if (!row) throw new HttpError(404, "not_found", "Request not found.");
+  if (!row.offerCents) throw new HttpError(400, "no_offer", "Set the offer amount first.");
+
+  const service = SERVICES[row.kind];
+  const sessionOut = await createOneTimeCheckout(c.env, {
+    amountCents: row.offerCents,
+    productName: service?.productName ?? service?.title ?? row.kind,
+    email: row.email,
+    metadata: { service_request_id: row.id },
+    successUrl: "https://atlantium.ai/training?enrolled=1",
+    cancelUrl: "https://atlantium.ai/training",
+  });
+
+  await db.update(serviceRequests).set({
+    status: "offered",
+    paymentLinkUrl: sessionOut.url,
+    stripeSessionId: sessionOut.id,
+  }).where(eq(serviceRequests.id, row.id));
+
+  return c.json({ url: sessionOut.url });
+});
 
 appRoutes.get("/me/org-requests", async (c) => {
   const { db, authUser } = await requireAppUser(c);

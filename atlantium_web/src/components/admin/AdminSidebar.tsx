@@ -15,6 +15,7 @@ import {
   X,
   PenLine,
   BadgeCheck,
+  PhoneCall,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -84,6 +85,12 @@ export function AdminSidebar({
       path: "/admin/introductions",
       icon: <Handshake size={20} />,
       label: "Introductions",
+    },
+    {
+      id: "services",
+      path: "/admin/services",
+      icon: <PhoneCall size={20} />,
+      label: "Service requests",
     },
     {
       id: "org-claims",
