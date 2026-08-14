@@ -124,8 +124,18 @@ export async function createSubscription(
 }
 
 export async function attachPaymentMethod(env: Env, paymentMethodId: string, customerId: string) {
-  await stripeRequest(env, `/payment_methods/${paymentMethodId}/attach`, form({ customer: customerId }));
-  // Make it the default for future invoices, not just this one.
+  // A SetupIntent confirmed with a customer ALREADY attaches the method, which
+  // is the normal Elements path — re-attaching then errors. Attach is therefore
+  // best-effort: it only matters for methods that arrived some other way.
+  try {
+    await stripeRequest(env, `/payment_methods/${paymentMethodId}/attach`, form({ customer: customerId }));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const alreadyOurs = /already been attached|already attached/i.test(message);
+    if (!alreadyOurs) throw error;
+  }
+  // Setting the default is what actually matters, and must happen either way,
+  // or renewals have no card to charge.
   await stripeRequest(env, `/customers/${customerId}`, form({
     "invoice_settings[default_payment_method]": paymentMethodId,
   }));

@@ -16,7 +16,8 @@
     "smoke:workemail": "tsx scripts/smoke-work-email.ts",
     "smoke:network": "tsx scripts/smoke-network-loop.ts",
     "smoke:billing": "tsx scripts/smoke-billing.ts",
-    "smoke:threads": "tsx scripts/smoke-threads.ts"
+    "smoke:threads": "tsx scripts/smoke-threads.ts",
+    "smoke:elements": "tsx scripts/smoke-elements.ts"
   },
   "dependencies": {
     "@boomin/server": "^0.1.1",
