@@ -81,6 +81,14 @@ export function DirectoryEntryPage() {
   const amount = money(grant?.amount_min, grant?.amount_max);
   const days = grant?.days_until_close;
   const applyUrl = grant?.application_url ?? resource?.application_url ?? entry?.website;
+
+  // The page predates investors and companies being kinds here — everything
+  // that wasn't a grant rendered as "Program", which put PROGRAM over a VC
+  // firm's name and "Apply" on its website button. One vocabulary per kind.
+  const KIND_LABEL: Record<string, string> = {
+    grant: "Grant", resource: "Program", investor: "Investor", company: "Company", person: "Person",
+  };
+  const isFunnelKind = kind === "grant" || kind === "resource";
   const eligibility = grant?.eligibility ?? resource?.eligibility ?? [];
 
   return (
@@ -107,7 +115,7 @@ export function DirectoryEntryPage() {
           <div className="text-center py-24 text-muted-foreground">
             <Landmark className="h-12 w-12 mx-auto mb-4 opacity-30" />
             <h2 className="text-xl font-semibold text-foreground mb-2">Not Found</h2>
-            <p className="text-sm">This program may have closed or moved.</p>
+            <p className="text-sm">This listing may have closed or moved.</p>
           </div>
         ) : (
           <motion.article initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
@@ -115,7 +123,7 @@ export function DirectoryEntryPage() {
               <div className="flex flex-wrap items-center gap-2 mb-2.5 text-[11px] font-semibold uppercase tracking-widest">
                 <span className="inline-flex items-center gap-1.5 text-cyan-400">
                   <Landmark className="h-3 w-3" />
-                  {entry.kind === "grant" ? "Grant" : "Program"}
+                  {KIND_LABEL[entry.kind] ?? "Listing"}
                 </span>
                 {entry.status === "expired" && (
                   <Badge variant="outline" className="text-[10px] bg-red-500/10 border-red-500/30 text-red-300">Closed</Badge>
@@ -228,7 +236,7 @@ export function DirectoryEntryPage() {
             {applyUrl && (
               <a href={applyUrl} target="_blank" rel="noreferrer noopener" className="block mb-6">
                 <Button className="w-full gap-2 bg-white text-black hover:bg-gray-100">
-                  Apply on the official site <ExternalLink className="h-4 w-4" />
+                  {isFunnelKind ? "Apply on the official site" : "Visit website"} <ExternalLink className="h-4 w-4" />
                 </Button>
               </a>
             )}
@@ -250,9 +258,11 @@ export function DirectoryEntryPage() {
                     ).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                   </span>
                 </div>
-                <p className="text-[11px] text-muted-foreground/70 mt-2">
-                  Always confirm amounts and deadlines on the funder's page before applying.
-                </p>
+                {isFunnelKind && (
+                  <p className="text-[11px] text-muted-foreground/70 mt-2">
+                    Always confirm amounts and deadlines on the funder's page before applying.
+                  </p>
+                )}
               </section>
             )}
           </motion.article>
