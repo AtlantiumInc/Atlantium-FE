@@ -81,6 +81,7 @@ import type { Env } from "../env";
 import { adminEmails, isDebugAuthCodes, requireEnv } from "../env";
 import { createAuth, getAuthSession } from "../lib/auth";
 import { SERVICES, notifyServiceRequest } from "../lib/service-requests";
+import { sendWelcomeEmail } from "../lib/welcome-email";
 import { HttpError } from "../lib/http";
 import {
   getRecord,
@@ -2627,6 +2628,43 @@ appRoutes.post(
         .update(user)
         .set({ isApproved: true, updatedAt: new Date() })
         .where(eq(user.id, authUser.id));
+    }
+
+    // First completion is the moment they become a member — the founder's
+    // welcome goes out once, here. The metadata flag (not the completion
+    // column) is the once-guard, so an admin questionnaire reset doesn't
+    // re-welcome someone on their second pass through the form.
+    const firstCompletion = isCompleted && !activeProfile.onboardingCompletedAt;
+    const alreadyWelcomed = Boolean(
+      (activeProfile.metadata as Record<string, unknown> | null)?.welcome_email,
+    );
+    if (firstCompletion && !alreadyWelcomed) {
+      const reg = registrationDetails as Record<string, unknown>;
+      const profileId = activeProfile.id;
+      c.executionCtx.waitUntil((async () => {
+        try {
+          const result = await sendWelcomeEmail(c.env, authUser.email, {
+            name: displayName || authUser.name,
+            branch: typeof reg.branch === "string" ? reg.branch : null,
+            headline: typeof reg.headline === "string" ? reg.headline : null,
+            needs: Array.isArray(reg.needs) ? (reg.needs as string[]) : [],
+            seeking: typeof reg.seeking === "string" ? reg.seeking : null,
+            orgNamed: Boolean(reg.org_entry_id || reg.org_proposed_name),
+          });
+          await db
+            .update(profiles)
+            .set({
+              metadata: sql`${profiles.metadata} || ${JSON.stringify({
+                welcome_email: { at: new Date().toISOString(), ...result },
+              })}::jsonb`,
+            })
+            .where(eq(profiles.id, profileId));
+        } catch (error) {
+          // A lost welcome never blocks membership; it just stays unmarked so
+          // there's something to find when someone asks why it didn't arrive.
+          console.error("welcome email error", error);
+        }
+      })());
     }
 
     const [updated] = await db
