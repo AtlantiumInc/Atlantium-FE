@@ -9,6 +9,9 @@ import { XanoRealtimeProvider } from "@/contexts/XanoRealtimeContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { MemberShell } from "@/components/MemberShell";
+import { LobbyRoutePage } from "@/pages/LobbyRoutePage";
+import { PartnersRoutePage } from "@/pages/PartnersRoutePage";
+import { PlaygroundRoutePage } from "@/pages/PlaygroundRoutePage";
 import { BillingProvider } from "@/components/billing/UpgradeCta";
 import { NetworkPage } from "@/pages/NetworkPage";
 import { MemberProfilePage } from "@/pages/MemberProfilePage";
@@ -142,6 +145,30 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <MemberDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/lobby"
+        element={
+          <ProtectedRoute>
+            <LobbyRoutePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/partners"
+        element={
+          <ProtectedRoute>
+            <PartnersRoutePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/playground"
+        element={
+          <ProtectedRoute>
+            <PlaygroundRoutePage />
           </ProtectedRoute>
         }
       />
