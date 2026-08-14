@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api, type DmRequestSummary, type MemberConnection, type OutreachStatus } from "@/lib/api";
 import { DmPolicyControl } from "@/components/network/DmPolicyControl";
+import { UpgradeCta } from "@/components/billing/UpgradeCta";
 import { toast } from "sonner";
 
 /**
@@ -208,11 +209,8 @@ export function NetworkPage() {
 
 function OutreachMeter({ outreach }: { outreach: OutreachStatus }) {
   if (!outreach.mayInitiate) {
-    return (
-      <Link to="/pricing">
-        <Button size="sm" variant="outline" className="gap-1.5">Upgrade to start conversations</Button>
-      </Link>
-    );
+    // One component for every upgrade moment on the platform.
+    return <UpgradeCta reason="Starting conversations is part of membership" label="Upgrade to start conversations" />;
   }
   if (outreach.unlimited) {
     return <span className="text-xs text-muted-foreground">Unlimited outreach</span>;

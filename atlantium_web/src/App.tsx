@@ -8,6 +8,7 @@ import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { XanoRealtimeProvider } from "@/contexts/XanoRealtimeContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { BillingProvider } from "@/components/billing/UpgradeCta";
 import { NetworkPage } from "@/pages/NetworkPage";
 import { MemberProfilePage } from "@/pages/MemberProfilePage";
 import { MessagesPage } from "@/pages/MessagesPage";
@@ -230,8 +231,11 @@ function App() {
           <AuthProvider>
             <XanoRealtimeProvider>
               <SubscriptionProvider>
-                <AppRoutes />
-                <Toaster richColors position="top-right" />
+                {/* Billing status fetched once for every upgrade CTA on the platform. */}
+                <BillingProvider>
+                  <AppRoutes />
+                  <Toaster richColors position="top-right" />
+                </BillingProvider>
               </SubscriptionProvider>
             </XanoRealtimeProvider>
           </AuthProvider>

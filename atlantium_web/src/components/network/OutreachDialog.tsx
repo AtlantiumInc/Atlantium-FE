@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { api, type MemberCard, type OutreachStatus } from "@/lib/api";
+import { UpgradeCta } from "@/components/billing/UpgradeCta";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -133,6 +134,10 @@ export function OutreachDialog({
                 : "Be specific — a reason to reply beats a hello."}
             />
           </div>
+
+          {outreach && !outreach.mayInitiate && (
+            <UpgradeCta variant="card" reason="Starting conversations is part of membership" />
+          )}
 
           {/* Both actions draw on one budget; saying so is the deterrent. */}
           {remaining !== null && (
