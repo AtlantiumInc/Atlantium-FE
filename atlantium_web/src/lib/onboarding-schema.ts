@@ -41,6 +41,8 @@ export const onboardingFormSchema = z.object({
   /** Display name of the chosen entry, so the picker survives a reload. */
   org_name: z.string().max(120).optional(),
   org_title: z.string().max(80).optional(),
+  /** They answered "no organization" — distinct from not having answered. */
+  org_none: z.boolean().optional(),
 
   // professional
   seeking: z.enum(["not_seeking", "open", "actively_looking"]).optional(),

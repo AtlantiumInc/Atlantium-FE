@@ -144,7 +144,7 @@ export function ProfilePreview({ formData, email, currentStep }: ProfilePreviewP
                   Role
                 </p>
                 <p className="text-sm font-medium">
-                  {BRANCH_OPTIONS.find((b) => b.value === formData.branch)?.label ?? formData.branch}
+                  {(() => { const b = BRANCH_OPTIONS.find((o) => o.value === formData.branch); return b?.short ?? b?.label ?? formData.branch; })()}
                 </p>
               </motion.div>
             )}

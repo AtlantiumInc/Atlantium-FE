@@ -150,6 +150,8 @@ export function OrgStep({
   onProposedNameChange,
   pickedName,
   onPickedNameChange,
+  noOrg,
+  onNoOrgChange,
 }: Common & {
   title?: string;
   onTitleChange?: (v: string) => void;
@@ -157,6 +159,9 @@ export function OrgStep({
   onProposedNameChange?: (v: string) => void;
   pickedName?: string;
   onPickedNameChange?: (v: string) => void;
+  /** "I invest on my own" / "Between things right now" — an answer, not a skip. */
+  noOrg?: boolean;
+  onNoOrgChange?: (v: boolean) => void;
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<DirectoryEntry[]>([]);
@@ -190,6 +195,7 @@ export function OrgStep({
     onChange(entry.id);
     onPickedNameChange?.(entry.name);
     onProposedNameChange?.("");
+    onNoOrgChange?.(false);
   };
 
   const clear = () => {
@@ -197,6 +203,19 @@ export function OrgStep({
     setQuery("");
     onChange(undefined);
     onPickedNameChange?.("");
+    onNoOrgChange?.(false);
+  };
+
+  // Answering "no organization" has to look like answering. It used to call
+  // clear(), which only reset state that was already empty — so the click did
+  // nothing you could see and read as a broken control.
+  const chooseNoOrg = () => {
+    setPicked(null);
+    setQuery("");
+    onChange(undefined);
+    onPickedNameChange?.("");
+    onProposedNameChange?.("");
+    onNoOrgChange?.(true);
   };
 
   return (
@@ -207,6 +226,14 @@ export function OrgStep({
         <div className="flex items-center gap-3 rounded-xl border border-primary/40 bg-primary/5 px-4 py-3">
           <Building2 className="h-4 w-4 shrink-0 text-primary" />
           <p className="min-w-0 flex-1 truncate text-sm font-medium">{picked.name}</p>
+          <button type="button" onClick={clear} className="shrink-0 text-xs text-muted-foreground hover:text-foreground">
+            Change
+          </button>
+        </div>
+      ) : noOrg ? (
+        <div className="flex items-center gap-3 rounded-xl border border-primary/40 bg-primary/5 px-4 py-3">
+          <Check className="h-4 w-4 shrink-0 text-primary" />
+          <p className="min-w-0 flex-1 text-sm font-medium">{step.noOrgLabel}</p>
           <button type="button" onClick={clear} className="shrink-0 text-xs text-muted-foreground hover:text-foreground">
             Change
           </button>
@@ -258,7 +285,7 @@ export function OrgStep({
         </>
       )}
 
-      {step.withTitle && (
+      {step.withTitle && !noOrg && (
         <div className="space-y-2">
           <label className="text-sm font-medium">Your title</label>
           <Input
@@ -270,11 +297,11 @@ export function OrgStep({
         </div>
       )}
 
-      {step.noOrgLabel && !picked && (
+      {step.noOrgLabel && !picked && !noOrg && (
         <button
           type="button"
-          onClick={clear}
-          className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+          onClick={chooseNoOrg}
+          className="rounded-lg border border-border/60 px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
         >
           {step.noOrgLabel}
         </button>

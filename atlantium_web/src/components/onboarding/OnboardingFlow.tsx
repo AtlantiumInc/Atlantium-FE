@@ -202,6 +202,11 @@ export function OnboardingFlow({ onComplete, render }: Props) {
   const field = step?.field as keyof OnboardingFormData | undefined;
   const value = field ? formData[field] : undefined;
   const setValue = (v: unknown) => field && updateField(field, v as never);
+  // Offering "Skip" next to an answer they just gave reads as though the answer
+  // didn't take.
+  const stepAnswered = step?.kind === "org"
+    ? Boolean(formData.org_entry_id || formData.org_none || formData.org_proposed_name?.trim())
+    : Boolean(field && formData[field]);
 
   const stepNode = !step ? null : (
     <motion.div
@@ -245,6 +250,8 @@ export function OnboardingFlow({ onComplete, render }: Props) {
             onProposedNameChange={(v) => updateField("org_proposed_name", v)}
             pickedName={formData.org_name}
             onPickedNameChange={(v) => updateField("org_name", v)}
+            noOrg={formData.org_none}
+            onNoOrgChange={(v) => updateField("org_none", v)}
           />
         );
       default:
@@ -264,7 +271,7 @@ export function OnboardingFlow({ onComplete, render }: Props) {
         <ArrowLeft className="h-4 w-4" /> Back
       </Button>
       <div className="flex items-center gap-2">
-        {step?.optional && !isLastStep && (
+        {step?.optional && !isLastStep && !stepAnswered && (
           <Button type="button" variant="ghost" onClick={nextStep} disabled={isSubmitting}>
             Skip
           </Button>

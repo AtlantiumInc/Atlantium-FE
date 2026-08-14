@@ -25,7 +25,14 @@ export type StepKind =
   | "seeking"    // status + who can see it, asked together
   | "pricing";
 
-export type StepOption = { value: string; label: string; hint?: string };
+export type StepOption = {
+  value: string;
+  label: string;
+  hint?: string;
+  /** Noun form. The branch labels are first-person sentences ("I invest"),
+   *  which read wrong as a field on a profile. */
+  short?: string;
+};
 
 export type StepDef = {
   id: string;
@@ -50,11 +57,11 @@ export type StepDef = {
 };
 
 export const BRANCH_OPTIONS: readonly StepOption[] = [
-  { value: "professional", label: "I work in tech", hint: "Employed, contracting, or between things" },
-  { value: "founder", label: "I'm building a company", hint: "Any stage, including nights and weekends" },
-  { value: "investor", label: "I invest", hint: "Angel, syndicate, or a fund" },
-  { value: "advisor", label: "I advise", hint: "Operators others come to for help" },
-  { value: "hiring", label: "I'm hiring for a company", hint: "Recruiting or building out a team" },
+  { value: "professional", label: "I work in tech", short: "Professional", hint: "Employed, contracting, or between things" },
+  { value: "founder", label: "I'm building a company", short: "Founder", hint: "Any stage, including nights and weekends" },
+  { value: "investor", label: "I invest", short: "Investor", hint: "Angel, syndicate, or a fund" },
+  { value: "advisor", label: "I advise", short: "Advisor", hint: "Operators others come to for help" },
+  { value: "hiring", label: "I'm hiring for a company", short: "Hiring", hint: "Recruiting or building out a team" },
 ];
 
 /**
