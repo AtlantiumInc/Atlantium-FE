@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  Check, Inbox, Loader2, MessageSquare, Send, UserMinus, Users, X,
+  Check, Handshake, Inbox, Loader2, MessageSquare, Send, UserMinus, Users, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { api, type DmRequestSummary, type MemberConnection, type OutreachStatus } from "@/lib/api";
+import { api, type DmRequestSummary, type Introduction, type MemberConnection, type OutreachStatus } from "@/lib/api";
 import { DmPolicyControl } from "@/components/network/DmPolicyControl";
 import { UpgradeCta } from "@/components/billing/UpgradeCta";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ import { toast } from "sonner";
 export function NetworkPage() {
   const [connections, setConnections] = useState<MemberConnection[]>([]);
   const [dmRequests, setDmRequests] = useState<DmRequestSummary[]>([]);
+  const [intros, setIntros] = useState<Introduction[]>([]);
   const [outreach, setOutreach] = useState<OutreachStatus | null>(null);
   const [names, setNames] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -28,14 +29,16 @@ export function NetworkPage() {
 
   const load = useCallback(async () => {
     try {
-      const [c, d, o] = await Promise.all([
+      const [c, d, o, i] = await Promise.all([
         api.getMyConnections(),
         api.getDmRequests(),
         api.getOutreachStatus().catch(() => null),
+        api.getIntroductions().catch(() => ({ introductions: [] })),
       ]);
       setConnections(c.connections);
       setDmRequests(d.requests);
       setOutreach(o);
+      setIntros(i.introductions);
 
       // Names aren't embedded in the edge — resolve them, tolerating the ones
       // that 404 because the other side blocked us.
@@ -72,6 +75,7 @@ export function NetworkPage() {
   };
 
   const nameOf = (id: string) => names[id] ?? "…";
+  const pendingIntros = intros.filter((i) => i.direction === "incoming" && i.status === "awaiting_target").length;
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 sm:px-6 py-8">
@@ -102,6 +106,12 @@ export function NetworkPage() {
                 <span className="rounded-full bg-primary/20 px-1.5 text-[11px] text-primary">
                   {incoming.length + dmRequests.length}
                 </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="intros" className="gap-1.5">
+              <Handshake className="h-3.5 w-3.5" /> Intros
+              {pendingIntros > 0 && (
+                <span className="rounded-full bg-primary/20 px-1.5 text-[11px] text-primary">{pendingIntros}</span>
               )}
             </TabsTrigger>
             <TabsTrigger value="sent" className="gap-1.5">
@@ -186,6 +196,39 @@ export function NetworkPage() {
             )}
           </TabsContent>
 
+          <TabsContent value="intros" className="mt-4 space-y-2">
+            {intros.length === 0 ? (
+              <Empty
+                title="No introductions yet"
+                body="Some members — investors especially — are reachable only through an Atlantium introduction."
+              />
+            ) : intros.map((i) => (
+              <div key={i.id} className="rounded-xl border border-border/40 bg-card/40 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-xs uppercase tracking-widest text-muted-foreground mb-1">
+                      {i.direction === "incoming" ? "Introduction to you" : `Introduction to ${i.other_name}`}
+                    </p>
+                    <p className="text-sm whitespace-pre-wrap">{i.reason}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">{introStatusCopy(i)}</p>
+                  </div>
+                  {i.direction === "incoming" && i.status === "awaiting_target" && (
+                    <div className="flex flex-shrink-0 gap-1.5">
+                      <Button size="sm" disabled={busyId === i.id}
+                        onClick={() => act(i.id, () => api.respondToIntroduction(i.id, true), "Introduced — you're connected")}>
+                        <Check className="h-3.5 w-3.5" /> Accept
+                      </Button>
+                      <Button size="sm" variant="ghost" disabled={busyId === i.id}
+                        onClick={() => act(i.id, () => api.respondToIntroduction(i.id, false), "Declined")}>
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </TabsContent>
+
           <TabsContent value="sent" className="mt-4 space-y-2">
             {outgoing.length === 0 ? (
               <Empty title="Nothing pending" body="Requests you've sent appear here until they're answered." />
@@ -205,6 +248,28 @@ export function NetworkPage() {
       )}
     </div>
   );
+}
+
+/** Status in the member's language, not the enum's. */
+function introStatusCopy(i: Introduction) {
+  if (i.direction === "outgoing") {
+    const outgoing: Partial<Record<Introduction["status"], string>> = {
+      pending_review: "With Atlantium for review",
+      awaiting_target: `Passed on — waiting on ${i.other_name}`,
+      accepted: "Accepted — you're connected",
+      declined: "Declined",
+      rejected: "We didn't pass this one on",
+      withdrawn: "Withdrawn",
+      expired: "Expired",
+    };
+    return outgoing[i.status] ?? i.status;
+  }
+  const incoming: Partial<Record<Introduction["status"], string>> = {
+    awaiting_target: "Atlantium thinks this is worth your time",
+    accepted: "You accepted — you're connected",
+    declined: "You declined",
+  };
+  return incoming[i.status] ?? i.status;
 }
 
 function OutreachMeter({ outreach }: { outreach: OutreachStatus }) {

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Ban, Github, Globe, Linkedin, Loader2, MessageSquare, UserPlus } from "lucide-react";
+import { ArrowLeft, Ban, Github, Globe, Handshake, Linkedin, Loader2, MessageSquare, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MemberBadges } from "@/components/network/MemberBadges";
 import { OutreachDialog } from "@/components/network/OutreachDialog";
+import { IntroRequestDialog } from "@/components/network/IntroRequestDialog";
 import { api, type MemberCard, type OutreachStatus } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -12,7 +13,7 @@ export function MemberProfilePage() {
   const [member, setMember] = useState<MemberCard | null>(null);
   const [outreach, setOutreach] = useState<OutreachStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [dialog, setDialog] = useState<null | "connect" | "message">(null);
+  const [dialog, setDialog] = useState<null | "connect" | "message" | "intro">(null);
   const [notFound, setNotFound] = useState(false);
 
   const load = useCallback(async () => {
@@ -116,6 +117,14 @@ export function MemberProfilePage() {
               {connection?.status === "accepted" ? "Message" : "Request a conversation"}
             </Button>
 
+            {/* Investors can't be cold-contacted, so offer the path that works. */}
+            {!connection && member.roles.some((r) => r.role === "investor") && (
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setDialog("intro")}>
+                <Handshake className="h-3.5 w-3.5" />
+                Request an introduction
+              </Button>
+            )}
+
             <Button
               size="sm" variant="ghost"
               className="ml-auto gap-1.5 text-muted-foreground hover:text-red-400"
@@ -136,11 +145,20 @@ export function MemberProfilePage() {
         )}
       </div>
 
-      {dialog && (
+      {dialog === "intro" && (
+        <IntroRequestDialog
+          member={member}
+          open
+          onOpenChange={(open) => !open && setDialog(null)}
+          onDone={load}
+        />
+      )}
+
+      {(dialog === "connect" || dialog === "message") && (
         <OutreachDialog
           member={member}
           mode={dialog}
-          open={Boolean(dialog)}
+          open
           onOpenChange={(open) => !open && setDialog(null)}
           outreach={outreach}
           onDone={load}

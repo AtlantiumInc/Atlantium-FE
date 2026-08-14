@@ -79,6 +79,12 @@ export function AdminSidebar({
       label: "Users",
     },
     {
+      id: "introductions",
+      path: "/admin/introductions",
+      icon: <Handshake size={20} />,
+      label: "Introductions",
+    },
+    {
       id: "gtm",
       path: "/admin/gtm",
       icon: <Rocket size={20} />,

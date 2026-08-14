@@ -37,6 +37,11 @@ async function member(slug: string, opts: { paid?: boolean; admin?: boolean } = 
               on conflict (user_id) do update set membership_tier='club', subscription_status='active'`;
   }
   if (opts.admin) await sql`update "user" set is_admin = true where id = ${row.user_id}`;
+  // Search and other member-value endpoints require good standing: approved AND
+  // questionnaire complete. Approval normally comes from finishing onboarding.
+  await sql`update "user" set is_approved = true where id = ${row.user_id}`;
+  await sql`update profiles set onboarding_completed_at = now(),
+            registration_details = '{"is_completed":true}'::jsonb where id = ${row.profile_id}`;
   return { email, cookie, profileId: row.profile_id, userId: row.user_id };
 }
 
@@ -166,6 +171,66 @@ async function main() {
   const afterReject = await (await fetch(`${API}/me/introductions`, { headers: H(investor) })).json() as any;
   check("a REJECTED request never reaches the target",
     !afterReject.introductions?.some((i: any) => i.id === req2.introduction.id));
+
+  // ── S6: discovery must never become a candidate-search backdoor ──────────
+  const seeker = await member("quiet-seeker", { paid: true });
+  const seekerRole = await addRole(seeker, "professional");
+  await sql`insert into professional_preferences (role_id, seeking, seeking_updated_at, visibility)
+            values (${seekerRole}, 'actively_looking', now(), 'matched_only')
+            on conflict (role_id) do update set seeking='actively_looking', visibility='matched_only', seeking_updated_at=now()`;
+  await sql`update profiles set onboarding_completed_at = now() where id in
+            (${founder.profileId}, ${investor.profileId}, ${seeker.profileId})`;
+
+  const search = await (await fetch(`${API}/members/search?q=intro-smoke`, { headers: H(founder) })).json() as any;
+  const serialized = JSON.stringify(search);
+  check("search returns members", Array.isArray(search.members) && search.members.length > 0,
+    serialized.slice(0, 80));
+  check("search NEVER leaks seeking state",
+    Array.isArray(search.members) && !/seeking|actively_looking|matched_only|visibility/.test(serialized),
+    serialized.slice(0, 60));
+
+  const self = search.members?.some((m: any) => m.profile_id === founder.profileId);
+  check("searcher is not in their own results", !self);
+
+  await fetch(`${API}/blocks`, {
+    method: "POST", headers: H(investor), body: JSON.stringify({ profile_id: founder.profileId }),
+  });
+  const afterBlock = await (await fetch(`${API}/members/search?q=intro-smoke`, { headers: H(founder) })).json() as any;
+  check("a block hides both parties from each other's search",
+    !afterBlock.members?.some((m: any) => m.profile_id === investor.profileId));
+
+  // ── the case real data hit: an intro accepted over an existing pending
+  //    connection request. A plain insert is a silent no-op there, which would
+  //    leave both parties having said yes while not being connected.
+  const f3 = await member("founder3", { paid: true });
+  await addRole(f3, "founder");
+  await sql`insert into org_memberships (profile_id, entry_id, relationship, authority)
+            values (${f3.profileId}, ${org.id}, 'founder', 'admin')`;
+  const inv2 = await member("investor2");
+  await addRole(inv2, "investor", "investor");
+
+  // A stale connection request already sits between them.
+  await sql`insert into member_connections (requester_profile_id, recipient_profile_id, status, source)
+            values (${inv2.profileId}, ${f3.profileId}, 'pending', 'direct')`;
+
+  const req3 = await (await fetch(`${API}/introductions/requests`, {
+    method: "POST", headers: H(f3),
+    body: JSON.stringify({ profile_id: inv2.profileId, reason: "Testing that an intro over a pending connection still connects us properly." }),
+  })).json() as any;
+  await fetch(`${API}/admin/introductions/${req3.introduction.id}/decide`, {
+    method: "POST", headers: H(admin), body: JSON.stringify({ approve: true }),
+  });
+  await fetch(`${API}/introductions/${req3.introduction.id}/respond`, {
+    method: "POST", headers: H(inv2), body: JSON.stringify({ accept: true }),
+  });
+  const [promoted] = await sql`select status, source, introduction_id from member_connections
+    where (requester_profile_id = ${inv2.profileId} and recipient_profile_id = ${f3.profileId})
+       or (requester_profile_id = ${f3.profileId} and recipient_profile_id = ${inv2.profileId})` as any[];
+  check("intro over an EXISTING pending connection still connects them",
+    promoted?.status === "accepted", `status=${promoted?.status}`);
+  check("...and the existing edge gets the intro's attribution",
+    promoted?.source === "atlantium_intro" && promoted?.introduction_id === req3.introduction.id,
+    `source=${promoted?.source}`);
 
   await cleanup();
   console.log(`\n${pass} passed, ${fail} failed`);

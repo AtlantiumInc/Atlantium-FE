@@ -11,6 +11,7 @@ import {
   Users,
   Users2,
   MessagesSquare,
+  Compass,
 } from "lucide-react";
 
 interface Message {
@@ -42,6 +43,7 @@ export function Sidebar({
   // `href` entries are real routes; the rest switch the dashboard's own panes.
   const navItems = [
     { id: "lobby",       icon: <Radio size={20} />,         label: "Lobby" },
+    { id: "discover",    icon: <Compass size={20} />,       label: "Find people", href: "/discover" },
     { id: "network",     icon: <Users2 size={20} />,        label: "Network", href: "/network" },
     { id: "messages",    icon: <MessagesSquare size={20} />, label: "Messages", href: "/messages" },
     { id: "partners",    icon: <Users size={20} />,         label: "Partners" },

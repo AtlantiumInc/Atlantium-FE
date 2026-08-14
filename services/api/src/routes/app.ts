@@ -1179,6 +1179,93 @@ appRoutes.post("/billing/webhook", async (c) => {
 });
 
 
+// ── P1 S6: member discovery ─────────────────────────────────────────────────
+/**
+ * Search members. Returns exactly what a profile already shows — personas,
+ * affiliations, verification — and NEVER seeking status or visibility, which
+ * only visibleSeekers() may surface.
+ *
+ * Deliberately NOT entitlement-gated, unlike the original plan: you cannot sell
+ * outreach to someone who can't see who they'd be reaching. Participation
+ * (finding people) stays open; commercial leverage (contacting them) is what
+ * costs. Requires a completed questionnaire, so it isn't a scraping surface for
+ * drive-by signups.
+ */
+// NOTE: registered BEFORE /members/:profileId. Hono matches in order, so the
+// param route would otherwise swallow this as profileId="search" — the
+// two-segment shadowing trap this repo has hit before.
+appRoutes.get("/members/search", async (c) => {
+  await ensureMemberInGoodStanding(c);
+  const { db, authUser } = await requireAppUser(c);
+  const me = await ensureDefaultProfile(db, authUser);
+
+  const q = (c.req.query("q") ?? "").trim();
+  const role = c.req.query("role");
+  const limit = Math.min(Math.max(Number(c.req.query("limit")) || 24, 1), 50);
+
+  const conditions = [
+    ne(profiles.id, me.id),
+    sql`${memberRoles.confirmedAt} IS NOT NULL`,
+    // Never surface either side of a block to the other.
+    sql`NOT EXISTS (
+      SELECT 1 FROM member_blocks b
+      WHERE (b.blocker_profile_id = ${me.id} AND b.blocked_profile_id = ${profiles.id})
+         OR (b.blocker_profile_id = ${profiles.id} AND b.blocked_profile_id = ${me.id})
+    )`,
+    // Only members who finished onboarding appear — a half-filled profile is
+    // noise, and confirming is what makes a persona meaningful.
+    // Parenthesised: an unparenthesised OR inside this AND chain silently
+    // rewrites the whole predicate.
+    sql`(${profiles.onboardingCompletedAt} IS NOT NULL OR ${profiles.registrationDetails}->>'is_completed' = 'true')`,
+  ];
+  if (q) {
+    conditions.push(or(
+      ilike(profiles.displayName, `%${q}%`),
+      ilike(directoryEntries.name, `%${q}%`),
+      ilike(memberRoles.title, `%${q}%`),
+    )!);
+  }
+  if (role && ["professional", "founder", "investor", "advisor"].includes(role)) {
+    conditions.push(eq(memberRoles.role, role as "professional" | "founder" | "investor" | "advisor"));
+  }
+
+  const rows = await db
+    .select({
+      profileId: profiles.id,
+      displayName: profiles.displayName,
+      avatarUrl: profiles.avatarUrl,
+      metadata: profiles.metadata,
+      role: memberRoles.role,
+      title: memberRoles.title,
+      orgName: directoryEntries.name,
+    })
+    .from(memberRoles)
+    .innerJoin(profiles, eq(profiles.id, memberRoles.profileId))
+    .leftJoin(directoryEntries, eq(directoryEntries.id, memberRoles.entryId))
+    .where(and(...conditions))
+    .orderBy(asc(profiles.displayName))
+    .limit(limit * 2);
+
+  // One card per member, with all their personas folded in.
+  const members = new Map<string, {
+    profile_id: string; display_name: string; avatar_url: string | null; bio: string | null;
+    roles: Array<{ role: string; title: string | null; org: string | null }>;
+  }>();
+  for (const r of rows) {
+    const existing = members.get(r.profileId) ?? {
+      profile_id: r.profileId,
+      display_name: r.displayName,
+      avatar_url: r.avatarUrl,
+      bio: ((r.metadata ?? {}) as Record<string, string>).bio ?? null,
+      roles: [],
+    };
+    existing.roles.push({ role: r.role, title: r.title, org: r.orgName });
+    members.set(r.profileId, existing);
+  }
+
+  return c.json({ members: [...members.values()].slice(0, limit) });
+});
+
 /**
  * A member as another member sees them. Deliberately narrow: personas,
  * affiliations and verification badges only.
@@ -1742,7 +1829,12 @@ appRoutes.post(
     // created immediately — no request flow, and deliberately no cooling-off
     // period (§8A.4): the flow exists to establish consent, and consent is what
     // just happened.
-    const [connection] = await db.insert(memberConnections).values({
+    //
+    // A live edge may already exist — commonly a connection request that was
+    // sent and never answered. The pair-unique index makes a plain insert a
+    // silent no-op there, which would leave both parties having said yes while
+    // not being connected. Promote the existing row instead.
+    let [connection] = await db.insert(memberConnections).values({
       requesterProfileId: row.requesterProfileId,
       recipientProfileId: row.targetProfileId,
       status: "accepted",
@@ -1750,6 +1842,26 @@ appRoutes.post(
       introductionId: row.id,
       acceptedAt: now,
     }).onConflictDoNothing().returning();
+
+    if (!connection) {
+      [connection] = await db
+        .update(memberConnections)
+        .set({ status: "accepted", source: "atlantium_intro", introductionId: row.id, acceptedAt: now })
+        .where(and(
+          inArray(memberConnections.status, ["pending", "accepted"]),
+          or(
+            and(
+              eq(memberConnections.requesterProfileId, row.requesterProfileId),
+              eq(memberConnections.recipientProfileId, row.targetProfileId),
+            ),
+            and(
+              eq(memberConnections.requesterProfileId, row.targetProfileId),
+              eq(memberConnections.recipientProfileId, row.requesterProfileId),
+            ),
+          ),
+        ))
+        .returning();
+    }
 
     await db.update(introductions).set({ status: "accepted", respondedAt: now })
       .where(eq(introductions.id, row.id));
@@ -1856,6 +1968,7 @@ appRoutes.get("/admin/introductions/funnel", async (c) => {
     outcomes: byOutcome,
   });
 });
+
 
 appRoutes.post(
   "/profile/edit",

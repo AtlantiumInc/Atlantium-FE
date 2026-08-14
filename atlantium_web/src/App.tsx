@@ -12,6 +12,8 @@ import { BillingProvider } from "@/components/billing/UpgradeCta";
 import { NetworkPage } from "@/pages/NetworkPage";
 import { MemberProfilePage } from "@/pages/MemberProfilePage";
 import { MessagesPage } from "@/pages/MessagesPage";
+import { DiscoverPage } from "@/pages/DiscoverPage";
+import { AdminIntroductionsPage } from "@/pages/admin/AdminIntroductionsPage";
 import { AdminProtectedRoute } from "@/components/admin/AdminProtectedRoute";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoginPage } from "@/pages/LoginPage";
@@ -151,6 +153,14 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/discover"
+        element={
+          <ProtectedRoute>
+            <DiscoverPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/messages"
         element={
           <ProtectedRoute>
@@ -199,6 +209,7 @@ function AppRoutes() {
         <Route path="content" element={<AdminContentPage />} />
         <Route path="users" element={<AdminUsersPage />} />
         <Route path="approvals" element={<Navigate to="/admin/users" replace />} />
+        <Route path="introductions" element={<AdminIntroductionsPage />} />
         <Route path="partnerships" element={<DashboardPage embedded />} />
         <Route path="gtm" element={<AdminGTMPage />} />
       </Route>

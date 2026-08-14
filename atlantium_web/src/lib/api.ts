@@ -440,6 +440,32 @@ export type MemberCard = {
   is_self: boolean;
 };
 
+export type MemberSearchResult = {
+  profile_id: string;
+  display_name: string;
+  avatar_url: string | null;
+  bio: string | null;
+  roles: Array<{ role: string; title: string | null; org: string | null }>;
+};
+
+export type Introduction = {
+  id: string;
+  direction: "incoming" | "outgoing";
+  status: "pending_review" | "rejected" | "awaiting_target" | "accepted" | "declined" | "withdrawn" | "expired";
+  reason: string;
+  other_name: string;
+  other_profile_id: string;
+  created_at: string;
+};
+
+export type IntroductionReview = {
+  id: string;
+  reason: string;
+  requester: { profile_id: string; name: string };
+  target: { profile_id: string; name: string };
+  created_at: string;
+};
+
 export type DmAccepts = "members" | "verified" | "introductions_only" | "nobody";
 
 export type ThreadMessage = {
@@ -797,6 +823,53 @@ class ApiClient {
   async setDmPolicy(accepts: DmAccepts): Promise<{ accepts: DmAccepts }> {
     return this.request("/me/dm-policy",
       { method: "PATCH", body: JSON.stringify({ accepts }) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  // ── P1 S5/S6: introductions + discovery ───────────────────────────────────
+
+  async searchMembers(params: { q?: string; role?: string; limit?: number } = {}): Promise<{ members: MemberSearchResult[] }> {
+    const qs = new URLSearchParams();
+    if (params.q) qs.set("q", params.q);
+    if (params.role) qs.set("role", params.role);
+    if (params.limit) qs.set("limit", String(params.limit));
+    return this.request(`/members/search?${qs}`, { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async requestIntroduction(profileId: string, reason: string): Promise<{ introduction: Introduction }> {
+    return this.request("/introductions/requests",
+      { method: "POST", body: JSON.stringify({ profile_id: profileId, reason }) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async getIntroductions(): Promise<{ introductions: Introduction[] }> {
+    return this.request("/me/introductions", { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async respondToIntroduction(id: string, accept: boolean): Promise<{ accepted: boolean; connection_id: string | null }> {
+    return this.request(`/introductions/${id}/respond`,
+      { method: "POST", body: JSON.stringify({ accept }) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async getIntroductionQueue(): Promise<{ introductions: IntroductionReview[] }> {
+    return this.request("/admin/introductions", { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async decideIntroduction(id: string, approve: boolean, note?: string) {
+    return this.request<{ status: string }>(`/admin/introductions/${id}/decide`,
+      { method: "POST", body: JSON.stringify({ approve, note }) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async setIntroductionOutcome(id: string, outcome: string, note?: string) {
+    return this.request<{ outcome: string }>(`/admin/introductions/${id}/outcome`,
+      { method: "POST", body: JSON.stringify({ outcome, note }) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async getIntroductionFunnel(): Promise<{
+    requested: number;
+    by_status: Record<string, number>;
+    connections_from_intros: number;
+    outcomes: Record<string, number>;
+  }> {
+    return this.request("/admin/introductions/funnel", { method: "GET" }, ATLANTIUM_API_BASE_URL);
   }
 
   // ── P1b: billing ──────────────────────────────────────────────────────────
