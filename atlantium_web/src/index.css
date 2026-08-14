@@ -215,3 +215,30 @@
   }
 }
 
+
+/* ── Route transitions (View Transitions API) ─────────────────────────────
+   Deck navigations pass viewTransition, so the router snapshots old/new and
+   we choreograph the swap: the old page holds steady underneath while the
+   new one wipes down over it like a console redraw — no flash frame.
+   Browsers without support (or reduced-motion users) get the plain swap. */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) {
+    animation: vt-hold 380ms ease both;
+  }
+  ::view-transition-new(root) {
+    animation: vt-redraw 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes vt-hold {
+    to { opacity: 1; }
+  }
+  @keyframes vt-redraw {
+    from { clip-path: inset(0 0 100% 0); }
+    to   { clip-path: inset(0 0 0% 0); }
+  }
+}
+
+/* Featured deck row (BorderGlow wrap): the component is built as a grid card
+   with a scrolling inner — as a one-line row it must behave like a block and
+   keep the min-width:0 chain intact so the row's truncation keeps working. */
+.deck-featured { display: block; min-width: 0; }
+.deck-featured .border-glow-inner { overflow: visible; min-width: 0; display: block; }

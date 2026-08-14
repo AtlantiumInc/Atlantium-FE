@@ -1,69 +1,149 @@
-import { useState, useEffect, useRef } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { flushSync } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/lib/api";
 import { AnimatePresence, motion } from "motion/react";
-import { X, Menu, ChevronRight, Users, Wrench, BookOpen, Newspaper, Briefcase, GraduationCap, Building2 } from "lucide-react";
+import BorderGlow from "@/components/ui/BorderGlow";
+import { Users, Wrench, BookOpen, Newspaper, Briefcase, GraduationCap, Building2 } from "lucide-react";
 
-const solutionItems = [
+type DeckItem = {
+  to: string;
+  label: string;
+  description: string;
+  icon: typeof Wrench;
+  readout: string | null;
+  featured?: boolean;
+};
+
+const solutionItems: DeckItem[] = [
   {
     to: "/services",
     label: "Services",
     description: "Custom AI solutions, integrations, and consulting for your business",
     icon: Wrench,
-    image: "https://images.unsplash.com/photo-1551434678-e076c223a692?w=400&h=250&fit=crop&q=80",
+    readout: "Custom builds",
   },
   {
     to: "/focus-groups",
     label: "Focus Groups",
     description: "Live video sessions with builders tackling real-world AI projects",
     icon: Users,
-    image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400&h=250&fit=crop&q=80",
-  },
-  {
-    to: "/training",
-    label: "AI Engineer Training",
-    description: "8-week AI engineering intensive — live sessions, a real client build, warm introductions",
-    icon: GraduationCap,
-    image: "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=400&h=250&fit=crop&q=80",
+    readout: "Live cohorts",
   },
   {
     to: "/jobs",
     label: "Job Board",
     description: "Curated AI engineering roles from top companies in your area",
     icon: Briefcase,
-    image: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=250&fit=crop&q=80",
+    readout: null, // live: "{total} live roles · {new} new this week"
+  },
+  {
+    to: "/training",
+    label: "AI Engineer Training",
+    description: "8-week AI engineering intensive — live sessions, a real client build, warm introductions",
+    icon: GraduationCap,
+    readout: "8 weeks · 30 seats",
+    /** Closing position + the Boomin home-button border glow: the one item
+     *  that sells something gets the moving light. */
+    featured: true,
   },
 ];
 
-const resourceItems = [
+const resourceItems: DeckItem[] = [
   {
     to: "/docs",
     label: "Docs",
     description: "Guides, reports, and long reads for building with AI",
     icon: BookOpen,
-    image: "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=400&h=250&fit=crop&q=80",
+    readout: "Guides + reports",
   },
   {
     to: "/directory",
     label: "Directory",
     description: "Grants, investors, and Atlanta companies hiring — verified and deadline-sorted",
     icon: Building2,
-    image: "https://images.unsplash.com/photo-1521791136064-7986c2920216?w=400&h=250&fit=crop&q=80",
+    readout: null, // live: "{companies} companies · {investors} investors"
   },
   {
     to: "/blog",
     label: "Blog",
     description: "Atlanta tech, covered — the people, companies, and money moving the scene",
     icon: Newspaper,
-    image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=400&h=250&fit=crop&q=80",
+    readout: "Atlanta, covered",
   },
 ];
 
+const platformSections = [
+  { num: "01", title: "Solutions", items: solutionItems },
+  { num: "02", title: "Resources", items: resourceItems },
+];
+
+/** Live instrument readouts for the Platform panel — real numbers from the
+ *  board and directory, fetched once per session on first open. A failed
+ *  fetch leaves the static fallbacks; never show a zero we didn't measure. */
+const READOUTS_KEY = "atlantium_platform_readouts";
+let readoutsPromise: Promise<Record<string, string>> | null = null;
+
+function usePlatformReadouts(open: boolean) {
+  const [live, setLive] = useState<Record<string, string>>(() => {
+    try { return JSON.parse(sessionStorage.getItem(READOUTS_KEY) ?? "{}"); } catch { return {}; }
+  });
+  useEffect(() => {
+    if (!open || Object.keys(live).length > 0) return;
+    readoutsPromise ??= Promise.allSettled([
+      api.getJobPostingsPaged({ limit: 1 }),
+      api.getDirectory({ limit: 1 }),
+    ]).then(([jobs, dir]) => {
+      const out: Record<string, string> = {};
+      if (jobs.status === "fulfilled" && jobs.value.total > 0) {
+        out["/jobs"] = `${jobs.value.total.toLocaleString()} live roles · ${(jobs.value.counts.new_this_week ?? 0).toLocaleString()} new this week`;
+      }
+      if (dir.status === "fulfilled" && (dir.value.counts?.company ?? 0) > 0) {
+        out["/directory"] = `${dir.value.counts.company.toLocaleString()} companies · ${(dir.value.counts.investor ?? 0).toLocaleString()} investors`;
+      }
+      return out;
+    });
+    let cancelled = false;
+    readoutsPromise.then((out) => {
+      if (cancelled || Object.keys(out).length === 0) return;
+      sessionStorage.setItem(READOUTS_KEY, JSON.stringify(out));
+      setLive(out);
+    });
+    return () => { cancelled = true; };
+  }, [open, live]);
+  return live;
+}
+
 const missionLink = { to: "/mission", label: "Mission" };
+
+/** Wayfinding readout left of the logo — tells you where you are, and by
+ *  being obviously an instrument label, points you at the logo for the menu. */
+function pageTitle(pathname: string): string {
+  if (pathname === "/") return "Home";
+  const map: Array<[string, string]> = [
+    ["/jobs", "Job Board"],
+    ["/directory", "Directory"],
+    ["/grants", "Directory"],
+    ["/training", "Training"],
+    ["/services", "Services"],
+    ["/focus-groups", "Focus Groups"],
+    ["/docs", "Docs"],
+    ["/blog", "Blog"],
+    ["/mission", "Mission"],
+    ["/creator-program", "Partners"],
+    ["/pricing", "Pricing"],
+    ["/dashboard", "Network"],
+    ["/community", "Community"],
+  ];
+  const hit = map.find(([prefix]) => pathname === prefix || pathname.startsWith(prefix + "/"));
+  if (hit) return hit[1];
+  const seg = pathname.split("/").filter(Boolean)[0] ?? "";
+  return seg.replace(/-/g, " ") || "Atlantium";
+}
 
 /** An uploaded picture lives on the profile record, not on the auth user, so
  *  the navbar has to look in both. Cached for the session: this runs on every
@@ -85,44 +165,44 @@ function getInitials(name?: string, email?: string): string {
  *  nothing and render exactly as before. */
 export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?: string | null; meta?: string | null } | null } = {}) {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
-  const [open, setOpen] = useState(false);
   const [profileAvatar, setProfileAvatar] = useState<string | null>(
     () => sessionStorage.getItem(PROFILE_AVATAR_KEY),
   );
-  const [solutionsOpen, setSolutionsOpen] = useState(false);
-  const [resourcesOpen, setResourcesOpen] = useState(false);
-  // Mobile accordion state
-  const [mobileSolutions, setMobileSolutions] = useState(false);
-  const [mobileResources, setMobileResources] = useState(false);
-  const solutionsTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const resourcesTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const solutionsRef = useRef<HTMLDivElement>(null);
-  const resourcesRef = useRef<HTMLDivElement>(null);
-
-  const handleSolutionsEnter = () => {
-    if (solutionsTimeout.current) clearTimeout(solutionsTimeout.current);
-    setSolutionsOpen(true);
-  };
-  const handleSolutionsLeave = () => {
-    solutionsTimeout.current = setTimeout(() => setSolutionsOpen(false), 150);
-  };
-  const handleResourcesEnter = () => {
-    if (resourcesTimeout.current) clearTimeout(resourcesTimeout.current);
-    setResourcesOpen(true);
-  };
-  const handleResourcesLeave = () => {
-    resourcesTimeout.current = setTimeout(() => setResourcesOpen(false), 150);
-  };
+  const [platformOpen, setPlatformOpen] = useState(false);
+  const liveReadouts = usePlatformReadouts(platformOpen);
 
   // Close on route change
-  useEffect(() => { setOpen(false); setSolutionsOpen(false); setResourcesOpen(false); }, [pathname]);
+  useEffect(() => { setPlatformOpen(false); }, [pathname]);
 
-  // Prevent body scroll when open
+  /** Deck navigation rides the View Transitions API: fold the deck and swap
+   *  the route inside one snapshot, so the new page wipes in with no flash.
+   *  (The Link viewTransition prop needs a data router; this app mounts a
+   *  declarative BrowserRouter, so we drive the API ourselves.) Modified
+   *  clicks keep native behavior — new tab beats cool vibe. */
+  const deckGo = (e: React.MouseEvent<HTMLAnchorElement>, to: string) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    const go = () => { setPlatformOpen(false); navigate(to); };
+    if (document.startViewTransition) document.startViewTransition(() => { flushSync(go); });
+    else go();
+  };
+
+  // The deck is click-driven (the logo is the button), so give it the two
+  // standard dismissals a modal surface owes: Escape and click-outside.
   useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
+    if (!platformOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPlatformOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [platformOpen]);
+
+  // Prevent body scroll while the deck is unfolded
+  useEffect(() => {
+    document.body.style.overflow = platformOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
-  }, [open]);
+  }, [platformOpen]);
 
   useEffect(() => {
     if (!user || user.avatar || profileAvatar !== null) return;
@@ -138,8 +218,6 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
     return () => { cancelled = true; };
   }, [user?.id, user?.avatar, profileAvatar]);
 
-  const isSolutionsActive = solutionItems.some(s => pathname === s.to);
-  const isResourcesActive = resourceItems.some(r => pathname === r.to);
 
   const avatarLink = user ? (
     <Link to="/dashboard" aria-label="Your profile" className="shrink-0">
@@ -179,181 +257,60 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-3 shrink-0">
-              <Link to="/" className="flex items-center gap-2 sm:gap-3">
-                <img src="/logo.png" alt="Atlantium" className="h-7 w-7 sm:h-8 sm:w-8" />
-                <div>
-                  <span className="text-lg sm:text-xl font-bold tracking-tight">Atlantium</span>
-                  <p className="hidden sm:block text-[10px] text-muted-foreground tracking-wide">Citizen Technology Network</p>
-                </div>
-              </Link>
-              <Link to={missionLink.to} className="hidden sm:inline-flex">
-                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider border transition-colors ${
-                  pathname === missionLink.to
-                    ? "bg-primary/15 border-primary/30 text-primary"
-                    : "bg-muted/50 border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
-                }`}>
-                  Our Mission
-                </span>
-              </Link>
+            /* Left — where you are. The readout is the visual cue that the
+               centered logo is the way everywhere else. */
+            <div className="flex-1 basis-0 min-w-0 flex items-center">
+              <span className="font-mono text-[11px] sm:text-xs uppercase tracking-[0.2em] text-muted-foreground truncate">
+                <span className="text-primary/60 mr-1.5">//</span>
+                {platformOpen ? "Index" : pageTitle(pathname)}
+                <span className="ml-0.5 text-primary/70 animate-pulse">▍</span>
+              </span>
             </div>
           )}
 
-          {/* Nav links — pushed right; reading mode drops them for the hamburger */}
-          <div className={reading ? "hidden" : "hidden md:flex items-center gap-1 ml-auto mr-3"}>
-            {/* Solutions dropdown trigger */}
-            <div
-              ref={solutionsRef}
-              className="relative"
-              onMouseEnter={handleSolutionsEnter}
-              onMouseLeave={handleSolutionsLeave}
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`relative text-muted-foreground hover:text-foreground gap-1 ${isSolutionsActive ? "text-foreground" : ""}`}
+          {/* Center — the logo IS the menu button, at every width */}
+          {!reading && (
+            <div className="relative shrink-0">
+              <button
+                onClick={() => setPlatformOpen((o) => !o)}
+                aria-label={platformOpen ? "Close menu" : "Open menu"}
+                aria-expanded={platformOpen}
+                className={`group relative h-11 w-11 rounded-full flex items-center justify-center border transition-all duration-300 ${
+                  platformOpen
+                    ? "border-cyan-400/60 shadow-[0_0_24px_rgba(0,212,255,0.25)] bg-cyan-400/5"
+                    : "border-border/60 hover:border-cyan-400/40 hover:shadow-[0_0_18px_rgba(0,212,255,0.15)]"
+                }`}
               >
-                Solutions
-                <ChevronRight className={`h-3 w-3 transition-transform duration-200 ${solutionsOpen ? "rotate-90" : ""}`} />
-                {isSolutionsActive && (
-                  <span className="absolute -bottom-1 left-2 right-2 h-[2px] rounded-full bg-foreground/60" />
+                <img
+                  src="/logo.png"
+                  alt="Atlantium"
+                  className={`h-7 w-7 transition-transform duration-300 ${platformOpen ? "scale-90" : "group-hover:scale-105"}`}
+                />
+                {/* idle ping advertises that the mark is a control, not a decoration */}
+                {!platformOpen && (
+                  <span className="absolute inset-0 rounded-full border border-cyan-400/20 animate-ping [animation-duration:3s] pointer-events-none" />
                 )}
-              </Button>
+              </button>
 
-              {/* Mega menu dropdown */}
-              <AnimatePresence>
-                {solutionsOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
-                    className="fixed left-6 right-6 top-[72px] mx-auto w-[980px] max-w-[calc(100vw-3rem)] rounded-2xl border border-border/50 bg-background shadow-2xl shadow-black/25 p-4 z-[60]"
-                  >
-                    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">Solutions</p>
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                      {solutionItems.map(({ to, label, description, icon: Icon, image }) => (
-                        <Link
-                          key={to}
-                          to={to}
-                          className="group rounded-xl overflow-hidden border border-border/40 hover:border-primary/40 bg-muted/20 hover:bg-muted/40 transition-all duration-200"
-                        >
-                          <div className="relative h-36 overflow-hidden">
-                            <img
-                              src={image}
-                              alt={label}
-                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-                            <div className="absolute bottom-3 left-3 flex items-center gap-2">
-                              <div className="h-7 w-7 rounded-lg bg-white/15 backdrop-blur-sm flex items-center justify-center">
-                                <Icon className="h-4 w-4 text-white" />
-                              </div>
-                              <span className="text-base font-semibold text-white">{label}</span>
-                            </div>
-                          </div>
-                          <div className="p-3">
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                              {description}
-                            </p>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
+          )}
 
-            {/* Resources dropdown trigger */}
-            <div
-              ref={resourcesRef}
-              className="relative"
-              onMouseEnter={handleResourcesEnter}
-              onMouseLeave={handleResourcesLeave}
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`relative text-muted-foreground hover:text-foreground gap-1 ${isResourcesActive ? "text-foreground" : ""}`}
-              >
-                Resources
-                <ChevronRight className={`h-3 w-3 transition-transform duration-200 ${resourcesOpen ? "rotate-90" : ""}`} />
-                {isResourcesActive && (
-                  <span className="absolute -bottom-1 left-2 right-2 h-[2px] rounded-full bg-foreground/60" />
-                )}
-              </Button>
 
-              <AnimatePresence>
-                {resourcesOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
-                    className="fixed left-6 right-6 top-[72px] mx-auto w-[820px] max-w-[calc(100vw-3rem)] rounded-2xl border border-border/50 bg-background shadow-2xl shadow-black/25 p-4 z-[60]"
-                  >
-                    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">Resources</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {resourceItems.map(({ to, label, description, icon: Icon, image }) => (
-                        <Link
-                          key={to}
-                          to={to}
-                          className="group rounded-xl overflow-hidden border border-border/40 hover:border-primary/40 bg-muted/20 hover:bg-muted/40 transition-all duration-200"
-                        >
-                          <div className="relative h-36 overflow-hidden">
-                            <img
-                              src={image}
-                              alt={label}
-                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-                            <div className="absolute bottom-3 left-3 flex items-center gap-2">
-                              <div className="h-7 w-7 rounded-lg bg-white/15 backdrop-blur-sm flex items-center justify-center">
-                                <Icon className="h-4 w-4 text-white" />
-                              </div>
-                              <span className="text-base font-semibold text-white">{label}</span>
-                            </div>
-                          </div>
-                          <div className="p-3">
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                              {description}
-                            </p>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Partners — direct link to the creator program */}
-            <Link to="/creator-program">
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`relative text-muted-foreground hover:text-foreground ${pathname === "/creator-program" ? "text-foreground" : ""}`}
-              >
-                Partners
-                {pathname === "/creator-program" && (
-                  <span className="absolute -bottom-1 left-2 right-2 h-[2px] rounded-full bg-foreground/60" />
-                )}
-              </Button>
-            </Link>
-          </div>
-
-          {/* Right — Auth stacked + theme */}
-          <div className={reading ? "hidden" : "hidden md:flex items-center gap-3 shrink-0"}>
+          {/* Right — one control: avatar rides inside Enter Network (same
+              destination, one button). Theme toggle lives in the deck now. */}
+          <div className={reading ? "hidden" : "hidden md:flex flex-1 basis-0 items-center justify-end"}>
             {user ? (
-              <>
-                <Link to="/dashboard">
-                  <Button size="sm" className="gap-1.5 bg-white text-black hover:bg-gray-100 border-0 h-8 text-xs px-3">
-                    Enter Network
-                  </Button>
-                </Link>
-                {avatarLink}
-              </>
+              <Link to="/dashboard">
+                <Button size="sm" className="gap-2 bg-white text-black hover:bg-gray-100 border-0 h-9 text-xs pl-1.5 pr-3.5 rounded-full">
+                  <Avatar className="h-6 w-6 border border-black/10">
+                    <AvatarImage src={user.avatar || profileAvatar || undefined} alt={user.display_name ?? user.email} />
+                    <AvatarFallback className="text-[9px] font-medium bg-black/10 text-black">
+                      {getInitials(user.display_name ?? user.first_name, user.email)}
+                    </AvatarFallback>
+                  </Avatar>
+                  Enter Network
+                </Button>
+              </Link>
             ) : (
               <div className="flex flex-col items-center">
                 <Link to="/signup" className="cursor-pointer">
@@ -366,11 +323,11 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
                 </Link>
               </div>
             )}
-            <ThemeToggle />
           </div>
 
-          {/* Right: Join Network + hamburger. Reading mode keeps this at every width. */}
-          <div className={`items-center gap-2 ml-auto shrink-0 ${reading ? "flex" : "flex md:hidden"}`}>
+          {/* Right (mobile + reading): auth only — the centered logo is the
+              menu. Reading mode hides the center, so a mini mark stands in. */}
+          <div className={`items-center gap-2 flex-1 basis-0 justify-end shrink-0 ${reading ? "flex" : "flex md:hidden"}`}>
             {/* Signed in, the avatar carries both jobs at this width: it says
                 who you are and it's the way in. Keeps the title room back. */}
             {user ? avatarLink : (
@@ -380,192 +337,132 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
                 </Button>
               </Link>
             )}
-            <button
-              onClick={() => setOpen(true)}
-              className="h-8 w-8 flex items-center justify-center rounded-md text-foreground hover:bg-muted/50 transition-colors"
-              aria-label="Open menu"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
+            {reading && (
+              <button
+                onClick={() => setPlatformOpen((o) => !o)}
+                aria-label={platformOpen ? "Close menu" : "Open menu"}
+                aria-expanded={platformOpen}
+                className={`h-8 w-8 flex items-center justify-center rounded-full border transition-all ${
+                  platformOpen ? "border-cyan-400/60 bg-cyan-400/5" : "border-border/60 hover:border-cyan-400/40"
+                }`}
+              >
+                <img src="/logo.png" alt="" className="h-5 w-5" />
+              </button>
+            )}
           </div>
         </div>
+
+        {/* The deck IS the bar: same surface, same blur — the bar's bottom
+            edge simply travels down. Height-animated so the border-b rides
+            the unfolding edge. */}
+        <AnimatePresence>
+          {platformOpen && (
+            <>
+              {/* page dims behind the whole nav (negative z keeps it under
+                  the bar+deck; nav's own z-50 wins the viewport) */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                onClick={() => setPlatformOpen(false)}
+                className="fixed inset-0 -z-10 bg-black/40 backdrop-blur-[3px]"
+              />
+              <motion.section
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+                className="overflow-hidden"
+              >
+                {/* scan line where the bar's old edge was */}
+                <div className="h-px bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent" />
+                <div className="max-w-5xl mx-auto px-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
+                  <div className="grid md:grid-cols-2 md:divide-x divide-border/40">
+                    {platformSections.map(({ num, title, items }, si) => (
+                      <div key={num} className={`py-6 min-w-0 ${si === 0 ? "md:pr-8" : "md:pl-8"}`}>
+                        <div className="flex items-baseline gap-2 mb-4 px-1">
+                          <span className="font-mono text-[11px] text-primary/80">{num}</span>
+                          <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{title}</span>
+                          <span className="flex-1 border-t border-dashed border-border/40 self-center" />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          {items.map(({ to, label, description, icon: Icon, readout, featured }, ii) => {
+                            const row = (
+                              <Link
+                                to={to}
+                                onClick={(e) => deckGo(e, to)}
+                                className={`group block rounded-lg px-3 py-2.5 border transition-all duration-150 ${
+                                  featured
+                                    ? "border-transparent"
+                                    : pathname === to
+                                      ? "border-primary/30 bg-primary/5"
+                                      : "border-transparent hover:border-border/60 hover:bg-muted/40"
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="h-8 w-8 shrink-0 rounded-md border border-border/50 bg-muted/30 flex items-center justify-center group-hover:border-primary/40 group-hover:text-primary transition-colors">
+                                    <Icon className="h-4 w-4" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-baseline justify-between gap-3 min-w-0">
+                                      <span className="text-sm font-semibold whitespace-nowrap">{label}</span>
+                                      <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground/80 group-hover:text-primary/80 transition-colors truncate">
+                                        {liveReadouts[to] ?? readout ?? ""}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground truncate">{description}</p>
+                                  </div>
+                                </div>
+                              </Link>
+                            );
+                            return (
+                              <motion.div
+                                key={to}
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 + (si * 4 + ii) * 0.03, duration: 0.2 }}
+                              >
+                                {featured ? (
+                                  <BorderGlow
+                                    animated
+                                    className="deck-featured"
+                                    borderRadius={10}
+                                    glowRadius={14}
+                                    glowIntensity={1.15}
+                                    glowColor="189 100 60"
+                                    backgroundColor="hsl(var(--background))"
+                                    colors={["#00d4ff", "#38bdf8", "#22d3ee"]}
+                                  >
+                                    {row}
+                                  </BorderGlow>
+                                ) : row}
+                              </motion.div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* footer strip — links that left the bar, plus the theme switch */}
+                  <div className="flex items-center justify-between py-3 border-t border-border/40">
+                    <div className="flex items-center gap-5">
+                      <Link to="/" onClick={(e) => deckGo(e, "/")} className="text-xs font-semibold hover:text-primary transition-colors">Atlantium</Link>
+                      <Link to={missionLink.to} onClick={(e) => deckGo(e, missionLink.to)} className="text-xs text-muted-foreground hover:text-foreground transition-colors">Our Mission</Link>
+                      <Link to="/creator-program" onClick={(e) => deckGo(e, "/creator-program")} className="text-xs text-muted-foreground hover:text-foreground transition-colors">Partners</Link>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="hidden sm:inline font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">esc to close</span>
+                      <ThemeToggle />
+                    </div>
+                  </div>
+                </div>
+              </motion.section>
+            </>
+          )}
+        </AnimatePresence>
       </nav>
 
-      {/* Mobile full-screen overlay */}
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            key="mobile-nav"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[100] flex flex-col"
-            style={{
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-              backgroundColor: "rgba(10,18,35,0.95)",
-            }}
-          >
-            {/* Close button */}
-            <div className="flex items-center justify-between px-6 h-16 border-b border-white/10">
-              <Link to="/" onClick={() => setOpen(false)} className="flex items-center gap-2">
-                <img src="/logo.png" alt="Atlantium" className="h-7 w-7" />
-                <span className="text-lg font-bold tracking-tight text-white">Atlantium</span>
-              </Link>
-              <button
-                onClick={() => setOpen(false)}
-                className="h-8 w-8 flex items-center justify-center rounded-md text-white/70 hover:text-white transition-colors"
-                aria-label="Close menu"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Nav links */}
-            <nav className="flex-1 overflow-y-auto px-6 py-4">
-              {/* Mission */}
-              <motion.div
-                initial={{ opacity: 0, x: -16 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.05, duration: 0.25 }}
-              >
-                <Link
-                  to={missionLink.to}
-                  onClick={() => setOpen(false)}
-                  className={`flex items-center py-4 border-b border-white/10 group ${pathname === missionLink.to ? "text-white" : "text-white/60"}`}
-                >
-                  <span className="text-2xl font-semibold tracking-tight group-hover:text-white transition-colors">
-                    {missionLink.label}
-                  </span>
-                </Link>
-              </motion.div>
-
-              {/* Solutions accordion */}
-              <motion.div
-                initial={{ opacity: 0, x: -16 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1, duration: 0.25 }}
-              >
-                <button
-                  onClick={() => setMobileSolutions(!mobileSolutions)}
-                  className="flex items-center justify-between py-4 border-b border-white/10 w-full text-white/60"
-                >
-                  <span className="text-2xl font-semibold tracking-tight">Solutions</span>
-                  <ChevronRight className={`h-5 w-5 text-white/30 transition-transform duration-200 ${mobileSolutions ? "rotate-90" : ""}`} />
-                </button>
-                <AnimatePresence>
-                  {mobileSolutions && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      {solutionItems.map(({ to, label, icon: Icon }) => (
-                        <Link
-                          key={to}
-                          to={to}
-                          onClick={() => setOpen(false)}
-                          className={`flex items-center gap-3 py-3 pl-4 border-b border-white/5 group ${pathname === to ? "text-white" : "text-white/50"}`}
-                        >
-                          <Icon className="h-4 w-4 text-white/40 group-hover:text-white/70 transition-colors" />
-                          <span className="text-lg font-medium group-hover:text-white transition-colors">{label}</span>
-                        </Link>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-
-              {/* Resources accordion */}
-              <motion.div
-                initial={{ opacity: 0, x: -16 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.15, duration: 0.25 }}
-              >
-                <button
-                  onClick={() => setMobileResources(!mobileResources)}
-                  className="flex items-center justify-between py-4 border-b border-white/10 w-full text-white/60"
-                >
-                  <span className="text-2xl font-semibold tracking-tight">Resources</span>
-                  <ChevronRight className={`h-5 w-5 text-white/30 transition-transform duration-200 ${mobileResources ? "rotate-90" : ""}`} />
-                </button>
-                <AnimatePresence>
-                  {mobileResources && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      {resourceItems.map(({ to, label, icon: Icon }) => (
-                        <Link
-                          key={to}
-                          to={to}
-                          onClick={() => setOpen(false)}
-                          className={`flex items-center gap-3 py-3 pl-4 border-b border-white/5 group ${pathname === to ? "text-white" : "text-white/50"}`}
-                        >
-                          <Icon className="h-4 w-4 text-white/40 group-hover:text-white/70 transition-colors" />
-                          <span className="text-lg font-medium group-hover:text-white transition-colors">{label}</span>
-                        </Link>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-
-              {/* Partners */}
-              <motion.div
-                initial={{ opacity: 0, x: -24 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3, duration: 0.3 }}
-              >
-                <Link
-                  to="/creator-program"
-                  onClick={() => setOpen(false)}
-                  className={`w-full flex items-center justify-between py-4 border-b border-white/10 ${pathname === "/creator-program" ? "text-white" : "text-white/90"}`}
-                >
-                  <span className="text-2xl font-semibold tracking-tight">Partners</span>
-                  <ChevronRight className="h-5 w-5 text-white/30" />
-                </Link>
-              </motion.div>
-
-            </nav>
-
-            {/* Bottom CTA */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35, duration: 0.3 }}
-              className="px-6 pb-10 pt-4 flex flex-col gap-3 border-t border-white/10"
-            >
-              {user ? (
-                <Link to="/dashboard" onClick={() => setOpen(false)}>
-                  <Button className="w-full gap-2 bg-white text-black hover:bg-gray-100 border-0 h-12 text-base">
-                    Enter Network
-                  </Button>
-                </Link>
-              ) : (
-                <>
-                  <Link to="/signup" onClick={() => setOpen(false)}>
-                    <Button className="w-full gap-2 bg-white text-black hover:bg-gray-100 border-0 h-12 text-base">
-                      Join Network
-                    </Button>
-                  </Link>
-                  <Link to="/login" onClick={() => setOpen(false)}>
-                    <Button variant="ghost" className="w-full h-12 text-base text-white/60 hover:text-white hover:bg-white/10">
-                      Sign In
-                    </Button>
-                  </Link>
-                </>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </>
   );
 }
