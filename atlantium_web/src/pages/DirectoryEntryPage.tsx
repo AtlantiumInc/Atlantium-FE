@@ -100,11 +100,11 @@ export function DirectoryEntryPage() {
 
       <main className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 py-8 w-full">
         <Link
-          to={kind === "grant" || kind === "resource" ? "/grants" : `/directory?kind=${kind}`}
+          to={`/directory?kind=${kind}`}
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
         >
           <ChevronLeft className="h-4 w-4" />
-          {kind === "grant" || kind === "resource" ? "Back to Grants" : "Back to Directory"}
+          Back to Directory
         </Link>
 
         {isLoading ? (

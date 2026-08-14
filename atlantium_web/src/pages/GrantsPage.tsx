@@ -155,12 +155,13 @@ export function GrantsPage() {
       <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-10 w-full">
         <div className="mb-8">
           <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-cyan-400 mb-2">
-            <Landmark className="h-3.5 w-3.5" /> Grants & Programs
+            <Landmark className="h-3.5 w-3.5" /> The Directory
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Atlanta money for builders.</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">The working map of Atlanta tech.</h1>
           <p className="text-sm text-muted-foreground mt-2 max-w-2xl leading-relaxed">
-            Every grant, tax credit, accelerator, and city program we can verify for Atlanta and Georgia
-            technology companies — deadline-sorted, checked continuously, and free to browse.
+            Every investor writing checks in the Southeast, every accelerator and
+            grant, every company hiring — profiled, checked continuously, and free
+            to browse.
           </p>
         </div>
 
@@ -195,7 +196,7 @@ export function GrantsPage() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search programs..."
+              placeholder="Search the directory..."
               className="pl-8 h-9 text-xs"
             />
           </div>
