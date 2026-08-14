@@ -224,6 +224,8 @@ export const jobPostings = pgTable("job_postings", {
   salaryMin: integer("salary_min"),
   salaryMax: integer("salary_max"),
   applyUrl: text("apply_url").notNull(),
+  /** Feed identity. Each sync may only expire jobs from its own source. */
+  source: text("source").notNull().default("hiring_cafe"),
   status: text("status").notNull().default("active"),
   postedAt: timestamp("posted_at", { withTimezone: true }),
   content: jsonb("content"),

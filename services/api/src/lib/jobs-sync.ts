@@ -219,7 +219,13 @@ export async function syncJobPostings(env: Env): Promise<JobsSyncResult> {
   const expired = await db
     .update(jobPostings)
     .set({ status: "expired", updatedAt: new Date() })
-    .where(and(eq(jobPostings.status, "active"), notInArray(jobPostings.applyUrl, urls)))
+    // Only this feed's jobs: expiring by absence-from-feed is only valid for
+    // jobs that were ever IN the feed.
+    .where(and(
+      eq(jobPostings.status, "active"),
+      eq(jobPostings.source, "hiring_cafe"),
+      notInArray(jobPostings.applyUrl, urls),
+    ))
     .returning({ id: jobPostings.id });
 
   return {
