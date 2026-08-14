@@ -102,6 +102,12 @@ async function requireAdmin(c: Context<{ Bindings: Env }>) {
   return ctx;
 }
 
+/** Same rule as the app routes: authenticate before validating a body. */
+contentRoutes.use("/admin/*", async (c, next) => {
+  await requireAdmin(c);
+  await next();
+});
+
 // ── public: collections ─────────────────────────────────────────────────────
 
 contentRoutes.get("/content/collections", async (c) => {

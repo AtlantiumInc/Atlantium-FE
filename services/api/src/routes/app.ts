@@ -143,6 +143,21 @@ for (const pattern of ["/lobby", "/lobby/*", "/realtime/*", "/dashboard/*"]) {
   });
 }
 
+/**
+ * Admin auth runs as MIDDLEWARE, before body validation.
+ *
+ * Each admin handler still calls requireAdminUser() for its db/authUser, but
+ * zValidator runs before the handler — so without this, an anonymous POST with
+ * a bad body got a 400 schema error instead of a 401. No data leaked, but it
+ * answered a question the caller hadn't earned: that the route exists and what
+ * it expects. One gate here covers every current and future /admin route,
+ * rather than depending on each one being written in the right order.
+ */
+appRoutes.use("/admin/*", async (c, next) => {
+  await requireAdminUser(c);
+  await next();
+});
+
 const emailSchema = z.string().email().transform((value) => value.trim().toLowerCase());
 const lobbyMessageSchema = z.object({
   content: z.string().trim().min(1).max(2000),

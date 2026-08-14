@@ -1436,12 +1436,23 @@ class ApiClient {
     }, STRIPE_API_BASE_URL);
   }
 
+  /**
+   * Legacy signature, live implementation: PaymentForm still calls this, but
+   * the Xano endpoint behind it is gone. Routed to the worker so those surfaces
+   * stop failing with "Unauthorized — Authentication Required".
+   */
   async subscribe(paymentMethodId: string, tier: "club" | "club_annual" = "club"): Promise<SubscribeResponse> {
-    return this.request<SubscribeResponse>("/stripe/subscribe", {
-      method: "POST",
-      body: JSON.stringify({ payment_method_id: paymentMethodId, tier }),
-    }, STRIPE_API_BASE_URL);
+    const result = await this.subscribeWithPaymentMethod(tier, paymentMethodId);
+    return {
+      success: true,
+      subscription: { id: result.subscription_id, status: result.status, current_period_end: "" },
+      // The worker attaches the card before subscribing, so there is no
+      // separate 3DS step to hand back here.
+      requires_action: false,
+      client_secret: null,
+    };
   }
+
 
   async cancelSubscription(immediate: boolean = false): Promise<{ success: boolean; message: string }> {
     return this.request<{ success: boolean; message: string }>("/stripe/cancel", {

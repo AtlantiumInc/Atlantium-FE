@@ -4,8 +4,7 @@ import { Link } from "react-router-dom";
 import { motion, useInView } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { api } from "@/lib/api";
-import { toast } from "sonner";
+import { UpgradeDialog } from "@/components/billing/UpgradeDialog";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import SpotlightCard from "@/components/ui/SpotlightCard";
 import ShinyText from "@/components/ui/ShinyText";
@@ -28,7 +27,7 @@ import {
   FolderOpen,
   Lightbulb,
   CalendarCheck,
-  Globe, Loader2 } from "lucide-react";
+  Globe } from "lucide-react";
 
 function FadeIn({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -128,29 +127,25 @@ function PlanCta({ tier }: { tier: PricingTier }) {
 
   const plan = tier.period === "/year" ? "club_annual" : "club";
 
+  // In-page Elements, not a redirect: the member never leaves Atlantium, and
+  // there is one payment flow across the platform to keep correct.
   return (
-    <Button
-      disabled={isStarting}
-      onClick={async () => {
-        setIsStarting(true);
-        try {
-          const { checkout_url } = await api.startCheckout(plan);
-          window.location.href = checkout_url;
-        } catch (error) {
-          const err = error as { code?: string; message?: string };
-          toast.error(err.code === "billing_unavailable"
-            ? "Checkout isn't switched on yet — hold tight."
-            : err.message ?? "Couldn't start checkout");
-          setIsStarting(false);
-        }
-      }}
-      className={`w-full gap-2 ${tier.popular ? "bg-white text-black hover:bg-gray-100 border-0" : ""}`}
-      variant={tier.popular ? "default" : "outline"}
-    >
-      {isStarting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-      Join Now
-      <ArrowRight className="h-4 w-4" />
-    </Button>
+    <>
+      <Button
+        onClick={() => setIsStarting(true)}
+        className={`w-full gap-2 ${tier.popular ? "bg-white text-black hover:bg-gray-100 border-0" : ""}`}
+        variant={tier.popular ? "default" : "outline"}
+      >
+        Join Now
+        <ArrowRight className="h-4 w-4" />
+      </Button>
+      <UpgradeDialog
+        open={isStarting}
+        onOpenChange={setIsStarting}
+        defaultPlan={plan}
+        reason={`${tier.name} — ${tier.price}${tier.period}`}
+      />
+    </>
   );
 }
 

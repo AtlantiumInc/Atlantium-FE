@@ -135,7 +135,7 @@ function CheckoutSection({ onSuccess }: { onSuccess: () => void }) {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await api.createSetupIntent();
+      const response = await api.createBillingSetupIntent();
       setClientSecret(response.client_secret);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to initialize payment");
