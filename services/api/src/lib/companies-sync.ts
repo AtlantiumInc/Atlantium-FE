@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { createDb } from "../db/client";
 import type { Db } from "../db/client";
 import {
@@ -36,7 +36,12 @@ const MIN_POSTINGS_FOR_ENTRY = 2;
  * normalized names (already claimed by a different entry) are left for the
  * manual merge queue rather than guessed.
  */
-export async function syncCompaniesFromJobs(env: Env) {
+export async function syncCompaniesFromJobs(env: Env, opts: { createCap?: number } = {}) {
+  // Creations cost ~4 queries each (upsertEntry), and a Workers invocation has
+  // a hard subrequest budget — so new entries are capped per run and the rest
+  // deferred to the next daily tick. Existing entries cost nothing per-row:
+  // alias resolution happens in memory and the refreshes are batched.
+  const createCap = opts.createCap ?? 150;
   const db = createDb(env);
 
   await db
@@ -49,7 +54,7 @@ export async function syncCompaniesFromJobs(env: Env) {
     .onConflictDoNothing();
 
   if (!(await sourceEnabled(db, JOBS_SOURCE))) {
-    return { skipped: "source_disabled" as const, created: 0, updated: 0, ambiguous: 0 };
+    return { skipped: "source_disabled" as const, created: 0, updated: 0, ambiguous: 0, deferred: 0 };
   }
 
   const companies = await db
@@ -63,32 +68,49 @@ export async function syncCompaniesFromJobs(env: Env) {
     .where(eq(jobPostings.status, "active"))
     .groupBy(jobPostings.company)
     .having(sql`count(*) >= ${MIN_POSTINGS_FOR_ENTRY}`)
-    .orderBy(sql`count(*) desc`)
-    .limit(400);
+    .orderBy(sql`count(*) desc`);
 
-  const stats = { created: 0, updated: 0, ambiguous: 0, linked: 0 };
+  // The whole alias table for companies, resolved in memory. A normalized name
+  // mapping to several entries is ambiguity and routes to the merge queue.
+  const aliasRows = await db
+    .select({ entryId: directoryEntryAliases.entryId, name: directoryEntryAliases.nameNormalized })
+    .from(directoryEntryAliases)
+    .innerJoin(directoryEntries, eq(directoryEntries.id, directoryEntryAliases.entryId))
+    .where(eq(directoryEntries.kind, "company"));
+  const byName = new Map<string, Set<string>>();
+  for (const a of aliasRows) {
+    const set = byName.get(a.name) ?? new Set<string>();
+    set.add(a.entryId);
+    byName.set(a.name, set);
+  }
+
+  const stats = { created: 0, updated: 0, ambiguous: 0, linked: 0, deferred: 0 };
+  const hiringEntryIds: string[] = [];
+  const newAliases: Array<{ entryId: string; nameNormalized: string }> = [];
+  let createBudget = createCap;
 
   for (const row of companies) {
     const normalized = normalizeCompanyName(row.company);
     if (!normalized) continue;
 
-    // Entity resolution through the alias table. A normalized name MAY map to
-    // several candidates — that ambiguity routes to the merge queue.
-    const aliasMatches = await db
-      .select({ entryId: directoryEntryAliases.entryId })
-      .from(directoryEntryAliases)
-      .innerJoin(directoryEntries, eq(directoryEntries.id, directoryEntryAliases.entryId))
-      .where(and(
-        eq(directoryEntryAliases.nameNormalized, normalized),
-        eq(directoryEntries.kind, "company"),
-      ));
-
-    if (aliasMatches.length > 1) {
+    const matches = byName.get(normalized);
+    if (matches && matches.size > 1) {
       stats.ambiguous += 1;
       continue;
     }
+    if (matches && matches.size === 1) {
+      hiringEntryIds.push([...matches][0]);
+      stats.updated += 1;
+      continue;
+    }
 
-    const { entryId, created } = await upsertEntry(db, {
+    if (createBudget <= 0) {
+      stats.deferred += 1;
+      continue;
+    }
+    createBudget -= 1;
+
+    const { entryId } = await upsertEntry(db, {
       kind: "company",
       name: row.company,
       summary: `Hiring in Atlanta tech — ${row.postings} open ${row.postings === 1 ? "role" : "roles"} on the Atlantium job board.`,
@@ -99,22 +121,39 @@ export async function syncCompaniesFromJobs(env: Env) {
       sourceUrl: `https://atlantium.ai/jobs?q=${encodeURIComponent(row.company)}`,
       sourceData: { postings: row.postings, remote: row.remote },
     });
+    stats.created += 1;
+    hiringEntryIds.push(entryId);
+    newAliases.push({ entryId, nameNormalized: normalized });
+    byName.set(normalized, new Set([entryId]));
+  }
 
-    if (created) stats.created += 1;
-    else stats.updated += 1;
-
+  if (newAliases.length > 0) {
     await db
       .insert(directoryEntryAliases)
-      .values({ entryId, nameNormalized: normalized, verified: false })
+      .values(newAliases.map((a) => ({ ...a, verified: false })))
       .onConflictDoNothing();
-
     await db
       .insert(companyDetails)
-      .values({ entryId, isHiring: true })
-      .onConflictDoUpdate({ target: companyDetails.entryId, set: { isHiring: true } });
-
-    stats.linked += 1;
+      .values(newAliases.map((a) => ({ entryId: a.entryId, isHiring: true })))
+      .onConflictDoNothing();
   }
+
+  if (hiringEntryIds.length > 0) {
+    await db
+      .update(companyDetails)
+      .set({ isHiring: true })
+      .where(inArray(companyDetails.entryId, hiringEntryIds));
+    // The flip matters as much as the flag: a company whose postings all
+    // closed must stop advertising "hiring" the same day.
+    await db
+      .update(companyDetails)
+      .set({ isHiring: false })
+      .where(and(
+        eq(companyDetails.isHiring, true),
+        notInArray(companyDetails.entryId, hiringEntryIds),
+      ));
+  }
+  stats.linked = hiringEntryIds.length;
 
   await db
     .update(directorySources)

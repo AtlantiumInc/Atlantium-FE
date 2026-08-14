@@ -6,6 +6,7 @@ import { allowedOrigins } from "./env";
 import { jsonError } from "./lib/http";
 import { sendWeeklyDigest } from "./lib/digest";
 import { runReviewCycle } from "./lib/jobs-review";
+import { syncCompaniesFromJobs } from "./lib/companies-sync";
 import { syncGrants } from "./lib/grants-sync";
 import { syncJobPostings } from "./lib/jobs-sync";
 import { appRoutes } from "./routes/app";
@@ -98,6 +99,11 @@ export default {
     ctx.waitUntil(
       syncJobPostings(env)
         .then((r) => console.log("jobs-sync ok", JSON.stringify(r)))
+        // Companies derive from postings, so they sync in sequence after the
+        // board refreshes — a new employer's jobs and its directory entry land
+        // the same morning, instead of waiting for someone to press a button.
+        .then(() => syncCompaniesFromJobs(env))
+        .then((r) => console.log("companies-sync ok", JSON.stringify(r)))
         .catch((error) => {
           console.error("jobs-sync failed", error);
           throw error;
