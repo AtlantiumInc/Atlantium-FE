@@ -46,7 +46,7 @@ export function DiscoverPage() {
   }, [query, role, load]);
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 sm:px-6 py-8">
+    <div className="mx-auto w-full max-w-4xl">
       <h1 className="text-2xl font-bold tracking-tight mb-1">Find people</h1>
       <p className="text-sm text-muted-foreground mb-6">
         Everyone who's completed their lab profile.

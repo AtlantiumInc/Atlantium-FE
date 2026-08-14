@@ -1,3 +1,4 @@
+import { useSearchParams } from "react-router-dom";
 import { useState } from "react";
 import type { ComponentType } from "react";
 import {
@@ -57,7 +58,18 @@ const quickStats = [
 
 export function MemberDashboardPage() {
   const { user, logout } = useAuth();
-  const [activePage, setActivePage] = useState<DashboardSection>("hq");
+  // The member shell routes its non-route sidebar items here as ?section=,
+  // so a click from /network lands on the right pane instead of always "hq".
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requested = searchParams.get("section") as DashboardSection | null;
+  const [activePage, setActivePageState] = useState<DashboardSection>(
+    requested && ["hq", "lobby", "partners", "playground"].includes(requested) ? requested : "hq",
+  );
+  const setActivePage = (page: DashboardSection) => {
+    setActivePageState(page);
+    // Keep the URL honest so a refresh or a back button returns to the pane.
+    setSearchParams(page === "hq" ? {} : { section: page }, { replace: true });
+  };
   const [aiOpen, setAiOpen] = useState(false);
   const active = sectionCopy[activePage];
   const ActiveIcon = active.icon;

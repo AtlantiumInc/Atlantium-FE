@@ -54,7 +54,7 @@ export function MemberProfilePage() {
   const initials = member.display_name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-8">
+    <div className="mx-auto w-full max-w-3xl">
       <Link to="/network" className="mb-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-3.5 w-3.5" /> Your network
       </Link>

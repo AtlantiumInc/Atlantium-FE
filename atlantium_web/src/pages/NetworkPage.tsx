@@ -78,7 +78,7 @@ export function NetworkPage() {
   const pendingIntros = intros.filter((i) => i.direction === "incoming" && i.status === "awaiting_target").length;
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 sm:px-6 py-8">
+    <div className="mx-auto w-full max-w-4xl">
       <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Your network</h1>

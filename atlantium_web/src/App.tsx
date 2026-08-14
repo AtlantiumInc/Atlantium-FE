@@ -8,6 +8,7 @@ import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { XanoRealtimeProvider } from "@/contexts/XanoRealtimeContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { MemberShell } from "@/components/MemberShell";
 import { BillingProvider } from "@/components/billing/UpgradeCta";
 import { NetworkPage } from "@/pages/NetworkPage";
 import { MemberProfilePage } from "@/pages/MemberProfilePage";
@@ -148,7 +149,9 @@ function AppRoutes() {
         path="/network"
         element={
           <ProtectedRoute>
-            <NetworkPage />
+            <MemberShell>
+              <NetworkPage />
+            </MemberShell>
           </ProtectedRoute>
         }
       />
@@ -156,7 +159,9 @@ function AppRoutes() {
         path="/discover"
         element={
           <ProtectedRoute>
-            <DiscoverPage />
+            <MemberShell>
+              <DiscoverPage />
+            </MemberShell>
           </ProtectedRoute>
         }
       />
@@ -164,7 +169,9 @@ function AppRoutes() {
         path="/messages"
         element={
           <ProtectedRoute>
-            <MessagesPage />
+            <MemberShell>
+              <MessagesPage />
+            </MemberShell>
           </ProtectedRoute>
         }
       />
@@ -172,7 +179,9 @@ function AppRoutes() {
         path="/messages/:threadId"
         element={
           <ProtectedRoute>
-            <MessagesPage />
+            <MemberShell>
+              <MessagesPage />
+            </MemberShell>
           </ProtectedRoute>
         }
       />
@@ -180,7 +189,9 @@ function AppRoutes() {
         path="/members/:profileId"
         element={
           <ProtectedRoute>
-            <MemberProfilePage />
+            <MemberShell>
+              <MemberProfilePage />
+            </MemberShell>
           </ProtectedRoute>
         }
       />

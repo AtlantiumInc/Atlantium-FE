@@ -35,7 +35,7 @@ export function MessagesPage() {
   useEffect(() => { void load(); }, [load]);
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 py-8">
+    <div className="mx-auto w-full max-w-5xl">
       <h1 className="text-2xl font-bold tracking-tight mb-1">Messages</h1>
       <p className="text-sm text-muted-foreground mb-6">
         Conversations you've opened. Talking to someone doesn't add them to your network.
