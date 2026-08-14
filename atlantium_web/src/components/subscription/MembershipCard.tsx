@@ -259,11 +259,11 @@ export function MembershipCard({ onAvatarClick, bio, createdAt }: MembershipCard
                   <ul className="text-sm text-muted-foreground space-y-1">
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-500" />
-                      Office hours Mon-Thu
+                      Rene — your frontier agent
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-500" />
-                      AI engineering curriculum
+                      Member DMs across the network
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-500" />
