@@ -638,7 +638,7 @@ export function LandingPage() {
                   {/* Header */}
                   <div className="mb-6">
                     <h3 className="text-2xl font-bold text-foreground mb-1">AI Engineering Bootcamp</h3>
-                    <p className="text-sm text-muted-foreground">Go from learner to job-ready in 4 weeks</p>
+                    <p className="text-sm text-muted-foreground">Go from learner to job-ready in 8 weeks</p>
                   </div>
 
                   {/* Key Stats - Horizontal Row */}

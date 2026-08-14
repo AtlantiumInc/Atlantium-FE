@@ -61,7 +61,6 @@ import { GrantsPage } from "@/pages/GrantsPage";
 import { DirectoryEntryPage } from "@/pages/DirectoryEntryPage";
 import { TrainingPage } from "@/pages/TrainingPage";
 import { PricingPage as PublicPricingPage } from "@/pages/PricingPage";
-import { AIEngineerPage } from "@/pages/AIEngineerPage";
 import { DollarTestPage } from "@/pages/DollarTestPage";
 import { TemplatesPage } from "@/pages/TemplatesPage";
 import { HomeschoolPage } from "@/pages/HomeschoolPage";
@@ -118,7 +117,8 @@ function AppRoutes() {
       <Route path="/training/apply" element={<Navigate to="/training#apply" replace />} />
       <Route path="/pricing" element={<PublicPricingPage />} />
       <Route path="/index/:slug" element={<ArticleDetailPage />} />
-      <Route path="/ai-engineer" element={<AIEngineerPage />} />
+      {/* The old $500 direct-checkout training offer — superseded by the call-first cohort. */}
+      <Route path="/ai-engineer" element={<Navigate to="/training" replace />} />
       <Route path="/templates" element={<TemplatesPage />} />
       <Route path="/homeschool" element={<HomeschoolPage />} />
       <Route path="/paths" element={<PathsPage />} />

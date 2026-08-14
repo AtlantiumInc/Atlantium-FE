@@ -506,7 +506,7 @@ export function TrainingPage() {
                 Apply for Cohort 1
               </h2>
               <p className="text-muted-foreground text-lg max-w-xl mx-auto mb-2">
-                Seats fill every cohort. Apply in two minutes — Kleveland calls every applicant personally, usually the same day.
+                30 seats, and they fill every cohort. Apply in two minutes — Kleveland calls every applicant personally, usually the same day.
               </p>
               <p className="text-xs text-muted-foreground mb-10">
                 Tuition varies — Atlanta Builder Grants cover up to half, and a couple of full seats each cohort. It's all covered on your call.

@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PublicNavbar } from "@/components/PublicNavbar";
+import { TrainingPromoCard } from "@/components/training/TrainingPromoCard";
 import SpotlightCard from "@/components/ui/SpotlightCard";
 import ShinyText from "@/components/ui/ShinyText";
 import Aurora from "@/components/Aurora";
@@ -78,32 +79,7 @@ function TrainingCard() {
           speed={3}
         />
       </div>
-      <div className="flex items-center gap-2.5 mb-3">
-        <div className="h-9 w-9 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
-          <GraduationCap className="h-[18px] w-[18px] text-violet-400" />
-        </div>
-        <div>
-          <p className="text-[10px] font-bold text-violet-400 uppercase tracking-widest">Atlantium</p>
-          <h3 className="font-semibold text-foreground text-sm leading-tight">AI Engineer Training</h3>
-        </div>
-      </div>
-      <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-        Not ready to apply yet? Our 4-week hands-on program teaches you to build enterprise apps, refactor legacy systems, and land a role — with daily office hours and warm introductions.
-      </p>
-      <div className="space-y-1.5 mb-4">
-        {["4 weeks, fully hands-on", "Daily office hours", "Portfolio + introductions"].map((item) => (
-          <div key={item} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <CheckCircle2 className="h-3 w-3 text-violet-400 flex-shrink-0" />
-            {item}
-          </div>
-        ))}
-      </div>
-      <Link to="/training">
-        <Button size="sm" className="w-full gap-2 bg-violet-500/20 border border-violet-500/40 text-violet-300 hover:bg-violet-500/30">
-          Learn More
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Button>
-      </Link>
+      <TrainingPromoCard />
     </SpotlightCard>
   );
 }
