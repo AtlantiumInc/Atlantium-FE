@@ -47,11 +47,10 @@ BOOMIN_HANDOFF_REDIRECT_URI = "https://atlantium.ai/creator-program"
 STRIPE_PRICE_CLUB_MONTHLY = "price_1U48jTRpvj2ofWAVtQeVMnd1"
 STRIPE_PRICE_CLUB_ANNUAL = "price_1U48jURpvj2ofWAVz9qqgxlB"
 
-# Publishable key: public by design (it identifies the account to Stripe.js and
-# can do nothing on its own). Served to the browser by GET /v1/billing/config so
-# rotating it needs no frontend rebuild. Must match the account AND mode of
-# STRIPE_SECRET_KEY — a live pk with a test sk fails at confirmation time.
-STRIPE_PUBLISHABLE_KEY = ""
+# STRIPE_PUBLISHABLE_KEY is set as a SECRET, not declared here. It is public by
+# design, but vars and secrets share one binding namespace: an empty var of the
+# same name would overwrite the real value on the next deploy — the same
+# collision that makes `wrangler secret put` refuse a name already used as a var.
 
 # Required secrets:
 #   wrangler secret put DATABASE_URL
