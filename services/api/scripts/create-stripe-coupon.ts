@@ -69,10 +69,33 @@ async function main() {
     params.set("currency", "usd");
   }
 
-  const coupon = await stripe<{ id: string; name: string }>("/coupons", params);
+  // Re-running must not mint a second identical coupon — the first attempt at
+  // this script failed AFTER creating one, which is exactly how duplicates
+  // accumulate.
+  const wanted = PERCENT
+    ? (c: any) => c.percent_off === PERCENT && c.duration === DURATION
+    : (c: any) => c.amount_off === AMOUNT_OFF_CENTS && c.duration === DURATION;
+  const existingCoupons = await stripe<{ data: any[] }>("/coupons?limit=100");
+  const reused = existingCoupons.data.find((c) => c.valid && wanted(c));
 
-  // The coupon is the discount; the promotion code is the thing a human types.
-  const promoParams = new URLSearchParams({ coupon: coupon.id, code: CODE });
+  const coupon = reused ?? await stripe<{ id: string; name: string }>("/coupons", params);
+  console.log(`  coupon: ${reused ? "reusing" : "created"} ${coupon.id}`);
+
+  // An existing code with the same name blocks creation, so reuse that too.
+  const existingPromos = await stripe<{ data: any[] }>(`/promotion_codes?code=${encodeURIComponent(CODE)}&limit=1`);
+  if (existingPromos.data[0]) {
+    console.log(`\n  promotion code ${CODE} already exists (${existingPromos.data[0].id}) — nothing to do.\n`);
+    return;
+  }
+
+  // The coupon is the discount; the promotion code is what a human types.
+  // Current API nests it: promotion[type]/promotion[coupon], not a flat
+  // `coupon` param, which now fails as "Received unknown parameter: coupon".
+  const promoParams = new URLSearchParams({
+    "promotion[type]": "coupon",
+    "promotion[coupon]": coupon.id,
+    code: CODE,
+  });
   if (MAX_REDEMPTIONS) promoParams.set("max_redemptions", String(MAX_REDEMPTIONS));
   const promo = await stripe<{ id: string; code: string; active: boolean }>("/promotion_codes", promoParams);
 
@@ -82,7 +105,7 @@ async function main() {
     : Math.max(0, monthly - AMOUNT_OFF_CENTS);
 
   console.log(`\n${isLive ? "LIVE" : "TEST"} mode\n`);
-  console.log(`  coupon:          ${coupon.id} (${coupon.name})`);
+  console.log(`  coupon:          ${coupon.id}${coupon.name ? ` (${coupon.name})` : ""}`);
   console.log(`  promotion code:  ${promo.code}   ← give this to people`);
   console.log(`  applies:         ${DURATION === "once" ? "first payment only" : "every payment"}`);
   console.log(`  on $29/mo:       $${(firstPayment / 100).toFixed(2)}${DURATION === "once" ? " first month, then $29" : " every month"}`);
