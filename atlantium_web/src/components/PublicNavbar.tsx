@@ -232,7 +232,7 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
 
   return (
     <>
-      <nav className="sticky top-0 z-50 bg-background/70 backdrop-blur-xl border-b border-border/30">
+      <nav className={`sticky top-0 z-50 backdrop-blur-xl border-b border-border/30 ${platformOpen ? "bg-background" : "bg-background/70"}`}>
         <div className="w-full px-6 h-16 flex items-center">
           {/* Left — reading mode swaps the wordmark for the article's identity */}
           {reading ? (
@@ -359,15 +359,17 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
         <AnimatePresence>
           {platformOpen && (
             <>
-              {/* page dims behind the whole nav (negative z keeps it under
-                  the bar+deck; nav's own z-50 wins the viewport) */}
+              {/* scrim starts at the nav's unfolding edge — as a negative-z
+                  inset-0 child it painted OVER the nav's own background
+                  (negative-z children sit above parent backgrounds), which
+                  tinted the whole deck gray in light mode */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.25 }}
                 onClick={() => setPlatformOpen(false)}
-                className="fixed inset-0 -z-10 bg-black/40 backdrop-blur-[3px]"
+                className="absolute top-full left-0 right-0 h-screen bg-black/40 backdrop-blur-[3px]"
               />
               <motion.section
                 initial={{ height: 0, opacity: 0 }}

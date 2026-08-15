@@ -267,3 +267,17 @@
 @media (prefers-reduced-motion: reduce) {
   .logo-orbit { display: none; }
 }
+
+/* Light mode: the featured deck row's BorderGlow is a dark-surface effect —
+   its stacked shadows and gradient border read as a smudged blob on white.
+   Neutralize to a clean static accent row; the moving light stays a
+   dark-mode signature. */
+:root:not(.dark) .border-glow-card.deck-featured {
+  box-shadow: none;
+  background: color-mix(in oklab, var(--primary) 5%, transparent) !important;
+  border-color: color-mix(in oklab, var(--primary) 35%, transparent);
+}
+:root:not(.dark) .border-glow-card.deck-featured::before,
+:root:not(.dark) .border-glow-card.deck-featured > .edge-light {
+  display: none;
+}
