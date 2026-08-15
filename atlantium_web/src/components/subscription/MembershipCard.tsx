@@ -188,26 +188,6 @@ export function MembershipCard({ onAvatarClick, onCardClick, bio, createdAt }: M
           )}
 
           {/* Membership details */}
-          {isAdmin && (
-            <div className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 p-3 text-sm">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-cyan-500" />
-                  <span className="font-medium">Admin access</span>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 border-cyan-500/30 bg-background/40"
-                  onClick={() => window.location.assign("/admin")}
-                >
-                  Open Admin
-                </Button>
-              </div>
-            </div>
-          )}
-
           {isClubMember ? (
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
