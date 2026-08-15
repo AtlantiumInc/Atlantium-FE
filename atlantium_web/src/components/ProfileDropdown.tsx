@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Trash2, Loader2, ExternalLink, Pencil, ChevronDown, BadgeCheck } from "lucide-react";
+import { Trash2, Loader2, ExternalLink, Pencil, ChevronDown, BadgeCheck, Copy, LogOut } from "lucide-react";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -179,17 +179,7 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
           className="w-full sm:max-w-lg overflow-y-auto data-[state=open]:slide-in-from-top-2 data-[state=closed]:slide-out-to-top-2 data-[state=open]:duration-300 data-[state=closed]:duration-200 inset-y-auto top-0 right-0 h-auto max-h-[calc(100vh-1.5rem)] mt-3 mr-3 rounded-2xl border"
         >
           <SheetHeader className="pb-4 border-b">
-            <div className="flex items-center justify-between pr-8">
-              <SheetTitle>Profile</SheetTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onLogout}
-                className="text-muted-foreground hover:text-destructive h-7 text-xs"
-              >
-                Logout
-              </Button>
-            </div>
+            <SheetTitle>Profile</SheetTitle>
             <SheetDescription>
               Manage your profile information and membership.
             </SheetDescription>
@@ -205,7 +195,13 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
             />
 
             {/* Membership Card */}
-            <MembershipCard onAvatarClick={handleAvatarClick} username={profile?.username} bio={profile?.bio} createdAt={profile?.created_at} />
+            <MembershipCard
+              onAvatarClick={handleAvatarClick}
+              onCardClick={() => setIsProfileOpen(true)}
+              username={profile?.username}
+              bio={profile?.bio}
+              createdAt={profile?.created_at}
+            />
 
             {/* Profile Edit Form */}
             <div className="rounded-lg border border-border overflow-hidden">
@@ -253,7 +249,7 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
                 <span className="text-sm text-muted-foreground truncate flex-1">
                   atlantium.ai?ref={profile?.username || ""}
                 </span>
-                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <Copy className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               </div>
             </div>
 
@@ -285,8 +281,20 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
             </button>
           </div>
 
+          {/* Logout — deliberately far from the sheet's close button */}
+          <div className="mt-8 mx-4">
+            <Button
+              variant="outline"
+              className="w-full gap-2 text-muted-foreground hover:text-foreground"
+              onClick={onLogout}
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
+          </div>
+
           {/* Delete Account Section */}
-          <div className="mt-10 pt-6 pb-4 border-t border-border mx-4">
+          <div className="mt-6 pt-6 pb-4 border-t border-border mx-4">
             <h3 className="text-sm font-medium text-destructive">Danger Zone</h3>
             <p className="mt-1 text-sm text-muted-foreground">
               Permanently delete your account and all associated data.

@@ -25,12 +25,14 @@ function getInitials(name?: string, email?: string): string {
 
 interface MembershipCardProps {
   onAvatarClick?: () => void;
+  /** Clicking the card body (not its buttons) — the dropdown opens the edit form. */
+  onCardClick?: () => void;
   username?: string;
   bio?: string;
   createdAt?: string;
 }
 
-export function MembershipCard({ onAvatarClick, bio, createdAt }: MembershipCardProps = {}) {
+export function MembershipCard({ onAvatarClick, onCardClick, bio, createdAt }: MembershipCardProps = {}) {
   const { subscription, isLoading, refreshSubscription } = useSubscription();
   const { user } = useAuth();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -97,7 +99,14 @@ export function MembershipCard({ onAvatarClick, bio, createdAt }: MembershipCard
   return (
     <>
       <HolographicCard intensity={12} glareOpacity={0.25} holographicOpacity={0.12}>
-        <Card className="border-0 bg-card/80 backdrop-blur-sm">
+        <Card
+          className={`border-0 bg-card/80 backdrop-blur-sm ${onCardClick ? "cursor-pointer" : ""}`}
+          onClick={(e) => {
+            // Buttons on the card (Open Admin, avatar camera) own their clicks
+            if ((e.target as HTMLElement).closest("button, a")) return;
+            onCardClick?.();
+          }}
+        >
           <CardHeader>
           <div className="flex items-center gap-4">
             <div className="relative group">
@@ -143,8 +152,11 @@ export function MembershipCard({ onAvatarClick, bio, createdAt }: MembershipCard
                 </div>
               </div>
               <CardDescription>
-                {profileBio || (isAdmin ? `Admin access enabled - ${planLabel}` : planLabel)}
+                {profileBio || planLabel}
               </CardDescription>
+              {user?.email && (
+                <p className="font-mono text-xs text-muted-foreground/80 truncate mt-0.5">{user.email}</p>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -233,7 +245,7 @@ export function MembershipCard({ onAvatarClick, bio, createdAt }: MembershipCard
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Current plan</span>
-                <span className="font-medium">{isAdmin ? "Admin" : "Free"}</span>
+                <span className="font-medium">Free</span>
               </div>
               {isAdmin && (
                 <div className="flex justify-between text-sm">
