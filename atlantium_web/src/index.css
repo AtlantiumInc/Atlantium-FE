@@ -242,3 +242,28 @@
    keep the min-width:0 chain intact so the row's truncation keeps working. */
 .deck-featured { display: block; min-width: 0; }
 .deck-featured .border-glow-inner { overflow: visible; min-width: 0; display: block; }
+
+/* Orbiting light on the nav logo — the quiet, continuous cue that the mark
+   is the menu. A thin cyan arc sweeps the rim; masked to the ring so the
+   coin face stays clean. Hidden while the deck is open (signal received). */
+.logo-orbit {
+  position: absolute;
+  inset: -3px;
+  border-radius: 9999px;
+  pointer-events: none;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg 300deg,
+    rgba(0, 212, 255, 0.9) 340deg,
+    transparent 360deg
+  );
+  -webkit-mask-image: radial-gradient(closest-side, transparent calc(100% - 3px), black calc(100% - 1px));
+  mask-image: radial-gradient(closest-side, transparent calc(100% - 3px), black calc(100% - 1px));
+  animation: logo-orbit-spin 4.5s linear infinite;
+}
+@keyframes logo-orbit-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo-orbit { display: none; }
+}

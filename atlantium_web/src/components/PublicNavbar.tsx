@@ -288,11 +288,10 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
                   alt="Atlantium"
                   className={`h-full w-full object-cover transition-transform duration-300 ${platformOpen ? "scale-110" : "group-hover:scale-110"}`}
                 />
-                {/* idle ping advertises that the mark is a control, not a decoration */}
-                {!platformOpen && (
-                  <span className="absolute inset-0 rounded-full border border-cyan-400/20 animate-ping [animation-duration:3s] pointer-events-none" />
-                )}
               </button>
+              {/* orbiting light: the quiet, continuous cue that the mark is
+                  the menu — outside the button so the round crop can't eat it */}
+              {!platformOpen && <span className="logo-orbit" aria-hidden="true" />}
 
             </div>
           )}
