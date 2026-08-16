@@ -108,7 +108,7 @@ function AutoScrollingJobsFeed({ onFreshCount }: { onFreshCount?: (n: number) =>
   const duplicatedJobs = [...jobs, ...jobs];
 
   return (
-    <div className="relative h-[180px] overflow-hidden rounded-lg bg-background/50 border border-border/50">
+    <div className="relative h-full min-h-[180px] overflow-hidden rounded-lg bg-background/50 border border-border/50">
       {/* Gradient fade top */}
       <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-background/90 to-transparent z-10 pointer-events-none" />
 

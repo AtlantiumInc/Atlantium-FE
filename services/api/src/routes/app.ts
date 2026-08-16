@@ -8,6 +8,8 @@ import { sendOtpEmail } from "../lib/email";
 import { grantVerification, revokeVerification } from "../lib/verification";
 import { primaryOperatingType, syncProfileAssertions, syncUserAssertions } from "../lib/boomin-assertions";
 import { forwardConversion } from "../lib/boomin-conversions";
+import { loadProgramCard, partnerProgram, servablePrograms, type PartnerProgramDef } from "../lib/partner-programs";
+import { maybeEmitReferralFacts } from "../lib/referral-facts";
 import { areConnected, canInitiate, outreachStatus } from "../lib/outreach";
 import { entitlementsFor } from "../lib/entitlements";
 import {
@@ -662,8 +664,10 @@ appRoutes.post("/me/roles", zValidator("json", memberRoleWriteSchema), async (c)
   }
 
   // Project the persona change onto the Boomin relationship (B1) — off the
-  // write path, never blocking the member.
+  // write path, never blocking the member. A confirmed persona can also
+  // complete a referral fact (task #23) — same idempotent re-derive.
   c.executionCtx.waitUntil(syncProfileAssertions(db, c.env, profile.id));
+  c.executionCtx.waitUntil(maybeEmitReferralFacts(db, c.env, authUser.id));
 
   return c.json({ roles: await loadOwnRoles(db, profile.id) });
 });
@@ -736,6 +740,7 @@ const roleDetailsWriteSchema = z.object({
   availability: z.enum(["open", "intro_only", "closed"]).optional(),
   hiring_roles: z.array(z.string().trim().max(80)).max(12).optional(),
   hiring_contact: z.string().trim().max(40).optional(),
+  education: z.enum(["high_school", "associate", "bachelors", "masters", "doctorate"]).optional(),
 });
 
 const FIELDS_BY_ROLE: Record<string, ReadonlyArray<keyof z.infer<typeof roleDetailsWriteSchema>>> = {
@@ -744,8 +749,9 @@ const FIELDS_BY_ROLE: Record<string, ReadonlyArray<keyof z.infer<typeof roleDeta
   advisor: ["domains", "engagement", "availability"],
   // A recruiter is a professional whose affiliation carries hiring authority —
   // "hiring" is not its own persona (plan §3: persona, affiliation and status
-  // are separate axes).
-  professional: ["hiring_roles", "hiring_contact"],
+  // are separate axes). Education (0028) feeds the Head Hunter Program's
+  // qualified-candidate criterion.
+  professional: ["hiring_roles", "hiring_contact", "education"],
 };
 
 appRoutes.patch(
@@ -788,6 +794,7 @@ appRoutes.patch(
       ...(input.availability !== undefined ? { availability: input.availability } : {}),
       ...(input.hiring_roles !== undefined ? { hiringRoles: input.hiring_roles } : {}),
       ...(input.hiring_contact !== undefined ? { hiringContact: input.hiring_contact } : {}),
+      ...(input.education !== undefined ? { education: input.education } : {}),
     };
 
     await db
@@ -797,6 +804,10 @@ appRoutes.patch(
         target: roleDetails.roleId,
         set: { ...columns, updatedAt: new Date() },
       });
+
+    // Education / venture-stage answers can complete a referral fact
+    // (task #23) — idempotent re-derive, off the write path.
+    c.executionCtx.waitUntil(maybeEmitReferralFacts(db, c.env, authUser.id));
 
     return c.json({ roles: await loadOwnRoles(db, profile.id) });
   },
@@ -3200,6 +3211,52 @@ appRoutes.get("/handoff/boomin/status", async (c) => {
   }
 });
 
+// The two-program hub (task #23): everything /creator-program renders after
+// login, in one authed call. Per program: the static identity (name, details,
+// reward copy mirroring the REAL Boomin reward rules), the LIVE card
+// (requirements + tiers off the platform API — what the evaluator actually
+// enforces), and the member's own standing when they've joined (scoped signed
+// standing call per program surface). `membership: null` = not joined yet.
+appRoutes.get("/partner-programs", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const activeProfile = await ensureDefaultProfile(db, authUser);
+  const externalUserId = profileExternalUserId(activeProfile);
+  const roles = await db
+    .select({ role: memberRoles.role, confirmedAt: memberRoles.confirmedAt })
+    .from(memberRoles)
+    .where(eq(memberRoles.profileId, activeProfile.id));
+
+  const programs = await Promise.all(servablePrograms(c.env).map(async (def) => {
+    const programId = def.programId(c.env);
+    const [card, standing] = await Promise.all([
+      programId ? loadProgramCard(c.env, programId) : Promise.resolve(null),
+      getPartnerStanding(buildStandingOptions(c, externalUserId, def))
+        .catch(() => null) as Promise<Record<string, unknown> | null>,
+    ]);
+    const partnerRows = (standing?.partners ?? []) as Array<Record<string, unknown>>;
+    return {
+      key: def.key,
+      name: def.name,
+      tagline: def.tagline,
+      details: def.details,
+      rewards: def.rewards,
+      approval_required: def.approvalRequired,
+      card,
+      /** The caller's own enrollment row on this program, or null. */
+      membership: partnerRows[0] ?? null,
+    };
+  }));
+
+  return c.json({
+    success: true,
+    programs,
+    atlantium: {
+      personas: roles.filter((r) => r.confirmedAt).map((r) => r.role),
+      primary_operating_type: primaryOperatingType(roles) ?? null,
+    },
+  });
+});
+
 // MEMBER endpoint: scoped to the caller's OWN standing row. Without an
 // externalUserId the signed standing call returns the whole program roster,
 // which any approved member could read — that full view belongs only to the
@@ -3934,7 +3991,19 @@ function getNestedStatus(value: Record<string, unknown> | null | undefined) {
   return getString(value, "status");
 }
 
-async function buildHandoffOptions(c: Context<{ Bindings: Env }>) {
+/** Resolve the target program from `?program=` — default tech_creator, 404 on
+ *  unknown keys, 503 when the program's surface isn't configured in this env. */
+function requestedProgram(c: Context<{ Bindings: Env }>): PartnerProgramDef {
+  const key = (c.req.query("program") || "tech_creator").trim();
+  const def = partnerProgram(key);
+  if (!def) throw new HttpError(404, "program_not_found", `Unknown partner program '${key}'.`);
+  if (!def.publicKey(c.env) || !def.signingSecret(c.env)) {
+    throw new HttpError(503, "program_unavailable", `${def.name} isn't configured yet.`);
+  }
+  return def;
+}
+
+async function buildHandoffOptions(c: Context<{ Bindings: Env }>, program: PartnerProgramDef = requestedProgram(c)) {
   const { db, authUser } = await requireAppUser(c);
   const activeProfile = await ensureDefaultProfile(db, authUser);
   const redirectUri = c.env.BOOMIN_HANDOFF_REDIRECT_URI
@@ -3948,10 +4017,15 @@ async function buildHandoffOptions(c: Context<{ Bindings: Env }>) {
     .from(memberRoles)
     .where(eq(memberRoles.profileId, activeProfile.id));
   const operatingType = primaryOperatingType(profileRoles);
+  const signingSecret = program.signingSecret(c.env);
+  const publicKey = program.publicKey(c.env);
+  if (!signingSecret || !publicKey) {
+    throw new HttpError(503, "program_unavailable", `${program.name} isn't configured yet.`);
+  }
   const options = {
     issuer: BOOMIN_ISSUER,
     audience: BOOMIN_AUDIENCE,
-    publicKey: c.env.BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_atlantium_creator_program_63xwon9h",
+    publicKey,
     redirectUri,
     externalUserId: profileExternalUserId(activeProfile),
     email: authUser.email,
@@ -3962,20 +4036,27 @@ async function buildHandoffOptions(c: Context<{ Bindings: Env }>) {
       atlantiumProfileId: activeProfile.id,
       profileType: activeProfile.type,
       personas: profileRoles.filter((r) => r.confirmedAt).map((r) => r.role),
+      program: program.key,
     },
-    signingSecret: requireEnv(c.env, "HANDOFF_SIGNING_SECRET"),
+    signingSecret,
     expiresInSeconds: BOOMIN_HANDOFF_EXPIRES_IN,
     apiBase: boominConnectApiBase(c.env),
   };
   return { redirectUri, options, activeProfile };
 }
 
-function buildStandingOptions(c: Context<{ Bindings: Env }>, externalUserId?: string) {
+function buildStandingOptions(
+  c: Context<{ Bindings: Env }>,
+  externalUserId?: string,
+  program: PartnerProgramDef | undefined = partnerProgram("tech_creator"),
+) {
+  const publicKey = program?.publicKey(c.env) || c.env.BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_atlantium_creator_program_63xwon9h";
+  const signingSecret = program?.signingSecret(c.env) ?? requireEnv(c.env, "HANDOFF_SIGNING_SECRET");
   return {
     issuer: BOOMIN_ISSUER,
     audience: BOOMIN_AUDIENCE,
-    publicKey: c.env.BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_atlantium_creator_program_63xwon9h",
-    signingSecret: requireEnv(c.env, "HANDOFF_SIGNING_SECRET"),
+    publicKey,
+    signingSecret,
     expiresInSeconds: BOOMIN_HANDOFF_EXPIRES_IN,
     apiBase: boominConnectApiBase(c.env),
     ...(externalUserId ? { externalUserId } : {}),

@@ -609,6 +609,11 @@ export const roleDetails = pgTable("role_details", {
   hiringRoles: text("hiring_roles").array().notNull().default(sql`'{}'::text[]`),
   hiringContact: text("hiring_contact"),
 
+  /** Highest education level (0028, professional branch) — feeds the Head
+   *  Hunter Program's "qualified candidate" criterion (bachelors and higher).
+   *  NULL = not answered; qualification is positive-capability only. */
+  education: text("education"),
+
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

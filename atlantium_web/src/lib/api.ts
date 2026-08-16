@@ -214,6 +214,41 @@ export interface CreatorDashboardResponse {
   };
 }
 
+/** One program on the /creator-program hub (task #23). */
+export interface PartnerProgramSummary {
+  key: "tech_creator" | "head_hunter";
+  name: string;
+  tagline: string;
+  details: string[];
+  rewards: Array<{ label: string; amount: string }>;
+  approval_required: boolean;
+  /** Live requirements + tiers off the Boomin platform API; null when the
+   *  read is unavailable (the static `details` still render). */
+  card: {
+    requirements: Array<{
+      metricKey: string;
+      operator: string | null;
+      threshold: number | null;
+      windowDays: number | null;
+      required: boolean;
+      scope: string;
+      tier: string | null;
+    }>;
+    tiers: Array<{ name: string; rank: number }>;
+  } | null;
+  /** The caller's own enrollment row on this program, or null = not joined. */
+  membership: CreatorStandingPartner | null;
+}
+
+export interface PartnerProgramsResponse {
+  success: boolean;
+  programs: PartnerProgramSummary[];
+  atlantium?: {
+    personas?: string[];
+    primary_operating_type?: string | null;
+  };
+}
+
 export interface JobPostingContent {
   requirements_summary?: string;
   tech_stack?: string[];
@@ -579,6 +614,13 @@ class ApiClient {
 
   async getCreatorDashboard(): Promise<CreatorDashboardResponse> {
     return this.request<CreatorDashboardResponse>("/admin/partnerships/creators", {
+      method: "GET",
+    }, AUTH_API_BASE_URL);
+  }
+
+  /** The two-program hub behind /creator-program (task #23). */
+  async getPartnerPrograms(): Promise<PartnerProgramsResponse> {
+    return this.request<PartnerProgramsResponse>("/partner-programs", {
       method: "GET",
     }, AUTH_API_BASE_URL);
   }
@@ -1023,6 +1065,7 @@ class ApiClient {
     availability?: "open" | "intro_only" | "closed";
     hiring_roles?: string[];
     hiring_contact?: string;
+    education?: string;
   }): Promise<{ roles: MemberRole[] }> {
     return this.request(`/me/roles/${roleId}/details`, { method: "PATCH", body: JSON.stringify(body) }, ATLANTIUM_API_BASE_URL);
   }

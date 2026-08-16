@@ -133,6 +133,22 @@ export const ONBOARDING_STEPS: readonly StepDef[] = [
     optional: true,
   },
   {
+    id: "education",
+    kind: "choice",
+    branches: ["professional"],
+    field: "education",
+    question: "What's your highest degree?",
+    help: "Programs here can filter on this — bachelor's and higher counts as degree-holding. Skip it if you'd rather not say.",
+    optional: true,
+    options: [
+      { value: "high_school", label: "High school" },
+      { value: "associate", label: "Associate" },
+      { value: "bachelors", label: "Bachelor's" },
+      { value: "masters", label: "Master's" },
+      { value: "doctorate", label: "Doctorate" },
+    ],
+  },
+  {
     id: "seeking",
     kind: "seeking",
     branches: ["professional"],
