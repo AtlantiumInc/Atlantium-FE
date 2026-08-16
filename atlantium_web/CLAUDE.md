@@ -11,9 +11,13 @@
   VITE_BOOMIN_CONNECT_API_BASE=https://api.boomin.ai/v1/connect \
   VITE_BOOMIN_CONNECT_REDIRECT_URI=https://atlantium.ai/creator-program \
   npm run build
-  # 2. GATE ON BOTH — first must print nothing, second must print prod URLs
-  grep -rn "localhost:8788\|localhost:8787" dist
+  # 2. GATE ON BOTH — first must print nothing, second must print the prod API URL
+  grep -rn "localhost:8788\|localhost:8787\|localhost:8789" dist
   grep -oh "https://api.atlantium.ai/v1\|https://api.boomin.ai/v1/connect" dist/assets/*.js | sort -u
+  # (Since the 2026-08-16 creator-program hub rebuild, ALL Boomin traffic
+  # proxies through the Atlantium API, so only api.atlantium.ai/v1 prints —
+  # the connect URL reappearing would mean a direct browser->Boomin call
+  # came back.)
   # 3. Deploy, then confirm the live bundle hash actually changed
   npx wrangler pages deploy dist --project-name atlantium-fe --branch main \
     --commit-hash "$(git -C .. rev-parse HEAD)" --commit-message "$(git -C .. log -1 --pretty=%s)"
