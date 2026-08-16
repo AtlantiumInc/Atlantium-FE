@@ -1836,6 +1836,17 @@ class ApiClient {
     }, ATLANTIUM_API_BASE_URL);
   }
 
+  async getConsole(): Promise<{
+    jobs: {
+      total: number; remote: number; new_this_week: number; reach_200k: number;
+      latest: Array<{ slug: string; title: string; company: string; salaryMin: number | null; salaryMax: number | null }>;
+    };
+    directory: Record<string, number>;
+    wire: Array<{ slug: string; title: string; publishedAt: string | null }>;
+  }> {
+    return this.request("/console", { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
   async getJobPostingsPaged(params?: {
     status?: string;
     workplace_type?: string;

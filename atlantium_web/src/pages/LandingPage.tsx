@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { PublicNavbar } from "@/components/PublicNavbar";
+import { ConsolePanels } from "@/components/home/ConsolePanels";
 import SpotlightCard from "@/components/ui/SpotlightCard";
 import ShinyText from "@/components/ui/ShinyText";
 import Aurora from "@/components/Aurora";
@@ -383,28 +384,19 @@ export function LandingPage() {
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.2, duration: 0.5 }}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-8"
+                  className="mb-8"
                 >
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                  <span className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                    Citizen Technology Network
                   </span>
-                  <ShinyText
-                    text="Now Enrolling"
-                    className="text-xs font-medium uppercase tracking-wider"
-                    color="#00d4ff"
-                    shineColor="#ffffff"
-                    speed={3}
-                  />
                 </motion.div>
 
                 {/* Headline */}
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight leading-[1.05] mb-5">
-                  <span className="text-foreground">Your Path to</span>
-                  <br />
-                  <span className="text-foreground">
-                    the Frontier
-                  </span>
+                  {/* Narrow white glint over solid type — a pass of light,
+                      not a color gradient; long rest between sweeps */}
+                  <ShinyText text="Your Path to" className="block" color="#eef2f8" shineColor="#ffffff" spread={36} speed={2.2} delay={4.5} />
+                  <ShinyText text="the Frontier" className="block" color="#eef2f8" shineColor="#ffffff" spread={36} speed={2.2} delay={4.5} />
                 </h1>
 
                 {/* Subhead */}
@@ -537,6 +529,12 @@ export function LandingPage() {
               </SpotlightCard>
             </div>
           </motion.div>
+
+          {/* The Console — the network's live instruments, one cached call,
+              every number real (see ConsolePanels). */}
+          <div className="col-span-12">
+            <ConsolePanels />
+          </div>
 
           {/* Events Card - Expanded with Marquee */}
           <motion.div

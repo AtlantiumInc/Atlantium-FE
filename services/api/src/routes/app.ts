@@ -76,6 +76,7 @@ import {
   directoryEntries,
   user,
   verification,
+  contentDocuments,
 } from "../db/schema";
 import type { Env } from "../env";
 import { adminEmails, isDebugAuthCodes, requireEnv } from "../env";
@@ -3348,6 +3349,70 @@ appRoutes.get("/digest/preview", async (c) => {
   const sections = await buildSections(db);
   const unsub = await unsubscribeUrl(c.env, "preview@example.com");
   return c.html(renderDigest(sections, unsub));
+});
+
+
+/** The homepage console: every panel's numbers in one cached call.
+ *  Public, and every value is a real query — a panel that can't show a
+ *  true number doesn't ship (see the console's design rule). */
+appRoutes.get("/console", async (c) => {
+  const db = createDb(c.env);
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const [jobTotals, latestJobs, dirCounts, latestPosts] = await Promise.all([
+    db
+      .select({
+        total: sql<number>`count(*)::int`,
+        remote: sql<number>`count(*) filter (where ${jobPostings.workplaceType} = 'Remote')::int`,
+        newThisWeek: sql<number>`count(*) filter (where coalesce(${jobPostings.postedAt}, ${jobPostings.createdAt}) > ${weekAgo})::int`,
+        reach200k: sql<number>`count(*) filter (where coalesce(${jobPostings.salaryMax}, ${jobPostings.salaryMin}) >= 200000)::int`,
+      })
+      .from(jobPostings)
+      .where(eq(jobPostings.status, "active")),
+    db
+      .select({
+        slug: jobPostings.slug,
+        title: jobPostings.title,
+        company: jobPostings.company,
+        salaryMin: jobPostings.salaryMin,
+        salaryMax: jobPostings.salaryMax,
+      })
+      .from(jobPostings)
+      .where(eq(jobPostings.status, "active"))
+      .orderBy(sql`coalesce(${jobPostings.postedAt}, ${jobPostings.createdAt}) desc`)
+      .limit(6),
+    db
+      .select({
+        kind: directoryEntries.kind,
+        n: sql<number>`count(*)::int`,
+      })
+      .from(directoryEntries)
+      .where(eq(directoryEntries.status, "active"))
+      .groupBy(directoryEntries.kind),
+    db
+      .select({
+        slug: contentDocuments.slug,
+        title: contentDocuments.title,
+        publishedAt: contentDocuments.publishedAt,
+      })
+      .from(contentDocuments)
+      .where(and(eq(contentDocuments.type, "post"), eq(contentDocuments.status, "published")))
+      .orderBy(desc(contentDocuments.publishedAt))
+      .limit(3),
+  ]);
+  const dir: Record<string, number> = {};
+  for (const row of dirCounts) dir[row.kind] = row.n;
+  c.header("Cache-Control", "public, s-maxage=300, max-age=60");
+  return c.json({
+    jobs: {
+      total: jobTotals[0]?.total ?? 0,
+      remote: jobTotals[0]?.remote ?? 0,
+      new_this_week: jobTotals[0]?.newThisWeek ?? 0,
+      reach_200k: jobTotals[0]?.reach200k ?? 0,
+      latest: latestJobs,
+    },
+    directory: dir,
+    wire: latestPosts,
+  });
 });
 
 appRoutes.get("/job_postings", async (c) => {
