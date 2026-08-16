@@ -232,7 +232,10 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
 
   return (
     <>
-      <nav className={`sticky top-0 z-50 backdrop-blur-xl border-b border-border/30 ${platformOpen ? "bg-background" : "bg-background/70"}`}>
+      {/* Fixed overlay: the page scrolls beneath the glass, and the deck
+          unfolds OVER the content instead of pushing it down. The spacer
+          after the nav keeps every page's at-rest layout unchanged. */}
+      <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-xl border-b border-border/30 ${platformOpen ? "bg-background" : "bg-background/70"}`}>
         <div className="w-full px-6 h-16 flex items-center">
           {/* Left — reading mode swaps the wordmark for the article's identity */}
           {reading ? (
@@ -465,6 +468,7 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
           )}
         </AnimatePresence>
       </nav>
+      <div className="h-16" aria-hidden="true" />
 
     </>
   );
