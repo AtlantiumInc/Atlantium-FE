@@ -421,43 +421,6 @@ export function LandingPage() {
                 </div>
 
                 {/* Social proof */}
-                <div className="flex flex-wrap justify-center items-center gap-4 pt-6 border-t border-border/30">
-                  {/* Stacked avatars */}
-                  <div className="flex -space-x-2">
-                    {[
-                      "from-slate-500 to-blue-600",
-                      "from-blue-500 to-cyan-500",
-                      "from-emerald-500 to-teal-500",
-                      "from-amber-500 to-orange-500",
-                    ].map((gradient, i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 0.3 + i * 0.05, duration: 0.3 }}
-                        className={`relative h-8 w-8 rounded-full bg-gradient-to-br ${gradient} ring-2 ring-background flex items-center justify-center text-white text-[10px] font-bold`}
-                        style={{ zIndex: 5 - i }}
-                      >
-                        {["KL", "AR", "JM", "SC"][i]}
-                      </motion.div>
-                    ))}
-                  </div>
-
-                  <span className="text-sm text-muted-foreground">
-                    <span className="font-semibold text-foreground">500+</span> builders shipping
-                  </span>
-
-                  <span className="text-muted-foreground/50">•</span>
-
-                  {/* Live indicator */}
-                  <div className="flex items-center gap-1.5">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                    </span>
-                    <span className="text-sm text-emerald-500 font-medium">12 online</span>
-                  </div>
-                </div>
               </div>
             </SpotlightCard>
           </motion.div>
