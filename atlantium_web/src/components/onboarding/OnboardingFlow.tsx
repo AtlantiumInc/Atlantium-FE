@@ -309,6 +309,10 @@ export function OnboardingFlow({ onComplete, render }: Props) {
 /** Turns branch answers into the payload the role-details endpoint accepts. */
 function detailsFor(branch: Branch, data: OnboardingFormData) {
   switch (branch) {
+    case "professional":
+      // Education (0028) feeds the Head Hunter Program's qualified-candidate
+      // criterion — degree-holding means bachelor's and higher.
+      return data.education ? { education: data.education } : null;
     case "founder":
       return {
         ...(data.venture_stage ? { venture_stage: data.venture_stage } : {}),

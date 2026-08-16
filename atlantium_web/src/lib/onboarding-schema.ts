@@ -50,6 +50,7 @@ export const onboardingFormSchema = z.object({
 
   // founder
   venture_stage: z.string().optional(),
+  education: z.string().optional(),
   needs: z.array(z.string()).default([]),
 
   // investor

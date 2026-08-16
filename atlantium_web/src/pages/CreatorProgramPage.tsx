@@ -1,640 +1,574 @@
-import { type FormEvent, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, CheckCircle2, KeyRound, Loader2, Mail, Radio, Share2, Sparkles, Users } from "lucide-react";
+/**
+ * /creator-program — the partner-programs hub (task #23).
+ *
+ * Logged-out: hero + the INLINE login (email → the OTP grid populates in the
+ * same card — the LoginPage flow, kept on this page so joining never bounces
+ * through /login). Logged-in: the two programs, one card each — live
+ * requirements + tier ladder straight off Boomin, reward rules, and the
+ * member's own membership state (join → pending approval → approved standing
+ * with referral link and requirement checklist).
+ *
+ * Referral codes captured on arrival ride the OTP verify (first-touch
+ * attribution) — that is what the Head Hunter Program pays on.
+ */
+import { type ClipboardEvent, type FormEvent, type KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  BadgeCheck,
+  Check,
+  Copy,
+  Instagram,
+  KeyRound,
+  Loader2,
+  Mail,
+  RefreshCw,
+  ShieldCheck,
+  Sparkles,
+  Trophy,
+  UserSearch,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import { useAuth } from "@/contexts/AuthContext";
-import Boomin from "@boomin/connect";
-import { captureReferralCode, getReferralCode } from "@/lib/referral";
+import { api, type PartnerProgramSummary, type PartnerProgramsResponse } from "@/lib/api";
+import { captureReferralCode, clearReferralCode, getReferralCode } from "@/lib/referral";
 import { publicRuntimeUrl } from "@/lib/runtimeEnv";
+import { cn } from "@/lib/utils";
 
-type ConnectState = "details" | "otp" | "instagram" | "pending" | "connected" | "error";
-
-type CurrentCreatorResult = {
-  creator?: {
-    email?: string;
-    name?: string;
-  };
-  user?: {
-    email?: string;
-    name?: string;
-  };
-  member?: {
-    approval_status?: string;
-    approvalStatus?: string;
-    connection_status?: string;
-    connectionStatus?: string;
-    integration_id?: string;
-  };
-  instagram?: {
-    username?: string | null;
-  } | null;
-  integration?: {
-    username?: string;
-    status?: string;
-  };
-  status?: string;
-};
-
-type BoominStatusResult = {
-  success?: boolean;
-  boomin?: {
-    status?: string;
-    sessionId?: string;
-    session_id?: string;
-    username?: string | null;
-    member?: {
-      approvalStatus?: string;
-      approval_status?: string;
-      connectionStatus?: string;
-      connection_status?: string;
-    } | null;
-    instagram?: {
-      username?: string | null;
-    } | null;
-  };
-};
-
-const BOOMIN_PUBLIC_KEY = import.meta.env.VITE_BOOMIN_CONNECT_PUBLIC_KEY || "pk_live_atlantium_creator_program_63xwon9h";
-const BOOMIN_API_BASE = publicRuntimeUrl(
-  import.meta.env.VITE_BOOMIN_CONNECT_API_BASE,
-  "https://api.boomin.ai/v1/connect"
-).replace(/\/+$/, "");
-const BOOMIN_REDIRECT_URI = publicRuntimeUrl(
-  import.meta.env.VITE_BOOMIN_CONNECT_REDIRECT_URI,
-  "https://atlantium.ai/creator-program"
-);
 const ATLANTIUM_API_BASE = publicRuntimeUrl(
   import.meta.env.VITE_ATLANTIUM_API_BASE,
-  "https://api.atlantium.ai/v1"
-).replace(/\/+$/, "");
-const CONNECT_RESULT_STORAGE_KEY = "atlantium_creator_connect_result";
-const BOOMIN_REDIRECT_RESULT_STORAGE_KEY = "boomin_connect_redirect_result";
-const CONNECT_RESULT_PARAMS = [
-  "boomin_status",
-  "boomin_session_id",
-  "boomin_username",
-  "boomin_error",
-  "boomin_error_detail",
-];
+  "https://api.atlantium.ai/v1",
+);
+const OTP_LENGTH = 6;
 
-function formatConnectError(error: string, detail?: string | null) {
-  const suffix = detail ? ` Detail: ${detail}` : "";
+// ── Requirement rendering: wire vocabulary → member language ─────────────────
 
-  if (error === "instagram_oauth_no_code" || error === "instagram_oauth_cancelled") {
-    return `Instagram did not return an authorization code. Choose Allow/Continue on the Instagram permission screen, then try again.${suffix}`;
-  }
+const METRIC_LABELS: Record<string, string> = {
+  followers: "Instagram followers",
+  channel_connected: "Instagram connected",
+  "channel:instagram": "Instagram connected",
+  link_clicks: "Link clicks",
+  referral_count: "Referred signups",
+  gmv_cents: "Referred revenue",
+  "x:qualified_candidates": "Qualified candidates placed",
+  "x:revenue_startups": "Revenue startups landed",
+};
 
-  if (error === "access_denied") {
-    return `Instagram access was not approved. Choose Allow/Continue on the Instagram permission screen, then try again.${suffix}`;
-  }
-
-  if (error === "connect_session_not_found") {
-    return `Boomin could not recover this connect session. Start Instagram connect again from this page.${suffix}`;
-  }
-
-  if (error === "instagram_callback_failed") {
-    return `Instagram authorized, but Boomin could not finish saving the connection.${suffix}`;
-  }
-
-  return `Instagram connection did not finish (${error}). You can try again.${suffix}`;
+function requirementLine(req: NonNullable<PartnerProgramSummary["card"]>["requirements"][number]): string {
+  const label = METRIC_LABELS[req.metricKey]
+    ?? req.metricKey.replace(/^assert:/, "verified: ").replace(/^x:/, "").replace(/_/g, " ");
+  if (req.operator === "exists" || req.threshold == null) return label;
+  const window = req.windowDays ? ` in ${req.windowDays} days` : "";
+  const op = req.operator === "lte" ? "at most" : "at least";
+  return `${label}: ${op} ${req.threshold.toLocaleString()}${window}`;
 }
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export function CreatorProgramPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const navigate = useNavigate();
-  const [connectState, setConnectState] = useState<ConnectState>("details");
-  const [statusText, setStatusText] = useState("");
-  const [referralCode, setReferralCode] = useState<string | null>(null);
-  const [creatorName, setCreatorName] = useState("");
-  const [creatorEmail, setCreatorEmail] = useState("");
-  const [otpCode, setOtpCode] = useState("");
-  const [sessionId, setSessionId] = useState("");
-  const [isBusy, setIsBusy] = useState(false);
-  const [isRestoringHandoff, setIsRestoringHandoff] = useState(false);
 
   useEffect(() => {
     captureReferralCode();
-    setReferralCode(getReferralCode());
-
-    const params = new URLSearchParams(window.location.search);
-    const status = params.get("boomin_status");
-    const returnedSessionId = params.get("boomin_session_id");
-    const username = params.get("boomin_username");
-    const error = params.get("boomin_error");
-    const errorDetail = params.get("boomin_error_detail");
-    const hasConnectResult = params.has("boomin_status")
-      || params.has("boomin_session_id")
-      || params.has("boomin_username")
-      || params.has("boomin_error")
-      || params.has("boomin_error_detail");
-
-    if (hasConnectResult) {
-      try {
-        window.sessionStorage.setItem(CONNECT_RESULT_STORAGE_KEY, JSON.stringify({
-          status,
-          sessionId: returnedSessionId,
-          username,
-          error,
-          errorDetail,
-          at: new Date().toISOString(),
-        }));
-      } catch {
-        // Some embedded/privacy contexts deny storage; the visible status still works.
-      }
-    }
-
-    if (status === "pending_approval") {
-      setConnectState("pending");
-      if (returnedSessionId) setSessionId(returnedSessionId);
-      // Only claim Instagram is connected when the flow actually returned one.
-      setStatusText(username ? `@${username} is connected and pending approval.` : "Application received — pending approval.");
-    } else if (status === "approved" || status === "connected") {
-      setConnectState("connected");
-      setStatusText(username ? `@${username} is connected.` : "You are approved and active.");
-    } else if (error) {
-      if (returnedSessionId) setSessionId(returnedSessionId);
-      setConnectState("error");
-      setStatusText(formatConnectError(error, errorDetail));
-    }
-
-    if (hasConnectResult) {
-      const cleanUrl = new URL(window.location.href);
-      CONNECT_RESULT_PARAMS.forEach((key) => {
-        cleanUrl.searchParams.delete(key);
-      });
-      if (cleanUrl.hash === "#_") cleanUrl.hash = "";
-      window.history.replaceState({}, "", cleanUrl.toString());
-    }
-
-    if (hasConnectResult) return;
-
-    let cancelled = false;
-
-    const restoreCreator = async () => {
-      try {
-        const boomin = await getBoomin();
-        const current = await boomin.getCurrentCreator() as CurrentCreatorResult;
-        if (cancelled) return;
-
-        const creator = current.creator || current.user;
-        if (creator?.email) setCreatorEmail(creator.email);
-        if (creator?.name) setCreatorName(creator.name);
-
-        const approvalStatus = current.status || current.member?.approvalStatus || current.member?.approval_status || "pending";
-        // connectionStatus is authoritative (Boomin flips it when the IG token
-        // dies); account presence alone is stale — an account row outlives its
-        // token. /me ships a raw camelCase member + a top-level `instagram`
-        // account; older payload shapes used snake_case + `integration`.
-        const connectionStatus = current.member?.connectionStatus ?? current.member?.connection_status;
-        const igUsername = current.instagram?.username ?? current.integration?.username ?? null;
-        const isConnected = connectionStatus != null
-          ? connectionStatus === "connected"
-          : Boolean(current.instagram) || Boolean(current.integration);
-
-        if (approvalStatus === "approved" && !isConnected) {
-          setConnectState("instagram");
-          setStatusText(igUsername
-            ? `Approved — @${igUsername}'s Instagram connection expired. Reconnect to keep your posts counting.`
-            : "Approved — reconnect your Instagram to keep your posts counting.");
-        } else if (approvalStatus === "approved") {
-          setConnectState("connected");
-          setStatusText(igUsername
-            ? `@${igUsername} is approved and connected.`
-            : "Approved. You are active in the Atlantium creator program.");
-        } else if (approvalStatus === "rejected") {
-          setConnectState("error");
-          setStatusText("Your creator application was not approved.");
-        } else if (isConnected) {
-          setConnectState("pending");
-          setStatusText(current.integration?.username
-            ? `@${current.integration.username} is connected and pending approval.`
-            : "Your Instagram is connected and pending approval.");
-        } else {
-          setConnectState("instagram");
-          setStatusText("Email verified. Connect Instagram to finish your creator application.");
-        }
-      } catch {
-        // No saved creator token yet; show the first-time signup form.
-      }
-    };
-
-    void restoreCreator();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
-  useEffect(() => {
-    if (authLoading || !isAuthenticated) return;
-
-    const params = new URLSearchParams(window.location.search);
-    const hasConnectResult = CONNECT_RESULT_PARAMS.some((key) => params.has(key));
-    if (hasConnectResult) return;
-
-    let cancelled = false;
-
-    const restoreSignedHandoff = async () => {
-      setIsRestoringHandoff(true);
-      try {
-        const response = await fetch(`${ATLANTIUM_API_BASE}/handoff/boomin/status`, {
-          method: "GET",
-          credentials: "include",
-        });
-        const result = await response.json().catch(() => ({})) as BoominStatusResult;
-        if (!response.ok || !result.boomin) return;
-        if (cancelled) return;
-
-        const boomin = result.boomin;
-        const nextSessionId = boomin.sessionId || boomin.session_id;
-        if (nextSessionId) setSessionId(nextSessionId);
-
-        const approvalStatus = boomin.member?.approvalStatus || boomin.member?.approval_status || boomin.status || "";
-        const connectionStatus = boomin.member?.connectionStatus || boomin.member?.connection_status || "";
-        const username = boomin.instagram?.username || boomin.username || "";
-
-        if ((approvalStatus === "approved" || boomin.status === "approved") && connectionStatus && connectionStatus !== "connected") {
-          // Approved but the IG link is dead (Boomin flips connectionStatus on
-          // token expiry) — claim approval, demand the reconnect.
-          setConnectState("instagram");
-          setStatusText(username
-            ? `Approved — @${username}'s Instagram connection expired. Reconnect to keep your posts counting.`
-            : "Approved — reconnect your Instagram to keep your posts counting.");
-        } else if (approvalStatus === "approved" || boomin.status === "approved") {
-          setConnectState("connected");
-          setStatusText(username && connectionStatus === "connected"
-            ? `@${username} is approved and connected.`
-            : "Approved. You are active in the Atlantium creator program.");
-        } else if (approvalStatus === "rejected" || boomin.status === "rejected") {
-          setConnectState("error");
-          setStatusText("Your creator application was not approved.");
-        } else if (boomin.status === "pending_approval" || connectionStatus === "connected") {
-          setConnectState("pending");
-          // "Instagram is connected" only when the membership actually has one.
-          setStatusText(username && connectionStatus === "connected"
-            ? `@${username} is connected and pending approval.`
-            : "Application received — pending approval.");
-        } else if (boomin.status === "needs_instagram") {
-          setConnectState("instagram");
-          setStatusText("Connect Instagram to finish your creator application.");
-        }
-      } catch {
-        // Keep the default join CTA if the status restore fails.
-      } finally {
-        if (!cancelled) setIsRestoringHandoff(false);
-      }
-    };
-
-    void restoreSignedHandoff();
-    return () => {
-      cancelled = true;
-    };
-  }, [authLoading, isAuthenticated]);
-
-  const getBoomin = async () => {
-    Boomin.init({
-      publicKey: BOOMIN_PUBLIC_KEY,
-      apiBase: BOOMIN_API_BASE,
-      redirectUri: BOOMIN_REDIRECT_URI,
-    });
-    return Boomin;
-  };
-
-  const startSignedHandoff = () => {
-    setStatusText("");
-    if (authLoading) return;
-    if (!isAuthenticated) {
-      navigate(`/login?returnTo=${encodeURIComponent("/creator-program")}`);
-      return;
-    }
-    setIsBusy(true);
-    try {
-      window.sessionStorage.removeItem(CONNECT_RESULT_STORAGE_KEY);
-      window.sessionStorage.removeItem(BOOMIN_REDIRECT_RESULT_STORAGE_KEY);
-    } catch {
-      // Storage cleanup is best-effort in private or embedded contexts.
-    }
-    window.location.assign(`${ATLANTIUM_API_BASE}/handoff/boomin/join`);
-  };
-
-  const requestOtp = async (event: FormEvent) => {
-    event.preventDefault();
-    setIsBusy(true);
-    setStatusText("");
-    try {
-      const boomin = await getBoomin();
-      await boomin.requestOtp({
-        email: creatorEmail,
-        name: creatorName,
-        referralCode,
-        metadata: {
-          customer: "atlantium",
-          surface: "creator_program_page",
-        },
-      });
-      setConnectState("otp");
-      setStatusText("Check your email for your Atlantium creator verification code.");
-    } catch (error) {
-      setConnectState("details");
-      setStatusText(error instanceof Error ? error.message : "Could not send verification code.");
-    } finally {
-      setIsBusy(false);
-    }
-  };
-
-  const verifyOtp = async (event: FormEvent) => {
-    event.preventDefault();
-    setIsBusy(true);
-    setStatusText("");
-    try {
-      const boomin = await getBoomin();
-      await boomin.verifyOtp({
-        email: creatorEmail,
-        name: creatorName,
-        code: otpCode,
-        referralCode,
-        metadata: {
-          customer: "atlantium",
-          surface: "creator_program_page",
-        },
-      });
-      setConnectState("instagram");
-      setStatusText("Email verified. Connect Instagram to finish your creator application.");
-    } catch (error) {
-      setConnectState("otp");
-      setStatusText(error instanceof Error ? error.message : "Could not verify that code.");
-    } finally {
-      setIsBusy(false);
-    }
-  };
-
-  const connectInstagram = async () => {
-    if (isAuthenticated) {
-      startSignedHandoff();
-      return;
-    }
-    setIsBusy(true);
-    setStatusText("");
-    try {
-      try {
-        window.sessionStorage.removeItem(CONNECT_RESULT_STORAGE_KEY);
-        window.sessionStorage.removeItem(BOOMIN_REDIRECT_RESULT_STORAGE_KEY);
-      } catch {
-        // Storage cleanup is best-effort in private or embedded contexts.
-      }
-
-      const boomin = await getBoomin();
-
-      boomin.on("connect:pending_approval", () => {
-        setConnectState("pending");
-        setStatusText("Your Instagram is connected and pending approval.");
-      });
-
-      const session = await boomin.connectInstagram({
-        referralCode,
-        mode: "manual",
-        requireCreator: true,
-        redirectUri: BOOMIN_REDIRECT_URI,
-        metadata: {
-          customer: "atlantium",
-          surface: "creator_program_page",
-        },
-      });
-      if (session.sessionId) setSessionId(session.sessionId);
-      if (session.authUrl) window.location.assign(session.authUrl);
-      else setIsBusy(false);
-    } catch (error) {
-      setConnectState("instagram");
-      setStatusText(error instanceof Error ? error.message : "Could not start Instagram connect.");
-      setIsBusy(false);
-    }
-  };
-
-  const refreshStatus = async () => {
-    if (!sessionId) return;
-    setIsBusy(true);
-    setStatusText("");
-    try {
-      const boomin = await getBoomin();
-      const status = await boomin.getConnectStatus(sessionId);
-      const nextStatus = String(status.status || "");
-      if (nextStatus === "approved") {
-        setConnectState("connected");
-        setStatusText("Approved. You are active in the Atlantium creator program.");
-      } else if (nextStatus === "rejected") {
-        setConnectState("error");
-        setStatusText("Your creator application was not approved.");
-      } else {
-        setConnectState("pending");
-        setStatusText("Still pending approval.");
-      }
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Could not refresh status.");
-    } finally {
-      setIsBusy(false);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background">
       <PublicNavbar />
+      <main className="mx-auto w-full max-w-5xl px-4 pb-24 pt-28 sm:px-6">
+        <header className="mb-10 max-w-2xl">
+          <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-3 py-1 text-xs font-medium uppercase tracking-wide text-cyan-300">
+            <Sparkles className="h-3.5 w-3.5" />
+            Partner programs
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            Earn with the Atlantium network
+          </h1>
+          <p className="mt-3 text-base leading-7 text-muted-foreground">
+            Two ways in: create for Atlanta tech, or bring its best people and
+            companies into the network. Your standing, requirements, and rewards
+            live right here.
+          </p>
+        </header>
 
-      <main className="relative overflow-hidden">
-        <section className="relative min-h-[calc(100vh-4rem)] border-b border-border/40">
-          <img
-            src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1800&h=1100&fit=crop&q=85"
-            alt="Creators building with laptops and cameras"
-            className="absolute inset-0 h-full w-full object-cover opacity-30 dark:opacity-30"
-          />
-          <div className="absolute inset-0 bg-background/88 dark:bg-background/78" />
-          <div className="relative mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl grid-cols-1 content-center gap-10 px-5 py-10 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
-            <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-400">
-                <Radio className="h-3.5 w-3.5" />
-                Atlantium Creator Program
-              </div>
-              <h1 className="mt-6 max-w-4xl text-4xl font-bold leading-tight tracking-normal sm:text-5xl lg:text-6xl">
-                Help ambitious builders find the frontier.
-              </h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-muted-foreground sm:text-lg">
-                Partner with Atlantium to distribute useful AI education, founder resources, jobs, and events to the people already building what comes next.
-              </p>
-
-              <div className="mt-8 max-w-xl">
-                {connectState === "details" ? (
-                  isAuthenticated ? (
-                    <button
-                      type="button"
-                      onClick={startSignedHandoff}
-                      disabled={isBusy || authLoading || isRestoringHandoff}
-                      className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-white px-5 text-sm font-bold text-black shadow-lg shadow-black/20 transition-colors hover:bg-gray-100 disabled:cursor-default disabled:opacity-70"
-                    >
-                      {isBusy || isRestoringHandoff ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
-                      {isRestoringHandoff ? "Checking status" : "Connect Instagram"}
-                    </button>
-                  ) : (
-                    <div className="space-y-3">
-                      <button
-                        type="button"
-                        onClick={startSignedHandoff}
-                        disabled={authLoading}
-                        className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-white px-5 text-sm font-bold text-black shadow-lg shadow-black/20 transition-colors hover:bg-gray-100 disabled:cursor-default disabled:opacity-70"
-                      >
-                        {authLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
-                        Sign in to join
-                      </button>
-                      <form onSubmit={requestOtp} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-                        <label className="sr-only" htmlFor="creator-name">Name</label>
-                        <input
-                          id="creator-name"
-                          value={creatorName}
-                          onChange={(event) => setCreatorName(event.target.value)}
-                          placeholder="Name"
-                          className="h-12 rounded-md border border-border/70 bg-background/80 px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-cyan-400"
-                        />
-                        <label className="sr-only" htmlFor="creator-email">Email</label>
-                        <input
-                          id="creator-email"
-                          value={creatorEmail}
-                          onChange={(event) => setCreatorEmail(event.target.value)}
-                          placeholder="Email-only fallback"
-                          type="email"
-                          required
-                          className="h-12 rounded-md border border-border/70 bg-background/80 px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-cyan-400"
-                        />
-                        <button
-                          type="submit"
-                          disabled={isBusy}
-                          className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-border/70 bg-background/80 px-5 text-sm font-bold text-foreground transition-colors hover:bg-muted disabled:cursor-default disabled:opacity-70"
-                        >
-                          {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-                          Send code
-                        </button>
-                      </form>
-                    </div>
-                  )
-                ) : null}
-
-                {connectState === "otp" ? (
-                  <form onSubmit={verifyOtp} className="grid gap-3 sm:grid-cols-[1fr_auto]">
-                    <label className="sr-only" htmlFor="creator-otp">Verification code</label>
-                    <input
-                      id="creator-otp"
-                      value={otpCode}
-                      onChange={(event) => setOtpCode(event.target.value)}
-                      placeholder="Verification code"
-                      inputMode="numeric"
-                      required
-                      className="h-12 rounded-md border border-border/70 bg-background/80 px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-cyan-400"
-                    />
-                    <button
-                      type="submit"
-                      disabled={isBusy}
-                      className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-white px-5 text-sm font-bold text-black shadow-lg shadow-black/20 transition-colors hover:bg-gray-100"
-                    >
-                      {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
-                      Verify
-                    </button>
-                  </form>
-                ) : null}
-
-                {connectState === "instagram" ? (
-                  <button
-                    type="button"
-                    onClick={connectInstagram}
-                    disabled={isBusy}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-white px-5 text-sm font-bold text-black shadow-lg shadow-black/20 transition-colors hover:bg-gray-100 disabled:cursor-default disabled:opacity-70"
-                  >
-                    {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
-                    Connect Instagram
-                  </button>
-                ) : null}
-
-                {connectState === "error" ? (
-                  <button
-                    type="button"
-                    onClick={connectInstagram}
-                    disabled={isBusy}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-white px-5 text-sm font-bold text-black shadow-lg shadow-black/20 transition-colors hover:bg-gray-100 disabled:cursor-default disabled:opacity-70"
-                  >
-                    {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
-                    Try Instagram again
-                  </button>
-                ) : null}
-
-                {connectState === "pending" ? (
-                  <button
-                    type="button"
-                    onClick={refreshStatus}
-                    disabled={!sessionId || isBusy}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-white px-5 text-sm font-bold text-black shadow-lg shadow-black/20 transition-colors hover:bg-gray-100 disabled:cursor-default disabled:opacity-70"
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    Pending approval
-                  </button>
-                ) : null}
-
-                {connectState === "connected" ? (
-                  <div className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-emerald-500/15 px-5 text-sm font-bold text-emerald-300">
-                    <CheckCircle2 className="h-4 w-4" />
-                    Approved
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Link to="/mission">
-                  <Button variant="outline" className="h-12 gap-2">
-                    Why Atlantium
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
-
-              {statusText ? (
-                <div className={`mt-4 inline-flex max-w-xl items-center gap-2 rounded-md border px-3 py-2 text-sm ${
-                  connectState === "error"
-                    ? "border-red-500/30 bg-red-500/10 text-red-400"
-                    : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                }`}>
-                  {connectState === "error" ? <Sparkles className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
-                  {statusText}
-                </div>
-              ) : null}
-
-              {referralCode ? (
-                <p className="mt-3 text-xs text-muted-foreground">
-                  Referral code captured: <span className="font-semibold text-foreground">{referralCode}</span>
-                </p>
-              ) : null}
-            </div>
-
-            <div className="grid gap-3 self-center">
-              {[
-                ["Build distribution loops", "Share Atlantium programs, resources, and events with your audience."],
-                ["Earn from referred members", "Use your creator referral code across campaigns and onboarding pages."],
-                ["Bring better signal", "Help builders discover practical AI education instead of noisy feeds."],
-              ].map(([title, body], index) => (
-                <div key={title} className="rounded-lg border border-border/60 bg-card/80 p-4 shadow-sm backdrop-blur">
-                  <div className="flex items-start gap-3">
-                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border ${
-                      index === 0 ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-400" :
-                      index === 1 ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" :
-                      "border-amber-500/30 bg-amber-500/10 text-amber-400"
-                    }`}>
-                      {index === 0 ? <Share2 className="h-4 w-4" /> : index === 1 ? <Users className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-                    </div>
-                    <div>
-                      <h2 className="text-sm font-bold text-foreground">{title}</h2>
-                      <p className="mt-1 text-sm leading-6 text-muted-foreground">{body}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+        {authLoading ? (
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="h-80 animate-pulse rounded-xl border border-border/60 bg-background/60" />
+            <div className="h-80 animate-pulse rounded-xl border border-border/60 bg-background/60" />
           </div>
-        </section>
+        ) : isAuthenticated ? (
+          <ProgramHub />
+        ) : (
+          <LoggedOutIntro />
+        )}
       </main>
     </div>
   );
 }
+
+// ── Logged-out: program teasers + the inline login ───────────────────────────
+
+function LoggedOutIntro() {
+  return (
+    <div className="grid gap-8 lg:grid-cols-[1.2fr_1fr]">
+      <div className="space-y-4">
+        <TeaserCard
+          icon={<Instagram className="h-5 w-5" />}
+          name="Tech Creator Program"
+          line="Instagram-scoped. Keep 1,000+ followers, share your link, earn on every signup you drive."
+        />
+        <TeaserCard
+          icon={<UserSearch className="h-5 w-5" />}
+          name="Head Hunter Program"
+          line="Approval required. Earn 500 credits per degree-holding candidate (bachelor's+) and 2,000 per revenue-generating startup you bring in."
+        />
+        <p className="text-sm leading-6 text-muted-foreground">
+          Sign in to see live requirements, your standing, and your links. Both
+          programs run on the same account.
+        </p>
+      </div>
+      <InlineLogin />
+    </div>
+  );
+}
+
+function TeaserCard({ icon, name, line }: { icon: React.ReactNode; name: string; line: string }) {
+  return (
+    <div className="rounded-xl border border-border/60 bg-background/60 p-5">
+      <div className="flex items-center gap-2 text-cyan-300">
+        {icon}
+        <h2 className="font-semibold">{name}</h2>
+      </div>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">{line}</p>
+    </div>
+  );
+}
+
+/** The LoginPage email→OTP flow, inline: submit an email and the OTP grid
+ *  populates in the same card; verify refreshes auth in place — no /login
+ *  round trip, and the captured referral code rides the verify. */
+function InlineLogin() {
+  const { login, checkAuth } = useAuth();
+  const [step, setStep] = useState<"email" | "otp">("email");
+  const [email, setEmail] = useState("");
+  const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
+  const [devCode, setDevCode] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const submitEmail = async (event: FormEvent) => {
+    event.preventDefault();
+    const value = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      setError("Enter a valid email address.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await api.requestOtp(value);
+      setStep("otp");
+      if (["localhost", "127.0.0.1"].includes(window.location.hostname)) {
+        const dev = await api.getDevOtpCode(value).catch(() => null);
+        setDevCode(dev?.code ?? null);
+      }
+      setTimeout(() => inputRefs.current[0]?.focus(), 50);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send the code.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitOtp = async (event: FormEvent) => {
+    event.preventDefault();
+    const code = otpDigits.join("");
+    if (code.length !== OTP_LENGTH) {
+      setError("Enter the full 6-digit code.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const refCode = getReferralCode();
+      const response = await api.verifyOtp(email, code, refCode || undefined);
+      if (refCode) clearReferralCode();
+      localStorage.setItem("userEmail", email);
+      login(response.auth_token, response.user);
+      await checkAuth();
+      // No navigation: the hub takes this card's place.
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "That code didn't verify.");
+      setBusy(false);
+    }
+  };
+
+  const onDigit = (index: number, value: string) => {
+    if (value && !/^\d$/.test(value)) return;
+    const next = [...otpDigits];
+    next[index] = value;
+    setOtpDigits(next);
+    if (value && index < OTP_LENGTH - 1) inputRefs.current[index + 1]?.focus();
+  };
+
+  const onDigitKey = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !otpDigits[index] && index > 0) inputRefs.current[index - 1]?.focus();
+  };
+
+  const onPaste = (e: ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LENGTH);
+    if (!pasted) return;
+    const next = Array(OTP_LENGTH).fill("");
+    for (let i = 0; i < pasted.length; i += 1) next[i] = pasted[i];
+    setOtpDigits(next);
+    inputRefs.current[Math.min(pasted.length, OTP_LENGTH - 1)]?.focus();
+  };
+
+  return (
+    <div className="h-fit rounded-xl border border-cyan-500/25 bg-cyan-500/5 p-6">
+      <div className="flex items-center gap-2 text-cyan-300">
+        {step === "email" ? <Mail className="h-4 w-4" /> : <KeyRound className="h-4 w-4" />}
+        <h2 className="text-sm font-semibold uppercase tracking-wide">
+          {step === "email" ? "Sign in to get started" : "Enter your code"}
+        </h2>
+      </div>
+
+      {step === "email" ? (
+        <form onSubmit={submitEmail} className="mt-4 space-y-3">
+          <label className="sr-only" htmlFor="hub-email">Email</label>
+          <input
+            id="hub-email"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@company.com"
+            className="w-full rounded-md border border-border/60 bg-background/70 px-3 py-2.5 text-sm outline-none focus:border-cyan-400/60"
+          />
+          <Button type="submit" disabled={busy} className="w-full">
+            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Email me a code
+          </Button>
+          <p className="text-xs leading-5 text-muted-foreground">
+            New here? The code creates your account — no password, ever.
+          </p>
+        </form>
+      ) : (
+        <form onSubmit={submitOtp} className="mt-4 space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Sent to <span className="font-medium text-foreground">{email}</span>
+          </p>
+          <div className="flex justify-between gap-2" onPaste={onPaste}>
+            {otpDigits.map((digit, index) => (
+              <input
+                key={index}
+                ref={(el) => { inputRefs.current[index] = el; }}
+                inputMode="numeric"
+                maxLength={1}
+                value={digit}
+                onChange={(e) => onDigit(index, e.target.value)}
+                onKeyDown={(e) => onDigitKey(index, e)}
+                className="h-12 w-full rounded-md border border-border/60 bg-background/70 text-center font-mono text-lg outline-none focus:border-cyan-400/60"
+                aria-label={`Digit ${index + 1}`}
+              />
+            ))}
+          </div>
+          {devCode ? (
+            <p className="font-mono text-xs text-muted-foreground">Local dev code: {devCode}</p>
+          ) : null}
+          <Button type="submit" disabled={busy} className="w-full">
+            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Verify and continue
+          </Button>
+          <button
+            type="button"
+            onClick={() => { setStep("email"); setOtpDigits(Array(OTP_LENGTH).fill("")); setError(null); setDevCode(null); }}
+            className="w-full text-center text-xs text-muted-foreground hover:text-foreground"
+          >
+            Different email
+          </button>
+        </form>
+      )}
+
+      {error ? (
+        <p className="mt-3 flex items-start gap-2 text-sm text-red-300">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+// ── Logged-in: the two program cards ─────────────────────────────────────────
+
+function ProgramHub() {
+  const [data, setData] = useState<PartnerProgramsResponse | null>(null);
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setState("loading");
+    try {
+      setData(await api.getPartnerPrograms());
+      setState("ready");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load the programs.");
+      setState("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    // A join round-trip lands back here with ?boomin_status= — surface it,
+    // clean the URL, and show fresh membership state.
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("boomin_status");
+    if (status) {
+      if (status === "failed") {
+        toast.error(params.get("boomin_error_detail") || "Joining didn't complete — try again.");
+      } else if (status === "pending_approval") {
+        toast.success("Application received — you're in review.");
+      } else {
+        toast.success("You're in.");
+      }
+      ["boomin_status", "boomin_session_id", "boomin_username", "boomin_error", "boomin_error_detail"].forEach((k) => params.delete(k));
+      const qs = params.toString();
+      window.history.replaceState({}, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+    }
+    void load();
+  }, [load]);
+
+  if (state === "loading") {
+    return (
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="h-96 animate-pulse rounded-xl border border-border/60 bg-background/60" />
+        <div className="h-96 animate-pulse rounded-xl border border-border/60 bg-background/60" />
+      </div>
+    );
+  }
+
+  if (state === "error" || !data) {
+    return (
+      <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-6">
+        <p className="flex items-start gap-2 text-sm text-red-200">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          {error ?? "Could not load the programs."}
+        </p>
+        <Button variant="outline" className="mt-4" onClick={() => void load()}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Try again
+        </Button>
+      </div>
+    );
+  }
+
+  const capacity = data.atlantium?.primary_operating_type ?? null;
+
+  return (
+    <div className="space-y-5">
+      {capacity ? (
+        <p className="inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-medium text-cyan-200">
+          <BadgeCheck className="h-3.5 w-3.5" />
+          Operating as <span className="capitalize">{capacity}</span>
+        </p>
+      ) : null}
+      <div className="grid items-start gap-5 md:grid-cols-2">
+        {data.programs.map((program) => (
+          <ProgramCard key={program.key} program={program} onChanged={() => void load()} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProgramCard({ program, onChanged }: { program: PartnerProgramSummary; onChanged: () => void }) {
+  const membership = program.membership;
+  const approval = membership?.member?.approvalStatus ?? membership?.member?.approval_status ?? null;
+  const qualification = membership?.member?.qualificationStatus ?? membership?.member?.qualification_status ?? null;
+  const referralCode = membership?.referral?.code ?? membership?.member?.referralCode ?? membership?.member?.referral_code ?? null;
+  const referralUrl = membership?.referral?.url ?? null;
+  const met = membership?.qualification?.requirementsMet ?? membership?.qualification?.requirements_met ?? [];
+  const failed = membership?.qualification?.requirementsFailed ?? membership?.qualification?.requirements_failed ?? [];
+  const icon = program.key === "tech_creator" ? <Instagram className="h-5 w-5" /> : <UserSearch className="h-5 w-5" />;
+
+  const join = () => {
+    window.location.assign(`${ATLANTIUM_API_BASE}/handoff/boomin/join?program=${program.key}`);
+  };
+
+  return (
+    <section className="flex flex-col rounded-xl border border-border/60 bg-background/60">
+      <header className="border-b border-border/40 p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-cyan-300">
+            {icon}
+            <h2 className="font-semibold">{program.name}</h2>
+          </div>
+          {program.approval_required ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-200">
+              <ShieldCheck className="h-3 w-3" />
+              Approval required
+            </span>
+          ) : null}
+        </div>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">{program.tagline}</p>
+      </header>
+
+      <div className="flex-1 space-y-5 p-5">
+        <ul className="space-y-1.5">
+          {program.details.map((line) => (
+            <li key={line} className="flex items-start gap-2 text-sm leading-6 text-muted-foreground">
+              <Check className="mt-1 h-3.5 w-3.5 shrink-0 text-cyan-400" />
+              {line}
+            </li>
+          ))}
+        </ul>
+
+        {program.card && program.card.requirements.length > 0 ? (
+          <div>
+            {program.card.requirements.some((r) => r.scope !== "tier") ? (
+              <>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Requirements</h3>
+                <ul className="mt-2 space-y-1.5">
+                  {program.card.requirements.filter((r) => r.scope !== "tier").map((req, i) => (
+                    <li key={`${req.metricKey}-${i}`} className="flex items-start gap-2 text-sm">
+                      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span>{requirementLine(req)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            {program.card.tiers.length > 1 ? (
+              <div className="mt-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tier ladder</h3>
+                <ul className="mt-2 space-y-1.5">
+                  {program.card.tiers.map((tier) => {
+                    const rungs = program.card!.requirements.filter((r) => r.tier === tier.name);
+                    return (
+                      <li key={tier.name} className="flex items-start gap-2 text-sm">
+                        <Trophy className="mt-0.5 h-4 w-4 shrink-0 text-amber-300/80" />
+                        <span>
+                          <span className="font-medium">{tier.name}</span>
+                          {rungs.length ? (
+                            <span className="text-muted-foreground"> — {rungs.map(requirementLine).join(" · ")}</span>
+                          ) : (
+                            <span className="text-muted-foreground"> — everyone starts here</span>
+                          )}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rewards</h3>
+          <ul className="mt-2 space-y-1.5">
+            {program.rewards.map((reward) => (
+              <li key={reward.label} className="flex items-center justify-between gap-3 text-sm">
+                <span>{reward.label}</span>
+                <span className="font-mono text-xs text-cyan-200">{reward.amount}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {membership && (met.length + failed.length > 0) ? (
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Your standing</h3>
+            <ul className="mt-2 space-y-1.5">
+              {met.map((key) => (
+                <li key={`met-${key}`} className="flex items-center gap-2 text-sm">
+                  <Check className="h-4 w-4 shrink-0 text-emerald-400" />
+                  <span className="font-mono text-xs text-muted-foreground">{METRIC_LABELS[key] ?? key}</span>
+                </li>
+              ))}
+              {failed.map((key) => (
+                <li key={`failed-${key}`} className="flex items-center gap-2 text-sm">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
+                  <span className="font-mono text-xs text-muted-foreground">{METRIC_LABELS[key] ?? key}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+
+      <footer className="border-t border-border/40 p-5">
+        {!membership ? (
+          <Button onClick={join} className="w-full">
+            {program.approval_required ? "Apply to join" : "Join the program"}
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        ) : approval === "pending" ? (
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-amber-200">Application received — pending review.</p>
+            <Button variant="outline" size="sm" onClick={onChanged}>
+              <RefreshCw className="mr-2 h-3.5 w-3.5" />
+              Refresh
+            </Button>
+          </div>
+        ) : approval === "rejected" ? (
+          <p className="text-sm text-muted-foreground">
+            This application wasn't approved. Reach out if you think that's wrong.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusPill value={approval ?? "approved"} />
+              <StatusPill value={qualification ?? "pending"} />
+              {membership.tier?.name ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted/60 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                  <Trophy className="h-3 w-3" />
+                  {membership.tier.name}
+                </span>
+              ) : null}
+            </div>
+            {referralCode ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <code className="rounded-md bg-background/70 px-2.5 py-1 font-mono text-sm">{referralCode}</code>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(referralUrl ?? referralCode);
+                    toast.success("Link copied");
+                  }}
+                  className="inline-flex items-center gap-1 rounded-md border border-border/60 px-2.5 py-1 text-xs hover:border-cyan-500/40"
+                >
+                  <Copy className="h-3 w-3" />
+                  Copy link
+                </button>
+              </div>
+            ) : null}
+          </div>
+        )}
+      </footer>
+    </section>
+  );
+}
+
+function StatusPill({ value }: { value: string }) {
+  const good = value === "approved" || value === "qualified";
+  const warm = value === "pending" || value === "grace";
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium capitalize",
+        good && "border border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+        warm && "border border-amber-500/30 bg-amber-500/10 text-amber-200",
+        !good && !warm && "border border-border/60 bg-muted/60 text-muted-foreground",
+      )}
+    >
+      {value.replace(/_/g, " ")}
+    </span>
+  );
+}
+
+export default CreatorProgramPage;
