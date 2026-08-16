@@ -6,6 +6,8 @@ import type { Context } from "hono";
 import { z } from "zod";
 import { sendOtpEmail } from "../lib/email";
 import { grantVerification, revokeVerification } from "../lib/verification";
+import { primaryOperatingType, syncProfileAssertions, syncUserAssertions } from "../lib/boomin-assertions";
+import { forwardConversion } from "../lib/boomin-conversions";
 import { areConnected, canInitiate, outreachStatus } from "../lib/outreach";
 import { entitlementsFor } from "../lib/entitlements";
 import {
@@ -264,6 +266,13 @@ appRoutes.post(
       await captureEvent(db, "signup_completed", freshUser.id, null, { method: "otp" });
     }
     if (body.referral_code && isNewSignup) {
+      // First-touch attribution (0027): persist the code once, never
+      // overwrite — forwardConversion reads it for the life of the user.
+      await db
+        .update(user)
+        .set({ referredByCode: body.referral_code })
+        .where(and(eq(user.id, freshUser.id), isNull(user.referredByCode)))
+        .catch(() => {});
       try {
         await recordSignup({
           issuer: BOOMIN_ISSUER,
@@ -652,6 +661,10 @@ appRoutes.post("/me/roles", zValidator("json", memberRoleWriteSchema), async (c)
       .onConflictDoNothing({ target: professionalPreferences.roleId });
   }
 
+  // Project the persona change onto the Boomin relationship (B1) — off the
+  // write path, never blocking the member.
+  c.executionCtx.waitUntil(syncProfileAssertions(db, c.env, profile.id));
+
   return c.json({ roles: await loadOwnRoles(db, profile.id) });
 });
 
@@ -797,6 +810,8 @@ appRoutes.delete("/me/roles/:roleId", async (c) => {
     .where(and(eq(memberRoles.id, c.req.param("roleId")), eq(memberRoles.profileId, profile.id)))
     .returning();
   if (deleted.length === 0) throw new HttpError(404, "not_found", "Role not found.");
+  // Dropping a persona revokes its projected claims (B1).
+  c.executionCtx.waitUntil(syncProfileAssertions(db, c.env, profile.id));
   return c.json({ roles: await loadOwnRoles(db, profile.id) });
 });
 
@@ -919,6 +934,9 @@ appRoutes.post(
       evidence: "email_domain_otp",
       evidenceRef: pending.domain,
     });
+
+    // employment_verified projects onto the Boomin relationship (B1).
+    c.executionCtx.waitUntil(syncProfileAssertions(db, c.env, profile.id));
 
     return c.json({
       verified: true,
@@ -1324,6 +1342,12 @@ appRoutes.post("/billing/webhook", async (c) => {
     .returning({ id: billingEvents.id });
   if (inserted.length === 0) return c.json({ received: true, duplicate: true });
 
+  // Boomin side-effects (B1/B3) collect here and are SCHEDULED only after the
+  // event is fully processed — via waitUntil, OUTSIDE the delete-on-throw
+  // path, so a Boomin hiccup can never 500 a processed webhook into a Stripe
+  // retry loop. Both helpers are non-throwing and idempotent.
+  const afterProcessed: Array<() => Promise<unknown>> = [];
+
   try {
     const object = event.data.object;
     switch (event.type) {
@@ -1334,10 +1358,26 @@ appRoutes.post("/billing/webhook", async (c) => {
         // subscription. Marked paid only here, from a verified event, never
         // from the success redirect.
         if (meta.service_request_id) {
-          await db
+          const [request] = await db
             .update(serviceRequests)
             .set({ status: "paid", paidAt: new Date(), stripeSessionId: object.id as string })
-            .where(eq(serviceRequests.id, meta.service_request_id));
+            .where(eq(serviceRequests.id, meta.service_request_id))
+            .returning({ userId: serviceRequests.userId });
+          // Referred tuition counts as gmv on the relationship (B3). Keyed by
+          // the SESSION id — a redelivery replays the same event_id. Anonymous
+          // requests (null userId) have no attribution to forward.
+          const amountTotal = Number(object.amount_total ?? 0);
+          const requestUserId = request?.userId;
+          if (requestUserId && amountTotal > 0) {
+            afterProcessed.push(() => forwardConversion(db, c.env, {
+              userId: requestUserId,
+              amountCents: amountTotal,
+              eventId: `atlantium_purchase_${object.id as string}`,
+              eventType: "service_purchase",
+              currency: (object.currency as string | undefined) ?? "usd",
+              metadata: { kind: "service_request", serviceRequestId: meta.service_request_id },
+            }));
+          }
           break;
         }
 
@@ -1346,6 +1386,10 @@ appRoutes.post("/billing/webhook", async (c) => {
         if (userId && subscriptionId) {
           const sub = await getSubscription(c.env, subscriptionId);
           await applySubscription(db, c.env, userId, sub);
+          // Membership changed → club_member re-projects (B1). The PURCHASE
+          // itself is NOT forwarded here — its first invoice carries the
+          // amount and invoice.payment_succeeded forwards it exactly once.
+          afterProcessed.push(() => syncUserAssertions(db, c.env, userId));
         }
         break;
       }
@@ -1366,6 +1410,36 @@ appRoutes.post("/billing/webhook", async (c) => {
             ...sub,
             status: event.type === "customer.subscription.deleted" ? "canceled" : sub.status,
           });
+          const syncUserId = userId;
+          afterProcessed.push(() => syncUserAssertions(db, c.env, syncUserId));
+        }
+        break;
+      }
+      // Renewals are invisible through subscription.updated (it carries no
+      // amount) — the INVOICE is where subscription money actually moves, so
+      // this is the one forward for Club revenue (B3). The first invoice
+      // covers the initial purchase too; the checkout branch above stays
+      // amount-silent, so nothing double-counts. Keyed by invoice id — a
+      // Stripe redelivery or our replay hits Boomin's dedupe.
+      case "invoice.payment_succeeded": {
+        const amountPaid = Number(object.amount_paid ?? 0);
+        const subscriptionDetails = object.subscription_details as { metadata?: Record<string, string> } | undefined;
+        let userId = subscriptionDetails?.metadata?.user_id;
+        if (!userId && typeof object.customer === "string") {
+          const [row] = await db.select({ userId: memberships.userId }).from(memberships)
+            .where(eq(memberships.stripeCustomerId, object.customer)).limit(1);
+          userId = row?.userId;
+        }
+        if (userId && amountPaid > 0) {
+          const invoiceUserId = userId;
+          afterProcessed.push(() => forwardConversion(db, c.env, {
+            userId: invoiceUserId,
+            amountCents: amountPaid,
+            eventId: `atlantium_purchase_${object.id as string}`,
+            eventType: "subscription_payment",
+            currency: (object.currency as string | undefined) ?? "usd",
+            metadata: { kind: "club_invoice", billingReason: (object.billing_reason as string | undefined) ?? null },
+          }));
         }
         break;
       }
@@ -1373,6 +1447,14 @@ appRoutes.post("/billing/webhook", async (c) => {
         break;
     }
     await db.update(billingEvents).set({ processedAt: new Date() }).where(eq(billingEvents.id, event.id));
+    for (const task of afterProcessed) {
+      try {
+        c.executionCtx.waitUntil(task());
+      } catch {
+        // No execution context (tests) — the nightly reconcile and Stripe's
+        // own retraversal of history cover anything dropped here.
+      }
+    }
     return c.json({ received: true });
   } catch (error) {
     // Record the failure and 500 so Stripe retries; the event row stays
@@ -1775,6 +1857,10 @@ appRoutes.post(
           : null,
     });
 
+    // <type>_verified projects onto the Boomin relationship, expiry forwarded
+    // in lockstep (B1) — re-verification later refreshes the claim.
+    c.executionCtx.waitUntil(syncProfileAssertions(db, c.env, role.profileId));
+
     // A verified investor is the scarce side. Protect their inbox BY DEFAULT
     // rather than relying on them to find a setting (§8.3). Only when they have
     // no policy of their own — never overriding a choice they already made.
@@ -1825,6 +1911,10 @@ appRoutes.post(
     const revoked = await revokeVerification(
       db, { memberRoleId: input.member_role_id }, input.verification, input.reason);
     if (revoked === 0) throw new HttpError(404, "not_found", "No live grant to revoke.");
+
+    // Withdrawn trust de-qualifies on Boomin too: the sync revokes the
+    // projected claim, and assert:-gated standing hard-invalidates (B1).
+    if (role) c.executionCtx.waitUntil(syncProfileAssertions(db, c.env, role.profileId));
 
     // Revoking the verification must revoke what it bought, or a revoked
     // investor keeps unlimited outreach forever.
@@ -2573,6 +2663,8 @@ appRoutes.post(
         evidenceRef: row.evidence ?? null,
         grantedBy: authUser.id,
       });
+      // org_authority_verified projects onto the Boomin relationship (B1).
+      c.executionCtx.waitUntil(syncProfileAssertions(db, c.env, row.profileId));
     }
 
     await db.update(orgRequests)
@@ -3117,7 +3209,27 @@ appRoutes.get("/handoff/boomin/status", async (c) => {
 appRoutes.get("/dashboard/creators", async (c) => {
   const { db, authUser } = await requireAppUser(c);
   const activeProfile = await ensureDefaultProfile(db, authUser);
-  return creatorStandingResponse(c, profileExternalUserId(activeProfile));
+  const response = await creatorStandingResponse(c, profileExternalUserId(activeProfile));
+  // Additive (B4): the member's local capacity next to the Boomin standing —
+  // the badge the FE renders without a second round trip. Boomin-side fields
+  // (enrollment operating_type, requirement provenance) flow through the
+  // standing payload untouched.
+  try {
+    const roles = await db
+      .select({ role: memberRoles.role, confirmedAt: memberRoles.confirmedAt })
+      .from(memberRoles)
+      .where(eq(memberRoles.profileId, activeProfile.id));
+    const body = await response.clone().json() as Record<string, unknown>;
+    return jsonWithStatus({
+      ...body,
+      atlantium: {
+        personas: roles.filter((r) => r.confirmedAt).map((r) => r.role),
+        primary_operating_type: primaryOperatingType(roles) ?? null,
+      },
+    }, response.status);
+  } catch {
+    return response;
+  }
 });
 
 appRoutes.get("/admin/partnerships/creators", async (c) => {
@@ -3757,6 +3869,15 @@ async function buildHandoffOptions(c: Context<{ Bindings: Env }>) {
   const activeProfile = await ensureDefaultProfile(db, authUser);
   const redirectUri = c.env.BOOMIN_HANDOFF_REDIRECT_URI
     || `${c.env.APP_BASE_URL || "https://atlantium.ai"}/creator-program`;
+  // The member's confirmed personas ride the SIGNED payload (B2):
+  // `operatingType` sets the enrollment's capacity on Boomin (advisor >
+  // investor > founder > professional), `personas` is context. `profileType`
+  // stays what it is — personal|child|team — never repurposed for capacity.
+  const profileRoles = await db
+    .select({ role: memberRoles.role, confirmedAt: memberRoles.confirmedAt })
+    .from(memberRoles)
+    .where(eq(memberRoles.profileId, activeProfile.id));
+  const operatingType = primaryOperatingType(profileRoles);
   const options = {
     issuer: BOOMIN_ISSUER,
     audience: BOOMIN_AUDIENCE,
@@ -3765,10 +3886,12 @@ async function buildHandoffOptions(c: Context<{ Bindings: Env }>) {
     externalUserId: profileExternalUserId(activeProfile),
     email: authUser.email,
     name: activeProfile.displayName,
+    ...(operatingType ? { operatingType } : {}),
     metadata: {
       atlantiumUserId: authUser.id,
       atlantiumProfileId: activeProfile.id,
       profileType: activeProfile.type,
+      personas: profileRoles.filter((r) => r.confirmedAt).map((r) => r.role),
     },
     signingSecret: requireEnv(c.env, "HANDOFF_SIGNING_SECRET"),
     expiresInSeconds: BOOMIN_HANDOFF_EXPIRES_IN,

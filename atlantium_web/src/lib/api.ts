@@ -205,6 +205,13 @@ export interface CreatorDashboardResponse {
     notQualified: number;
     connected: number;
   };
+  /** Local capacity context the API attaches beside the Boomin standing
+   *  (additive, plan B4): the member's confirmed personas and the capacity
+   *  their enrollment operates in. */
+  atlantium?: {
+    personas?: string[];
+    primary_operating_type?: string | null;
+  };
 }
 
 export interface JobPostingContent {

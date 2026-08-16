@@ -36,6 +36,10 @@ export const user = pgTable("user", {
   isAdmin: boolean("is_admin").notNull().default(false),
   isApproved: boolean("is_approved").notNull().default(false),
   image: text("image"),
+  /** First-touch referral attribution (0027): the Boomin referral code this
+   *  user arrived with, persisted at first verify and never overwritten.
+   *  NULL = organic — conversion forwarding early-exits. */
+  referredByCode: text("referred_by_code"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({

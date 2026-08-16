@@ -22,6 +22,11 @@ export type Env = {
   BOOMIN_CONNECT_PROGRAM_ID?: string;
   BOOMIN_CONNECT_API_BASE?: string;
   BOOMIN_HANDOFF_REDIRECT_URI?: string;
+  /** Platform sk_ key (assertions:write) — a wrangler SECRET, never a var
+   *  (vars/secrets share one namespace). Absent = assertion sync + conversion
+   *  forwarding are INERT: every helper early-exits. Deploy-order safe. */
+  BOOMIN_PLATFORM_SECRET?: string;
+  BOOMIN_PLATFORM_API_BASE?: string;
   REFERRAL_LANDING_URL?: string;
   BOOMIN_APP_API_BASE?: string;
   BOOMIN_APP_STANDING_EMAIL?: string;

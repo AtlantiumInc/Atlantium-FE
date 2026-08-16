@@ -14,6 +14,13 @@ export interface MyStanding {
   referralCode: string | null;
   referralUrl: string | null;
   deployments: DeploymentCard[];
+  /** The capacity this member operates in (advisor/investor/founder/
+   *  professional), from the local persona record — null when untyped. */
+  operatingType: string | null;
+  /** Requirement keys the standing evaluation reported (either spelling of
+   *  the wire fields) — the checklist's data. Empty = no detail available. */
+  requirementsMet: string[];
+  requirementsFailed: string[];
 }
 
 /** Display model for one campaign card. Pure derivation — unit-tested with
@@ -81,5 +88,12 @@ export function deriveMyStanding(response: CreatorDashboardResponse | null): MyS
     referralCode,
     referralUrl,
     deployments: (partner.deployments ?? []).map(deploymentCard),
+    operatingType: response?.atlantium?.primary_operating_type ?? null,
+    requirementsMet: partner.qualification?.requirementsMet
+      ?? partner.qualification?.requirements_met
+      ?? [],
+    requirementsFailed: partner.qualification?.requirementsFailed
+      ?? partner.qualification?.requirements_failed
+      ?? [],
   };
 }

@@ -70,4 +70,4 @@ STRIPE_PRICE_CLUB_ANNUAL = "price_1U48jURpvj2ofWAVz9qqgxlB"
 # Mondays 13:00 UTC (9am ET): weekly member digest — src/lib/digest.ts
 # Every 30 min: AI job review cycle (poll + submit) — src/lib/jobs-review.ts
 [triggers]
-crons = ["0 10 * * *", "0 13 * * 1", "*/30 * * * *"]
+crons = ["0 10 * * *", "0 13 * * 1", "*/30 * * * *", "0 4 * * *"]
