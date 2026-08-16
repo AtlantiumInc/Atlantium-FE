@@ -1850,6 +1850,7 @@ class ApiClient {
     };
     directory: Record<string, number>;
     wire: Array<{ slug: string; title: string; publishedAt: string | null }>;
+    activity: Array<{ type: string; at: string; label: string; href: string }>;
   }> {
     return this.request("/console", { method: "GET" }, ATLANTIUM_API_BASE_URL);
   }

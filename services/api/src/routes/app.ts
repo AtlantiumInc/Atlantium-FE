@@ -3513,6 +3513,75 @@ appRoutes.get("/console", async (c) => {
   ]);
   const dir: Record<string, number> = {};
   for (const row of dirCounts) dir[row.kind] = row.n;
+
+  // The tape: the network's most recent TRUE events, merged newest-first
+  // from the three surfaces that already timestamp their arrivals. No
+  // tracking involved — this is the data's own history.
+  const [tapeJobs, tapeEntries] = await Promise.all([
+    db
+      .select({
+        slug: jobPostings.slug,
+        title: jobPostings.title,
+        company: jobPostings.company,
+        salaryMin: jobPostings.salaryMin,
+        salaryMax: jobPostings.salaryMax,
+        at: sql<string>`coalesce(${jobPostings.postedAt}, ${jobPostings.createdAt})`,
+      })
+      .from(jobPostings)
+      .where(eq(jobPostings.status, "active"))
+      .orderBy(sql`coalesce(${jobPostings.postedAt}, ${jobPostings.createdAt}) desc`)
+      .limit(8),
+    db
+      .select({
+        kind: directoryEntries.kind,
+        slug: directoryEntries.slug,
+        name: directoryEntries.name,
+        at: directoryEntries.createdAt,
+      })
+      .from(directoryEntries)
+      .where(eq(directoryEntries.status, "active"))
+      .orderBy(desc(directoryEntries.createdAt))
+      .limit(5),
+  ]);
+  type TapeItem = { type: string; at: string; label: string; href: string };
+  const activity: TapeItem[] = [
+    ...tapeJobs.map((j) => ({
+      type: "job",
+      at: String(j.at),
+      label: `${j.company} posted ${j.title}${j.salaryMax ? ` · $${Math.round((j.salaryMin ?? j.salaryMax) / 1000)}–${Math.round(j.salaryMax / 1000)}k` : ""}`,
+      href: `/jobs/${j.slug}`,
+    })),
+    ...tapeEntries.map((e) => ({
+      type: "entry",
+      at: String(e.at?.toISOString?.() ?? e.at),
+      label: `New on the Map: ${e.name}`,
+      href: `/directory/${e.kind}/${e.slug}`,
+    })),
+    ...latestPosts.map((p) => ({
+      type: "wire",
+      at: String(p.publishedAt?.toISOString?.() ?? p.publishedAt),
+      label: `The Wire: ${p.title}`,
+      href: `/blog/${p.slug}`,
+    })),
+  ]
+    .filter((i) => i.at && i.at !== "null")
+    .sort((a, b) => (a.at < b.at ? 1 : -1));
+  // Imports land in batches (one sync = N rows, one timestamp), so a pure
+  // newest-first tape becomes a wall of one voice. Round-robin the sources,
+  // each internally newest-first, so the tape reads like a mixed feed.
+  const bySource = new Map<string, TapeItem[]>();
+  for (const item of activity) {
+    bySource.set(item.type, [...(bySource.get(item.type) ?? []), item]);
+  }
+  const lanes = [...bySource.values()];
+  const tape: TapeItem[] = [];
+  for (let i = 0; tape.length < Math.min(activity.length, 14); i++) {
+    const lane = lanes[i % lanes.length];
+    const next = lane.shift();
+    if (next) tape.push(next);
+    if (lanes.every((l) => l.length === 0)) break;
+  }
+
   c.header("Cache-Control", "public, s-maxage=300, max-age=60");
   return c.json({
     jobs: {
@@ -3524,6 +3593,7 @@ appRoutes.get("/console", async (c) => {
     },
     directory: dir,
     wire: latestPosts,
+    activity: tape,
   });
 });
 

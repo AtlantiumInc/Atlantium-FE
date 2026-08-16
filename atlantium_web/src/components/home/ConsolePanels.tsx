@@ -215,6 +215,49 @@ function IntensivePanel({ index }: { index: number }) {
   );
 }
 
+/** Relative time in tape voice: 2H AGO, 3D AGO. */
+function tapeAge(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const h = Math.floor(ms / 3_600_000);
+  if (h < 1) return "JUST NOW";
+  if (h < 24) return `${h}H AGO`;
+  const d = Math.floor(h / 24);
+  return d === 1 ? "YESTERDAY" : `${d}D AGO`;
+}
+
+/** The tape: the network's pulse — recent true events drifting past like a
+ *  stock ticker. Content is doubled so the CSS loop is seamless; pauses on
+ *  hover so items can be read and clicked. */
+function Tape({ items }: { items: ConsoleData["activity"] }) {
+  if (!items?.length) return null;
+  const run = (
+    <>
+      {items.map((item, i) => (
+        <Link
+          key={`${item.href}-${i}`}
+          to={item.href}
+          className="inline-flex items-center gap-2 shrink-0 hover:text-foreground transition-colors"
+        >
+          <span className="text-primary/70">▸</span>
+          <span className="text-muted-foreground/70">{tapeAge(item.at)}</span>
+          <span>{item.label.toUpperCase()}</span>
+        </Link>
+      ))}
+    </>
+  );
+  return (
+    <div className="relative overflow-hidden border-y border-border/40 py-1.5 mb-3 group/tape" aria-label="Recent network activity">
+      <div className="flex gap-8 w-max font-mono text-[10px] tracking-wide text-muted-foreground whitespace-nowrap animate-[tape-drift_60s_linear_infinite] group-hover/tape:[animation-play-state:paused]">
+        {run}
+        <span aria-hidden="true" className="contents">{run}</span>
+      </div>
+      {/* edge fades so items materialize instead of popping */}
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-background to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background to-transparent" />
+    </div>
+  );
+}
+
 export function ConsolePanels() {
   const [data, setData] = useState<ConsoleData | null>(null);
   useEffect(() => {
@@ -233,8 +276,11 @@ export function ConsolePanels() {
   panels.push(<IntensivePanel key="intensive" index={panels.length} />);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-stretch">
-      {panels}
+    <div>
+      <Tape items={data.activity} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-stretch">
+        {panels}
+      </div>
     </div>
   );
 }

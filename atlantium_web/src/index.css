@@ -284,3 +284,10 @@
 :root:not(.dark) .border-glow-card.deck-featured > .edge-light {
   display: none;
 }
+
+/* Console tape: one full copy of the run scrolls past per cycle (content is
+   doubled in the DOM, so -50% = seamless loop) */
+@keyframes tape-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
