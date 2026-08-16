@@ -82,6 +82,16 @@ export function HolographicCard({
   const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current) return;
 
+    // Over an interactive child, flatten and hold still: tilt physics move
+    // the element between mousedown and mouseup, so the click never lands —
+    // a button on a moving target is not a button.
+    const target = e.target as HTMLElement;
+    if (target.closest("button, a, input, [role='button']")) {
+      mouseX.set(0.5);
+      mouseY.set(0.5);
+      return;
+    }
+
     const rect = cardRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width;
     const y = (e.clientY - rect.top) / rect.height;

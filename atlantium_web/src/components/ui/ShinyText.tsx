@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, useMotionValue, useAnimationFrame, useTransform } from 'motion/react';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface ShinyTextProps {
   text: string;
@@ -99,8 +100,16 @@ const ShinyText: React.FC<ShinyTextProps> = ({
     if (pauseOnHover) setIsPaused(false);
   }, [pauseOnHover]);
 
+  // A white shine erases the letters on light surfaces mid-sweep; in light
+  // mode it becomes navy ink, so the sweep reads as a glint either way.
+  const { resolvedTheme } = useTheme();
+  const effectiveShine =
+    resolvedTheme === 'light' && ['#fff', '#ffffff', 'white'].includes(shineColor.toLowerCase())
+      ? '#16324a'
+      : shineColor;
+
   const gradientStyle: React.CSSProperties = {
-    backgroundImage: `linear-gradient(${spread}deg, ${color} 0%, ${color} 35%, ${shineColor} 50%, ${color} 65%, ${color} 100%)`,
+    backgroundImage: `linear-gradient(${spread}deg, ${color} 0%, ${color} 35%, ${effectiveShine} 50%, ${color} 65%, ${color} 100%)`,
     backgroundSize: '200% auto',
     WebkitBackgroundClip: 'text',
     backgroundClip: 'text',

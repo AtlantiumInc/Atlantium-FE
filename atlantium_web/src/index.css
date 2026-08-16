@@ -54,37 +54,40 @@
 
 :root {
   --radius: 0.375rem;
-  /* Light mode: Silver + Deep Navy + Cyan accents */
-  --background: oklch(0.95 0.008 240);
+  /* Light mode: fog over the lab — deepened blue-gray surfaces, navy ink,
+     the same cyan accents. Deliberately NOT white: the brand's soul is the
+     dark console, and light mode should read as the lab with the lights on,
+     not a different product. */
+  --background: oklch(0.88 0.015 240);
   --foreground: oklch(0.18 0.03 245);
-  --card: oklch(0.98 0.005 240);
+  --card: oklch(0.93 0.012 240);
   --card-foreground: oklch(0.18 0.03 245);
-  --popover: oklch(0.98 0.005 240);
+  --popover: oklch(0.93 0.012 240);
   --popover-foreground: oklch(0.18 0.03 245);
   --primary: oklch(0.50 0.16 200);
-  --primary-foreground: oklch(0.98 0.005 240);
-  --secondary: oklch(0.90 0.01 240);
+  --primary-foreground: oklch(0.97 0.008 240);
+  --secondary: oklch(0.83 0.015 240);
   --secondary-foreground: oklch(0.22 0.025 245);
-  --muted: oklch(0.88 0.01 240);
-  --muted-foreground: oklch(0.45 0.02 245);
+  --muted: oklch(0.82 0.015 240);
+  --muted-foreground: oklch(0.40 0.025 245);
   --accent: oklch(0.55 0.18 195);
-  --accent-foreground: oklch(0.98 0.005 240);
+  --accent-foreground: oklch(0.97 0.008 240);
   --destructive: oklch(0.50 0.24 25);
-  --border: oklch(0.82 0.015 240);
-  --input: oklch(0.92 0.008 240);
+  --border: oklch(0.76 0.02 240);
+  --input: oklch(0.86 0.012 240);
   --ring: oklch(0.50 0.16 200);
   --chart-1: oklch(0.50 0.16 200);
   --chart-2: oklch(0.45 0.14 210);
   --chart-3: oklch(0.40 0.10 230);
   --chart-4: oklch(0.55 0.12 190);
   --chart-5: oklch(0.35 0.12 220);
-  --sidebar: oklch(0.93 0.008 240);
+  --sidebar: oklch(0.87 0.015 240);
   --sidebar-foreground: oklch(0.18 0.03 245);
   --sidebar-primary: oklch(0.50 0.16 200);
   --sidebar-primary-foreground: oklch(0.98 0.005 240);
-  --sidebar-accent: oklch(0.88 0.01 240);
+  --sidebar-accent: oklch(0.82 0.015 240);
   --sidebar-accent-foreground: oklch(0.22 0.025 245);
-  --sidebar-border: oklch(0.82 0.015 240);
+  --sidebar-border: oklch(0.76 0.02 240);
   --sidebar-ring: oklch(0.50 0.16 200);
 }
 
@@ -215,3 +218,69 @@
   }
 }
 
+
+/* ── Route transitions (View Transitions API) ─────────────────────────────
+   Deck navigations pass viewTransition, so the router snapshots old/new and
+   we choreograph the swap: the old page holds steady underneath while the
+   new one wipes down over it like a console redraw — no flash frame.
+   Browsers without support (or reduced-motion users) get the plain swap. */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) {
+    animation: vt-hold 380ms ease both;
+  }
+  ::view-transition-new(root) {
+    animation: vt-redraw 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes vt-hold {
+    to { opacity: 1; }
+  }
+  @keyframes vt-redraw {
+    from { clip-path: inset(0 0 100% 0); }
+    to   { clip-path: inset(0 0 0% 0); }
+  }
+}
+
+/* Featured deck row (BorderGlow wrap): the component is built as a grid card
+   with a scrolling inner — as a one-line row it must behave like a block and
+   keep the min-width:0 chain intact so the row's truncation keeps working. */
+.deck-featured { display: block; min-width: 0; }
+.deck-featured .border-glow-inner { overflow: visible; min-width: 0; display: block; }
+
+/* Orbiting light on the nav logo — the quiet, continuous cue that the mark
+   is the menu. A thin cyan arc sweeps the rim; masked to the ring so the
+   coin face stays clean. Hidden while the deck is open (signal received). */
+.logo-orbit {
+  position: absolute;
+  inset: -3px;
+  border-radius: 9999px;
+  pointer-events: none;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg 300deg,
+    rgba(0, 212, 255, 0.9) 340deg,
+    transparent 360deg
+  );
+  -webkit-mask-image: radial-gradient(closest-side, transparent calc(100% - 3px), black calc(100% - 1px));
+  mask-image: radial-gradient(closest-side, transparent calc(100% - 3px), black calc(100% - 1px));
+  animation: logo-orbit-spin 4.5s linear infinite;
+}
+@keyframes logo-orbit-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo-orbit { display: none; }
+}
+
+/* Light mode: the featured deck row's BorderGlow is a dark-surface effect —
+   its stacked shadows and gradient border read as a smudged blob on white.
+   Neutralize to a clean static accent row; the moving light stays a
+   dark-mode signature. */
+:root:not(.dark) .border-glow-card.deck-featured {
+  box-shadow: none;
+  background: color-mix(in oklab, var(--primary) 5%, transparent) !important;
+  border-color: color-mix(in oklab, var(--primary) 35%, transparent);
+}
+:root:not(.dark) .border-glow-card.deck-featured::before,
+:root:not(.dark) .border-glow-card.deck-featured > .edge-light {
+  display: none;
+}

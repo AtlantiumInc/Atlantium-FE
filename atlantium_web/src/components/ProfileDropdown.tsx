@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Trash2, Loader2, ExternalLink, Pencil, ChevronDown } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Trash2, Loader2, ExternalLink, Pencil, ChevronDown, ChevronRight, BadgeCheck, Copy, LogOut, Shield } from "lucide-react";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -178,17 +179,7 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
           className="w-full sm:max-w-lg overflow-y-auto data-[state=open]:slide-in-from-top-2 data-[state=closed]:slide-out-to-top-2 data-[state=open]:duration-300 data-[state=closed]:duration-200 inset-y-auto top-0 right-0 h-auto max-h-[calc(100vh-1.5rem)] mt-3 mr-3 rounded-2xl border"
         >
           <SheetHeader className="pb-4 border-b">
-            <div className="flex items-center justify-between pr-8">
-              <SheetTitle>Profile</SheetTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onLogout}
-                className="text-muted-foreground hover:text-destructive h-7 text-xs"
-              >
-                Logout
-              </Button>
-            </div>
+            <SheetTitle>Profile</SheetTitle>
             <SheetDescription>
               Manage your profile information and membership.
             </SheetDescription>
@@ -204,7 +195,33 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
             />
 
             {/* Membership Card */}
-            <MembershipCard onAvatarClick={handleAvatarClick} username={profile?.username} bio={profile?.bio} createdAt={profile?.created_at} />
+            <MembershipCard
+              onAvatarClick={handleAvatarClick}
+              onCardClick={() => setIsProfileOpen(true)}
+              username={profile?.username}
+              bio={profile?.bio}
+              createdAt={profile?.created_at}
+            />
+
+            {/* Admin access — outside the holographic card: buttons on a
+                tilting surface don't reliably take clicks */}
+            {user?.is_admin && (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-4 py-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-cyan-500" />
+                  <span className="font-medium">Admin access</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 border-cyan-500/30"
+                  onClick={() => window.location.assign("/admin")}
+                >
+                  Open Admin
+                </Button>
+              </div>
+            )}
 
             {/* Profile Edit Form */}
             <div className="rounded-lg border border-border overflow-hidden">
@@ -237,44 +254,71 @@ export function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
               </div>
             </div>
 
-            {/* Refer Users */}
-            <div>
-              <h3 className="text-sm font-semibold mb-2">Refer Users</h3>
-              <p className="text-xs text-muted-foreground mb-3">Share your referral link to invite others to Atlantium.</p>
-              <div
-                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+            {/* Account — one list, same row grammar as Edit Profile above */}
+            <div className="rounded-lg border border-border divide-y divide-border overflow-hidden">
+              <button
+                type="button"
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors"
                 onClick={async () => {
                   const url = `https://atlantium.ai?ref=${profile?.username || ""}`;
                   await navigator.clipboard.writeText(url);
                   toast.success("Referral link copied!");
                 }}
               >
-                <span className="text-sm text-muted-foreground truncate flex-1">
-                  atlantium.ai?ref={profile?.username || ""}
+                <Copy className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold">Refer users</span>
+                  <span className="block text-xs text-muted-foreground truncate">
+                    atlantium.ai?ref={profile?.username || ""} — tap to copy
+                  </span>
                 </span>
-                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              </div>
-            </div>
+              </button>
 
-            {/* Manage Billing */}
-            <button
-              onClick={handleManageSubscription}
-              disabled={isLoadingPortal}
-              className="group w-full py-2 px-4 flex items-center justify-center gap-2 text-sm text-muted-foreground rounded-lg transition-all duration-300 hover:text-foreground hover:bg-muted/50 disabled:opacity-50 disabled:cursor-not-allowed"
+              <Link
+                to="/company-claim"
+                onClick={() => setIsEditOpen(false)}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors"
+              >
+                <BadgeCheck className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold">Your company</span>
+                  <span className="block text-xs text-muted-foreground">Claim or verify your organization</span>
+                </span>
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+              </Link>
+
+              <button
+                onClick={handleManageSubscription}
+                disabled={isLoadingPortal}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoadingPortal ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
+                ) : (
+                  <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold">Manage billing</span>
+                  <span className="block text-xs text-muted-foreground">Invoices and payment method — opens Stripe</span>
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Logout — deliberately far from the sheet's close button */}
+          <div className="mt-8 mx-4">
+            <Button
+              variant="outline"
+              className="w-full gap-2 text-muted-foreground hover:text-foreground"
+              onClick={onLogout}
             >
-              {isLoadingPortal ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <>
-                  <ExternalLink className="h-4 w-4" />
-                  <span>Manage Billing</span>
-                </>
-              )}
-            </button>
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
           </div>
 
           {/* Delete Account Section */}
-          <div className="mt-10 pt-6 pb-4 border-t border-border mx-4">
+          <div className="mt-6 pt-6 pb-4 border-t border-border mx-4">
             <h3 className="text-sm font-medium text-destructive">Danger Zone</h3>
             <p className="mt-1 text-sm text-muted-foreground">
               Permanently delete your account and all associated data.

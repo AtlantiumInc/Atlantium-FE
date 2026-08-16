@@ -72,6 +72,37 @@ export async function createCheckoutSession(
   }));
 }
 
+/**
+ * One-time payment at an arbitrary amount — the "close on the call" link.
+ * price_data instead of a price id because the number is set per-lead (grants);
+ * payment methods follow the dashboard config, so enabling Affirm/Klarna there
+ * lights them up here with no code change.
+ */
+export async function createOneTimeCheckout(
+  env: Env,
+  input: {
+    amountCents: number;
+    productName: string;
+    email: string;
+    metadata: Record<string, string>;
+    successUrl: string;
+    cancelUrl: string;
+  },
+): Promise<CheckoutSession> {
+  const params: Record<string, string | number> = {
+    mode: "payment",
+    "line_items[0][quantity]": 1,
+    "line_items[0][price_data][currency]": "usd",
+    "line_items[0][price_data][unit_amount]": input.amountCents,
+    "line_items[0][price_data][product_data][name]": input.productName,
+    customer_email: input.email,
+    success_url: input.successUrl,
+    cancel_url: input.cancelUrl,
+  };
+  for (const [k, v] of Object.entries(input.metadata)) params[`metadata[${k}]`] = v;
+  return stripeRequest<CheckoutSession>(env, "/checkout/sessions", form(params));
+}
+
 export async function createPortalSession(
   env: Env,
   input: { customerId: string; returnUrl: string },

@@ -46,6 +46,35 @@ export default {
       return handleOgRoute(request, () => staticFocusGroupsOg());
     }
 
+    // Hub pages — the links a content launch actually shares. Without these
+    // they unfurl as the generic site card.
+    if (pathname === '/jobs' || pathname === '/jobs/') {
+      return handleOgRoute(request, () => staticHubOg({
+        title: 'Atlanta Tech Jobs — Verified Daily | Atlantium',
+        description:
+          'Thousands of live Atlanta tech and AI roles — every apply link checked by AI on a rolling cycle, salary and no-degree signals included. Free to browse.',
+        path: '/jobs',
+      }));
+    }
+
+    if (pathname === '/directory' || pathname === '/directory/' || pathname === '/grants' || pathname === '/grants/') {
+      return handleOgRoute(request, () => staticHubOg({
+        title: 'The Working Map of Atlanta Tech | Atlantium',
+        description:
+          'Every investor writing checks in the Southeast, every accelerator and grant, 1,000+ companies hiring — profiled, checked continuously, free to browse.',
+        path: '/directory',
+      }));
+    }
+
+    if (pathname === '/training' || pathname === '/training/') {
+      return handleOgRoute(request, () => staticHubOg({
+        title: 'AI Engineering Intensive — 8 Weeks, Atlanta | Atlantium',
+        description:
+          'From where you are to shipping production AI: live sessions, a real client build, warm introductions to hiring partners. 30 seats a cohort — Atlanta Builder Grants cover up to half.',
+        path: '/training',
+      }));
+    }
+
     if ((match = pathname.match(/^\/jobs\/([^/]+)\/?$/))) {
       return handleOgRoute(request, () => fetchJobOg(match[1]));
     }
@@ -556,6 +585,18 @@ async function renderJobOgImage(slug, request) {
   });
   await cache.put(cacheKey, response.clone());
   return response;
+}
+
+function staticHubOg({ title, description, path }) {
+  return buildOgString({
+    type: 'website',
+    siteName: 'Atlantium',
+    title,
+    description,
+    image: `${SITE_ORIGIN}/og-image.png`,
+    url: `${SITE_ORIGIN}${path}`,
+    twitterCard: 'summary_large_image',
+  });
 }
 
 function staticFocusGroupsOg() {

@@ -19,6 +19,12 @@ import { cn } from "@/lib/utils";
 
 type LoadState = "loading" | "ready" | "error";
 
+/** Requirement keys are wire vocabulary (`assert:advisor_verified`,
+ *  `x:demo_submitted`, `gmv_cents`) — humanize lightly, never rename. */
+function requirementLabel(key: string): string {
+  return key.replace(/^assert:/, "verified: ").replace(/^x:/, "").replace(/_/g, " ");
+}
+
 const EVERGREEN_COPY =
   "This is your link. During a campaign, use the campaign's link so it counts toward that campaign.";
 
@@ -106,6 +112,11 @@ export function PartnersPanel() {
           <span className="inline-flex items-center rounded-full bg-muted/60 px-2.5 py-1 text-xs font-medium text-muted-foreground">
             {standing.tierName ?? "No tier"}
           </span>
+          {standing.operatingType ? (
+            <span className="inline-flex items-center rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-xs font-medium capitalize text-cyan-200">
+              {standing.operatingType}
+            </span>
+          ) : null}
         </div>
         <button
           type="button"
@@ -153,6 +164,31 @@ export function PartnersPanel() {
         )}
         <p className="mt-3 text-xs leading-5 text-muted-foreground">{EVERGREEN_COPY}</p>
       </div>
+
+      {/* Requirement checklist — rendered only when the standing evaluation
+          reported requirement detail (additive; older payloads show nothing) */}
+      {standing.requirementsMet.length + standing.requirementsFailed.length > 0 && (
+        <div className="rounded-lg border border-border/60 bg-background/40 p-5">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <ShieldCheck className="h-4 w-4" />
+            <h3 className="text-sm font-semibold uppercase tracking-wide">Standing requirements</h3>
+          </div>
+          <ul className="mt-3 space-y-1.5">
+            {standing.requirementsMet.map((key) => (
+              <li key={`met-${key}`} className="flex items-center gap-2 text-sm">
+                <Check className="h-4 w-4 shrink-0 text-emerald-400" />
+                <span className="font-mono text-xs text-muted-foreground">{requirementLabel(key)}</span>
+              </li>
+            ))}
+            {standing.requirementsFailed.map((key) => (
+              <li key={`failed-${key}`} className="flex items-center gap-2 text-sm">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
+                <span className="font-mono text-xs text-muted-foreground">{requirementLabel(key)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Campaigns */}
       <div>

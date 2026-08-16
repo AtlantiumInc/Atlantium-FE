@@ -99,7 +99,7 @@ if (expireMissing) {
   const expired = await sql.query(
     `UPDATE job_postings
        SET status = 'expired', updated_at = now()
-     WHERE status = 'active' AND NOT (apply_url = ANY($1::text[]))
+     WHERE status = 'active' AND source = 'hiring_cafe' AND NOT (apply_url = ANY($1::text[]))
      RETURNING id`,
     [urls],
   ) as Array<{ id: string }>;

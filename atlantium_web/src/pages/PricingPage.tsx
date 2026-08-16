@@ -19,7 +19,6 @@ import {
   Clock,
   Users,
   Zap,
-  Code,
   Video,
   Handshake,
   Rocket,
@@ -27,7 +26,8 @@ import {
   FolderOpen,
   Lightbulb,
   CalendarCheck,
-  Globe } from "lucide-react";
+  Globe,
+  Sparkles } from "lucide-react";
 
 function FadeIn({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -65,18 +65,17 @@ const tiers = [
     name: "Club Membership",
     price: "$29",
     period: "/month",
-    description: "For people who want our time",
+    description: "For people building their place in the network",
     popular: true,
     icon: Crown,
     color: "violet",
     features: [
       "Everything in Free",
-      "Office hours Mon\u2013Thu",
-      "AI engineering curriculum",
-      "Focus groups",
-      "Exclusive member events",
+      "Rene — your frontier agent",
+      "Member DMs across the network",
+      "Club events, virtual & in-person",
       "Priority event registration",
-      "Startup advisor",
+      "Unlimited directory contact reveals",
     ],
   },
   {
@@ -261,9 +260,9 @@ export function PricingPage() {
         <FadeIn>
           <div className="text-center mb-12">
             <p className="text-xs font-bold text-violet-400 uppercase tracking-widest mb-3">Club Membership</p>
-            <h2 className="text-3xl sm:text-4xl font-bold">We Build With You</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold">Your Seat in the Network</h2>
             <p className="text-muted-foreground mt-3 max-w-2xl mx-auto">
-              Club membership isn't a course — it's hands-on collaboration. We work deeply alongside you on your projects, from architecture to deployment. Think of it as having a technical co-founder on call.
+              Club membership isn't content — it's standing. You can reach the people in this network, show up to the rooms where they meet, and put Rene to work on whatever you're trying to get done.
             </p>
           </div>
         </FadeIn>
@@ -271,24 +270,19 @@ export function PricingPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {[
             {
+              icon: Sparkles,
+              title: "Rene, Your Frontier Agent",
+              desc: "A member-only agent that works inside the lab with you \u2014 tracking what you're trying to get done and moving it forward between visits. Your thread with Rene opens the moment you join.",
+            },
+            {
+              icon: MessageSquare,
+              title: "Member DMs",
+              desc: "Start conversations with anyone in the network \u2014 founders, engineers, operators. Free members can only reply; Club members open the door.",
+            },
+            {
               icon: Video,
-              title: "Office Hours Mon\u2013Thu",
-              desc: "Four sessions a week with engineers who actually review your code, debug with you, and help you ship. Not lectures \u2014 real working sessions on your project.",
-            },
-            {
-              icon: FolderOpen,
-              title: "Deep Project Support",
-              desc: "Bring your startup, side project, or portfolio piece. We help with architecture decisions, code reviews, deployment strategy, and getting unstuck on the hard problems.",
-            },
-            {
-              icon: Code,
-              title: "AI Engineering Curriculum",
-              desc: "A structured path from foundations to production-grade AI apps. TypeScript, React, system design, LLM integration — taught through building, not slides.",
-            },
-            {
-              icon: Lightbulb,
-              title: "Startup Advisory",
-              desc: "Get feedback on your idea, go-to-market strategy, and technical roadmap from founders who've been through it. We help you build something people actually want.",
+              title: "Club Events \u2014 Virtual & IRL",
+              desc: "Member sessions online and rooms in Atlanta. The events where the network actually meets, not the public calendar.",
             },
             {
               icon: Rocket,
@@ -296,9 +290,14 @@ export function PricingPage() {
               desc: "Skip the waitlist for high-demand events with founders, investors, and operators. Club members always get a seat at the table.",
             },
             {
-              icon: MessageSquare,
-              title: "Direct Access",
-              desc: "Message the team directly. Get async feedback on pull requests, architecture questions, or career decisions between office hours.",
+              icon: FolderOpen,
+              title: "The Full Directory",
+              desc: "Unlimited contact reveals across companies, investors and grants \u2014 the working map of Atlanta tech, fully open.",
+            },
+            {
+              icon: Lightbulb,
+              title: "A Founder Welcome",
+              desc: "Every member gets a personal welcome from Kleveland, the founder \u2014 and a direct line to tell us what you're here to do.",
             },
           ].map((item, i) => {
             const Icon = item.icon;

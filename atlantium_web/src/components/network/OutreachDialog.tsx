@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { api, type MemberCard, type OutreachStatus } from "@/lib/api";
 import { UpgradeCta } from "@/components/billing/UpgradeCta";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 type Mode = "connect" | "message";
@@ -37,6 +38,7 @@ export function OutreachDialog({
   outreach: OutreachStatus | null;
   onDone: () => void;
 }) {
+  const navigate = useNavigate();
   const [purpose, setPurpose] = useState("peer");
   const [body, setBody] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -67,14 +69,18 @@ export function OutreachDialog({
       const copy: Record<string, string> = {
         upgrade_required: "Starting conversations is part of paid membership.",
         verification_required: "This role needs to be verified before you can reach members.",
-        org_claim_required: "Claim your company first.",
+        org_claim_required: "Verify your company before reaching people as its founder.",
         intro_required: "Reach this member through an Atlantium introduction.",
         too_many_pending: "You have too many requests waiting for a reply.",
         monthly_limit: "You've used this month's outreach budget.",
         outreach_paused: "Outreach is paused while your recent requests go unanswered.",
         not_available: "You can't reach this member.",
       };
-      toast.error(copy[err.code ?? ""] ?? err.message ?? "That didn't work.");
+      // A dead end with a door: this one is fixable, so hand them the fix.
+      toast.error(copy[err.code ?? ""] ?? err.message ?? "That didn't work.",
+        err.code === "org_claim_required"
+          ? { action: { label: "Claim company", onClick: () => navigate("/company-claim") } }
+          : undefined);
     } finally {
       setIsSending(false);
     }

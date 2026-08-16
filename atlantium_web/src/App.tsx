@@ -18,6 +18,10 @@ import { MemberProfilePage } from "@/pages/MemberProfilePage";
 import { MessagesPage } from "@/pages/MessagesPage";
 import { DiscoverPage } from "@/pages/DiscoverPage";
 import { AdminIntroductionsPage } from "@/pages/admin/AdminIntroductionsPage";
+import { AdminOrgClaimsPage } from "@/pages/admin/AdminOrgClaimsPage";
+import { AdminServicesPage } from "@/pages/admin/AdminServicesPage";
+
+import { OrgClaimPage } from "@/pages/OrgClaimPage";
 import { AdminProtectedRoute } from "@/components/admin/AdminProtectedRoute";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoginPage } from "@/pages/LoginPage";
@@ -57,7 +61,6 @@ import { GrantsPage } from "@/pages/GrantsPage";
 import { DirectoryEntryPage } from "@/pages/DirectoryEntryPage";
 import { TrainingPage } from "@/pages/TrainingPage";
 import { PricingPage as PublicPricingPage } from "@/pages/PricingPage";
-import { AIEngineerPage } from "@/pages/AIEngineerPage";
 import { DollarTestPage } from "@/pages/DollarTestPage";
 import { TemplatesPage } from "@/pages/TemplatesPage";
 import { HomeschoolPage } from "@/pages/HomeschoolPage";
@@ -111,9 +114,11 @@ function AppRoutes() {
       <Route path="/directory" element={<GrantsPage />} />
       <Route path="/directory/:kind/:slug" element={<DirectoryEntryPage />} />
       <Route path="/training" element={<TrainingPage />} />
+      <Route path="/training/apply" element={<Navigate to="/training#apply" replace />} />
       <Route path="/pricing" element={<PublicPricingPage />} />
       <Route path="/index/:slug" element={<ArticleDetailPage />} />
-      <Route path="/ai-engineer" element={<AIEngineerPage />} />
+      {/* The old $500 direct-checkout training offer — superseded by the call-first cohort. */}
+      <Route path="/ai-engineer" element={<Navigate to="/training" replace />} />
       <Route path="/templates" element={<TemplatesPage />} />
       <Route path="/homeschool" element={<HomeschoolPage />} />
       <Route path="/paths" element={<PathsPage />} />
@@ -213,12 +218,18 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/company-claim"
+        element={
+          <ProtectedRoute>
+            <OrgClaimPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/members/:profileId"
         element={
           <ProtectedRoute>
-            <MemberShell>
-              <MemberProfilePage />
-            </MemberShell>
+            <MemberProfilePage />
           </ProtectedRoute>
         }
       />
@@ -248,6 +259,8 @@ function AppRoutes() {
         <Route path="users" element={<AdminUsersPage />} />
         <Route path="approvals" element={<Navigate to="/admin/users" replace />} />
         <Route path="introductions" element={<AdminIntroductionsPage />} />
+        <Route path="org-claims" element={<AdminOrgClaimsPage />} />
+        <Route path="services" element={<AdminServicesPage />} />
         <Route path="partnerships" element={<DashboardPage embedded />} />
         <Route path="gtm" element={<AdminGTMPage />} />
       </Route>

@@ -26,7 +26,7 @@ export function UpgradeModal({ open, onOpenChange, onSuccess }: UpgradeModalProp
         // refresh their own state.
         if (!next) onSuccess();
       }}
-      reason="Office hours, curriculum, exclusive events, and member DMs."
+      reason="Rene your frontier agent, member DMs, and Club events — virtual and in-person."
     />
   );
 }

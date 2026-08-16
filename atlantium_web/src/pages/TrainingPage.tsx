@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "motion/react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import SpotlightCard from "@/components/ui/SpotlightCard";
 import ShinyText from "@/components/ui/ShinyText";
 import Aurora from "@/components/Aurora";
 import { api, type JobPosting } from "@/lib/api";
+import { ApplyForm } from "@/components/training/ApplyForm";
 import rawJobs from "@/data/jobs.json";
 import {
   ArrowRight,
@@ -137,49 +139,49 @@ function pickFeatured(jobs: JobPosting[], count: number): Job[] {
 // ── Curriculum ───────────────────────────────────────────────────────────────
 const curriculum = [
   {
-    week: "Week 1",
-    title: "Foundations & Modern Stack",
+    week: "Weeks 1\u20132",
+    title: "AI-Native Foundations",
     icon: Code,
     color: "cyan",
     topics: [
       "AI-assisted development workflows",
-      "Modern web & mobile architecture",
-      "TypeScript, React, React Native",
-      "APIs, databases & cloud basics",
+      "TypeScript + the modern web stack",
+      "Calling models: prompts, structure, streaming",
+      "Ship your first AI feature in week one",
     ],
   },
   {
-    week: "Week 2",
-    title: "Enterprise App Development",
+    week: "Weeks 3\u20134",
+    title: "Building on LLMs",
     icon: Smartphone,
     color: "blue",
     topics: [
-      "Build production-grade web apps",
-      "Cross-platform mobile (iOS & Android)",
-      "Auth, payments & real-time features",
-      "Testing, CI/CD & deployment",
+      "RAG: retrieval, embeddings, chunking",
+      "Agents & tool use that actually work",
+      "Evals \u2014 testing AI features like software",
+      "Auth, payments & production plumbing",
     ],
   },
   {
-    week: "Week 3",
-    title: "Legacy Systems & System Design",
+    week: "Weeks 5\u20137",
+    title: "The Client Build",
     icon: GitMerge,
     color: "violet",
     topics: [
-      "Refactoring legacy codebases",
-      "System design patterns at scale",
-      "Microservices & event-driven architecture",
-      "Performance optimization & observability",
+      "A real project for a real organization",
+      "Teams of 3\u20134: git, code review, standups",
+      "Cost, latency & observability in production",
+      "Weekly demos to the client, like a real team",
     ],
   },
   {
-    week: "Week 4",
-    title: "Portfolio & Career Launch",
+    week: "Week 8",
+    title: "Ship & Launch Your Career",
     icon: FolderOpen,
     color: "emerald",
     topics: [
-      "Ship a capstone project end-to-end",
-      "Build a standout portfolio",
+      "Deliver and deploy the client project",
+      "A portfolio with production work in it",
       "Technical interview prep",
       "Warm introductions to hiring partners",
     ],
@@ -195,8 +197,8 @@ const colorMap: Record<string, { bg: string; border: string; text: string; badge
 
 // ── What you get ─────────────────────────────────────────────────────────────
 const outcomes = [
-  { icon: Video,          label: "Daily Office Hours",      desc: "Live sessions with engineers and founders every day." },
-  { icon: LayoutDashboard, label: "Hands-On Projects",      desc: "Real apps. Real code. Real deployments." },
+  { icon: Video,          label: "Live Sessions",           desc: "Daily in weeks 1\u20132, then structured working sessions through the build." },
+  { icon: LayoutDashboard, label: "A Real Client Build",    desc: "Five weeks on software for a real organization \u2014 not a tutorial project." },
   { icon: Handshake,      label: "Warm Introductions",      desc: "Direct referrals to hiring partners in Atlanta and remote." },
   { icon: FolderOpen,     label: "Portfolio You Own",       desc: "Leave with shipped work you can show any employer." },
   { icon: Users,          label: "Cohort Network",          desc: "Build lasting relationships with your cohort." },
@@ -205,8 +207,18 @@ const outcomes = [
 
 // ── Component ────────────────────────────────────────────────────────────────
 export function TrainingPage() {
+  // The application is a modal — apply from wherever the decision happens,
+  // without leaving the pitch.
+  const [applyOpen, setApplyOpen] = useState(false);
+  const scrollToApply = () => setApplyOpen(true);
+
   const [featuredJobs, setFeaturedJobs] = useState<Job[]>(FALLBACK_FEATURED);
   const [totalJobs, setTotalJobs] = useState(allJobs.length);
+
+  // Old /training/apply links redirect here with #apply — open the modal.
+  useEffect(() => {
+    if (window.location.hash === "#apply") setApplyOpen(true);
+  }, []);
 
   useEffect(() => {
     api.getJobPostingsPaged({ status: "active", limit: 30 })
@@ -252,16 +264,16 @@ export function TrainingPage() {
           </h1>
 
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-4 leading-relaxed">
-            A 4-week, hands-on program that takes you from beginner to job-ready AI engineer — with daily office hours, real projects, and introductions to hiring partners in Atlanta.
+            An 8-week intensive that takes you from where you are to shipping production AI — live sessions, a real client build, and introductions to hiring partners in Atlanta. Tuition varies: Atlanta Builder Grants cover up to half, and every applicant gets a call.
           </p>
 
           {/* Program stats */}
           <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-sm text-muted-foreground mb-10">
             {[
-              { icon: Calendar, label: "4 Weeks" },
-              { icon: Clock,    label: "Daily Office Hours" },
-              { icon: Code,     label: "Hands-On Projects" },
-              { icon: Star,     label: "Portfolio Included" },
+              { icon: Calendar, label: "8 Weeks" },
+              { icon: Clock,    label: "Live Sessions" },
+              { icon: Code,     label: "A Real Client Build" },
+              { icon: Star,     label: "Seats Fill Every Cohort" },
             ].map(({ icon: Icon, label }) => (
               <div key={label} className="flex items-center gap-1.5">
                 <Icon className="h-3.5 w-3.5 text-cyan-500" />
@@ -271,12 +283,14 @@ export function TrainingPage() {
           </div>
 
           <div className="flex flex-wrap justify-center gap-3">
-            <Link to="/signup">
-              <Button size="lg" className="gap-2 bg-white text-black hover:bg-gray-100 shadow-lg shadow-black/20 border-0 text-base">
-                Begin Registration
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
+            <Button
+              size="lg"
+              onClick={scrollToApply}
+              className="gap-2 bg-white text-black hover:bg-gray-100 shadow-lg shadow-black/20 border-0 text-base"
+            >
+              Apply for Cohort 1
+              <ArrowRight className="h-4 w-4" />
+            </Button>
           </div>
         </motion.div>
       </section>
@@ -286,7 +300,7 @@ export function TrainingPage() {
         <FadeIn>
           <div className="text-center mb-12">
             <p className="text-xs font-bold text-cyan-400 uppercase tracking-widest mb-3">Curriculum</p>
-            <h2 className="text-3xl sm:text-4xl font-bold">4 Weeks. Fully Hands-On.</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold">8 Weeks. Fully Hands-On.</h2>
             <p className="text-muted-foreground mt-3 max-w-xl mx-auto">
               Each week builds on the last. You ship something real every week.
             </p>
@@ -448,12 +462,10 @@ export function TrainingPage() {
                 <p className="text-muted-foreground leading-relaxed mb-6">
                   Whether you're pivoting careers, leveling up from junior, or an experienced dev who wants to go AI-native — this program meets you where you are.
                 </p>
-                <Link to="/signup">
-                  <Button className="gap-2 bg-white text-black hover:bg-gray-100 border-0">
-                    Begin Registration
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
+                <Button onClick={scrollToApply} className="gap-2 bg-white text-black hover:bg-gray-100 border-0">
+                  Apply for Cohort 1
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
               </div>
               <div className="space-y-3">
                 {[
@@ -476,8 +488,8 @@ export function TrainingPage() {
         </FadeIn>
       </section>
 
-      {/* ── Final CTA ── */}
-      <section className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
+      {/* ── Final CTA — the application opens in a modal ── */}
+      <section id="apply" className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
         <FadeIn>
           <div className="relative overflow-hidden rounded-2xl">
             {/* Gradient border */}
@@ -491,19 +503,36 @@ export function TrainingPage() {
                 Ready to Build?
               </h2>
               <p className="text-muted-foreground text-lg max-w-xl mx-auto mb-8">
-                Apply today. We'll reach out within 1 business day to walk you through the next steps.
+                30 seats, and they fill every cohort. Apply in two minutes — Kleveland calls every applicant personally, usually the same day.
               </p>
-              <Link to="/signup">
-                <Button size="lg" className="gap-2 bg-white text-black hover:bg-gray-100 shadow-xl shadow-black/20 border-0 text-base px-8">
-                  Begin Registration
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-              <p className="text-xs text-muted-foreground mt-4">No experience required. Just bring the drive.</p>
+              <Button
+                size="lg"
+                onClick={() => setApplyOpen(true)}
+                className="gap-2 bg-white text-black hover:bg-gray-100 shadow-xl shadow-black/20 border-0 text-base px-8"
+              >
+                Apply for Cohort 1
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+              <p className="text-xs text-muted-foreground mt-4">
+                Tuition varies — Atlanta Builder Grants cover up to half, and a couple of full seats each cohort. It's all covered on your call.
+              </p>
             </SpotlightCard>
           </div>
         </FadeIn>
       </section>
+
+      {/* The application itself */}
+      <Dialog open={applyOpen} onOpenChange={setApplyOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Apply for Cohort 1</DialogTitle>
+            <DialogDescription>
+              30 seats, and they fill every cohort. Tuition varies — grants are covered on your call.
+            </DialogDescription>
+          </DialogHeader>
+          <ApplyForm />
+        </DialogContent>
+      </Dialog>
 
       {/* Footer */}
       <footer className="relative z-10 py-8 px-6 border-t border-border/30">

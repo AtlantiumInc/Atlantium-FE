@@ -205,6 +205,13 @@ export interface CreatorDashboardResponse {
     notQualified: number;
     connected: number;
   };
+  /** Local capacity context the API attaches beside the Boomin standing
+   *  (additive, plan B4): the member's confirmed personas and the capacity
+   *  their enrollment operates in. */
+  atlantium?: {
+    personas?: string[];
+    primary_operating_type?: string | null;
+  };
 }
 
 export interface JobPostingContent {
@@ -872,6 +879,83 @@ class ApiClient {
     return this.request("/admin/introductions/funnel", { method: "GET" }, ATLANTIUM_API_BASE_URL);
   }
 
+  // ── Org claims ────────────────────────────────────────────────────────────
+
+  async getMyOrgRequests(): Promise<{
+    requests: Array<{
+      id: string; kind: "claim" | "create"; status: string; relationship: string;
+      org_name: string; decision_note: string | null; created_at: string;
+    }>;
+    memberships: Array<{
+      id: string; org: { id: string; name: string; slug: string };
+      relationship: string; authority: string;
+    }>;
+  }> {
+    return this.request("/me/org-requests", { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async requestOrgClaim(input: {
+    entry_id?: string; proposed_name?: string; proposed_website?: string;
+    relationship?: string; evidence?: string;
+  }): Promise<{ request: { id: string; status: string; kind: string } }> {
+    return this.request("/org-requests", { method: "POST", body: JSON.stringify(input) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async getOrgRequestQueue(): Promise<{
+    requests: Array<{
+      id: string; kind: "claim" | "create"; relationship: string; evidence: string | null;
+      member: { profile_id: string; name: string };
+      org: { id: string; name: string; slug: string } | null;
+      proposed: { name?: string; website?: string };
+      created_at: string;
+    }>;
+  }> {
+    return this.request("/admin/org-requests", { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async decideOrgRequest(id: string, approve: boolean, authority = "admin", note?: string) {
+    return this.request<{ status: string }>(`/admin/org-requests/${id}/decide`,
+      { method: "POST", body: JSON.stringify({ approve, authority, note }) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  // ── Service requests (training cohort etc.) ───────────────────────────────
+
+  async submitServiceRequest(input: {
+    kind: string; name: string; email: string; phone?: string;
+    answers?: Record<string, string>;
+  }): Promise<{ request: { id: string; status: string }; duplicate?: boolean }> {
+    return this.request("/service-requests", { method: "POST", body: JSON.stringify(input) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async getMyServiceRequest(kind: string): Promise<{
+    request: { id: string; status: string; created_at: string } | null;
+  }> {
+    return this.request(`/service-requests/mine?kind=${encodeURIComponent(kind)}`, { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async getServiceRequests(kind?: string): Promise<{
+    requests: Array<{
+      id: string; kind: string; service: string; name: string; email: string;
+      phone: string | null; answers: Record<string, string>;
+      status: "new" | "called" | "offered" | "paid" | "fulfilled" | "passed";
+      offer_cents: number | null; payment_link_url: string | null; note: string | null;
+      member: { profile_id: string; name: string | null } | null;
+      called_at: string | null; paid_at: string | null; created_at: string;
+    }>;
+  }> {
+    const q = kind ? `?kind=${encodeURIComponent(kind)}` : "";
+    return this.request(`/admin/service-requests${q}`, { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async updateServiceRequest(id: string, body: { status?: string; offer_cents?: number; note?: string }) {
+    return this.request<{ status: string }>(`/admin/service-requests/${id}/update`,
+      { method: "POST", body: JSON.stringify(body) }, ATLANTIUM_API_BASE_URL);
+  }
+
+  async createServiceRequestPaymentLink(id: string): Promise<{ url: string }> {
+    return this.request(`/admin/service-requests/${id}/payment-link`, { method: "POST" }, ATLANTIUM_API_BASE_URL);
+  }
+
   // ── P1b: billing ──────────────────────────────────────────────────────────
 
   async getBillingConfig(): Promise<{
@@ -923,6 +1007,26 @@ class ApiClient {
     return this.request("/me/roles", { method: "POST", body: JSON.stringify(body) }, ATLANTIUM_API_BASE_URL);
   }
 
+  /**
+   * The founder / investor / advisor / recruiter branch answers. The server
+   * rejects fields that don't belong to the role rather than storing them.
+   */
+  async updateRoleDetails(roleId: string, body: {
+    venture_stage?: string;
+    needs?: string[];
+    check_min?: number;
+    check_max?: number;
+    focus_stages?: string[];
+    intro_appetite?: "none" | "some" | "all";
+    domains?: string[];
+    engagement?: string[];
+    availability?: "open" | "intro_only" | "closed";
+    hiring_roles?: string[];
+    hiring_contact?: string;
+  }): Promise<{ roles: MemberRole[] }> {
+    return this.request(`/me/roles/${roleId}/details`, { method: "PATCH", body: JSON.stringify(body) }, ATLANTIUM_API_BASE_URL);
+  }
+
   async updateSeeking(roleId: string, body: {
     seeking?: "not_seeking" | "open" | "actively_looking";
     visibility?: "private" | "matched_only" | "verified_employers" | "all_members";
@@ -949,6 +1053,28 @@ class ApiClient {
     is_email_verified: boolean;
     onboarding_completed: boolean;
     membership_tier: string | null;
+    headline: string | null;
+    roles: Array<{
+      role: string;
+      title: string | null;
+      is_primary: boolean;
+      org: { name: string; slug: string } | null;
+      seeking: { status: string; visibility: string } | null;
+      details: {
+        venture_stage: string | null;
+        needs: string[];
+        check_min: number | null;
+        check_max: number | null;
+        focus_stages: string[];
+        intro_appetite: string;
+        domains: string[];
+        engagement: string[];
+        availability: string;
+        hiring_roles: string[];
+        hiring_contact: string | null;
+      } | null;
+    }>;
+    pending_claims: Array<{ kind: string; relationship: string; org: string | null }>;
     registration_details: Record<string, unknown>;
     created_at: string;
   }>> {
@@ -1717,12 +1843,25 @@ class ApiClient {
     }, ATLANTIUM_API_BASE_URL);
   }
 
+  async getConsole(): Promise<{
+    jobs: {
+      total: number; remote: number; new_this_week: number; reach_200k: number;
+      latest: Array<{ slug: string; title: string; company: string; salaryMin: number | null; salaryMax: number | null }>;
+    };
+    directory: Record<string, number>;
+    wire: Array<{ slug: string; title: string; publishedAt: string | null }>;
+  }> {
+    return this.request("/console", { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
   async getJobPostingsPaged(params?: {
     status?: string;
     workplace_type?: string;
     seniority?: string;
     q?: string;
     no_degree?: boolean;
+    new_this_week?: boolean;
+    salary_floor?: number;
     limit?: number;
     offset?: number;
   }): Promise<{
@@ -1738,6 +1877,8 @@ class ApiClient {
     if (params?.seniority) search.set("seniority", params.seniority);
     if (params?.q) search.set("q", params.q);
     if (params?.no_degree) search.set("no_degree", "1");
+    if (params?.new_this_week) search.set("new_this_week", "1");
+    if (params?.salary_floor) search.set("salary_floor", String(params.salary_floor));
     if (params?.limit) search.set("limit", String(params.limit));
     if (params?.offset) search.set("offset", String(params.offset));
     return this.request(`/job_postings?${search}`, { method: "GET" }, ATLANTIUM_API_BASE_URL);
@@ -1825,6 +1966,8 @@ class ApiClient {
 
   async getDirectory(params?: {
     kind?: string;
+    /** Match the name only — for pickers, where a summary hit is noise. */
+    name_only?: "1";
     category?: string;
     tag?: string;
     q?: string;

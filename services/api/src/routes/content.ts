@@ -649,7 +649,11 @@ contentRoutes.get("/directory", async (c) => {
   if (q.tag) where.push(sql`${q.tag} = any(${directoryEntries.tags})`);
   if (q.q) {
     const needle = `%${q.q.trim()}%`;
-    const search = or(ilike(directoryEntries.name, needle), ilike(directoryEntries.summary, needle));
+    // Browsing wants summaries searched too; picking a specific org by name does
+    // not — a summary hit buries the company you actually typed.
+    const search = q.name_only === "1"
+      ? ilike(directoryEntries.name, needle)
+      : or(ilike(directoryEntries.name, needle), ilike(directoryEntries.summary, needle));
     if (search) where.push(search);
   }
 

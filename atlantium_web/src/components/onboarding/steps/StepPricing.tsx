@@ -37,12 +37,12 @@ const PRICING_PLANS: PricingPlan[] = [
     icon: Crown,
     features: [
       "Everything in Open Lab",
-      "Office hours Mon–Thu",
-      "AI engineering curriculum",
-      "Focus groups",
+      "Rene — your frontier agent",
+      "Member DMs across the network",
+      "Club events, virtual & in-person",
       "Exclusive member events",
       "Priority event registration",
-      "Startup advisor",
+      "Unlimited directory contact reveals",
     ],
   },
   {
@@ -186,9 +186,9 @@ export function StepPricing({ formData, errors, onUpdate }: StepPricingProps) {
           How will you use the lab?
         </h2>
         <p className="text-muted-foreground">
-          The docs, job board and directories are free and stay free. Paid tiers
-          buy the things that take our time — office hours, curriculum, advisory.
-          Nothing is charged today; you can change this whenever.
+          The docs, job board and directories are free and stay free. Club buys
+          your seat in the network — Rene, member DMs, and the events where
+          members actually meet. Nothing is charged today; change this whenever.
         </p>
         {errors?.membership_tier && (
           <p className="text-sm text-red-400 pt-1">{errors.membership_tier}</p>

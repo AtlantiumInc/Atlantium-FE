@@ -25,12 +25,14 @@ function getInitials(name?: string, email?: string): string {
 
 interface MembershipCardProps {
   onAvatarClick?: () => void;
+  /** Clicking the card body (not its buttons) — the dropdown opens the edit form. */
+  onCardClick?: () => void;
   username?: string;
   bio?: string;
   createdAt?: string;
 }
 
-export function MembershipCard({ onAvatarClick, bio, createdAt }: MembershipCardProps = {}) {
+export function MembershipCard({ onAvatarClick, onCardClick, bio, createdAt }: MembershipCardProps = {}) {
   const { subscription, isLoading, refreshSubscription } = useSubscription();
   const { user } = useAuth();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -97,7 +99,14 @@ export function MembershipCard({ onAvatarClick, bio, createdAt }: MembershipCard
   return (
     <>
       <HolographicCard intensity={12} glareOpacity={0.25} holographicOpacity={0.12}>
-        <Card className="border-0 bg-card/80 backdrop-blur-sm">
+        <Card
+          className={`border-0 bg-card/80 backdrop-blur-sm ${onCardClick ? "cursor-pointer" : ""}`}
+          onClick={(e) => {
+            // Buttons on the card (Open Admin, avatar camera) own their clicks
+            if ((e.target as HTMLElement).closest("button, a")) return;
+            onCardClick?.();
+          }}
+        >
           <CardHeader>
           <div className="flex items-center gap-4">
             <div className="relative group">
@@ -143,8 +152,11 @@ export function MembershipCard({ onAvatarClick, bio, createdAt }: MembershipCard
                 </div>
               </div>
               <CardDescription>
-                {profileBio || (isAdmin ? `Admin access enabled - ${planLabel}` : planLabel)}
+                {profileBio || planLabel}
               </CardDescription>
+              {user?.email && (
+                <p className="font-mono text-xs text-muted-foreground/80 truncate mt-0.5">{user.email}</p>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -176,26 +188,6 @@ export function MembershipCard({ onAvatarClick, bio, createdAt }: MembershipCard
           )}
 
           {/* Membership details */}
-          {isAdmin && (
-            <div className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 p-3 text-sm">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-cyan-500" />
-                  <span className="font-medium">Admin access</span>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 border-cyan-500/30 bg-background/40"
-                  onClick={() => window.location.assign("/admin")}
-                >
-                  Open Admin
-                </Button>
-              </div>
-            </div>
-          )}
-
           {isClubMember ? (
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
@@ -233,7 +225,7 @@ export function MembershipCard({ onAvatarClick, bio, createdAt }: MembershipCard
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Current plan</span>
-                <span className="font-medium">{isAdmin ? "Admin" : "Free"}</span>
+                <span className="font-medium">Free</span>
               </div>
               {isAdmin && (
                 <div className="flex justify-between text-sm">
@@ -259,11 +251,11 @@ export function MembershipCard({ onAvatarClick, bio, createdAt }: MembershipCard
                   <ul className="text-sm text-muted-foreground space-y-1">
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-500" />
-                      Office hours Mon-Thu
+                      Rene — your frontier agent
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-500" />
-                      AI engineering curriculum
+                      Member DMs across the network
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-500" />

@@ -6,6 +6,9 @@ import { allowedOrigins } from "./env";
 import { jsonError } from "./lib/http";
 import { sendWeeklyDigest } from "./lib/digest";
 import { runReviewCycle } from "./lib/jobs-review";
+import { reconcileAllAssertions } from "./lib/boomin-assertions";
+import { createDb } from "./db/client";
+import { syncCompaniesFromJobs } from "./lib/companies-sync";
 import { syncGrants } from "./lib/grants-sync";
 import { syncJobPostings } from "./lib/jobs-sync";
 import { appRoutes } from "./routes/app";
@@ -95,9 +98,36 @@ export default {
       );
       return;
     }
+    // Nightly Boomin assertion reconcile (plan B1): tenant→Boomin forwards are
+    // lossy by acceptance (a waitUntil can die with its worker); a full
+    // stateless re-sync heals them — identical state no-ops, changed state
+    // appends. Inert without BOOMIN_PLATFORM_SECRET.
+    if (event.cron === "0 4 * * *") {
+      ctx.waitUntil(
+        reconcileAllAssertions(createDb(env), env)
+          .then((r) => console.log("boomin-reconcile ok", JSON.stringify(r)))
+          .catch((error) => {
+            console.error("boomin-reconcile failed", error);
+            throw error;
+          }),
+      );
+      return;
+    }
+    // The daily scrape is an EXPLICIT branch, not the fallthrough — an
+    // unguarded default here once meant any new cron silently re-ran the
+    // scraper (plan Part B risk note).
+    if (event.cron !== "0 10 * * *") {
+      console.error("unmatched cron", event.cron);
+      return;
+    }
     ctx.waitUntil(
       syncJobPostings(env)
         .then((r) => console.log("jobs-sync ok", JSON.stringify(r)))
+        // Companies derive from postings, so they sync in sequence after the
+        // board refreshes — a new employer's jobs and its directory entry land
+        // the same morning, instead of waiting for someone to press a button.
+        .then(() => syncCompaniesFromJobs(env))
+        .then((r) => console.log("companies-sync ok", JSON.stringify(r)))
         .catch((error) => {
           console.error("jobs-sync failed", error);
           throw error;

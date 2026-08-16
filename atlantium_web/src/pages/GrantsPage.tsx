@@ -113,25 +113,45 @@ export function GrantsPage() {
   const activeKind = searchParams.get("kind") ?? "grant";
 
   const [entries, setEntries] = useState<DirectoryEntry[]>([]);
+  const [total, setTotal] = useState(0);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [search, setSearch] = useState("");
 
+  // Search goes to the SERVER. The page holds at most one page of a
+  // 1,000-entry directory, so filtering the loaded slice made most of the
+  // catalog unfindable — a search box that quietly lies.
+  const PAGE = 100;
   useEffect(() => {
     setIsLoading(true);
-    api.getDirectory({ kind: activeKind === "all" ? undefined : activeKind, limit: 100 })
-      .then((r) => { setEntries(r.entries); setCounts(r.counts); })
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
-  }, [activeKind]);
+    const t = setTimeout(() => {
+      api.getDirectory({
+        kind: activeKind === "all" ? undefined : activeKind,
+        q: search.trim() || undefined,
+        limit: PAGE,
+      })
+        .then((r) => { setEntries(r.entries); setTotal(r.total); setCounts(r.counts); })
+        .catch(() => {})
+        .finally(() => setIsLoading(false));
+    }, search.trim() ? 300 : 0);
+    return () => clearTimeout(t);
+  }, [activeKind, search]);
 
-  const visible = useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    if (!needle) return entries;
-    return entries.filter(
-      (e) => e.name.toLowerCase().includes(needle) || (e.summary ?? "").toLowerCase().includes(needle),
-    );
-  }, [entries, search]);
+  const loadMore = () => {
+    setIsLoadingMore(true);
+    api.getDirectory({
+      kind: activeKind === "all" ? undefined : activeKind,
+      q: search.trim() || undefined,
+      limit: PAGE,
+      offset: entries.length,
+    })
+      .then((r) => { setEntries((prev) => [...prev, ...r.entries]); setTotal(r.total); })
+      .catch(() => {})
+      .finally(() => setIsLoadingMore(false));
+  };
+
+  const visible = entries;
 
   const closingSoon = useMemo(
     () => entries.filter((e) => typeof e.grant?.days_until_close === "number" && e.grant.days_until_close! <= 45).length,
@@ -155,12 +175,13 @@ export function GrantsPage() {
       <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-10 w-full">
         <div className="mb-8">
           <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-cyan-400 mb-2">
-            <Landmark className="h-3.5 w-3.5" /> Grants & Programs
+            <Landmark className="h-3.5 w-3.5" /> The Directory
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Atlanta money for builders.</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">The working map of Atlanta tech.</h1>
           <p className="text-sm text-muted-foreground mt-2 max-w-2xl leading-relaxed">
-            Every grant, tax credit, accelerator, and city program we can verify for Atlanta and Georgia
-            technology companies — deadline-sorted, checked continuously, and free to browse.
+            Every investor writing checks in the Southeast, every accelerator and
+            grant, every company hiring — profiled, checked continuously, and free
+            to browse.
           </p>
         </div>
 
@@ -195,7 +216,7 @@ export function GrantsPage() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search programs..."
+              placeholder="Search the directory..."
               className="pl-8 h-9 text-xs"
             />
           </div>
@@ -220,6 +241,18 @@ export function GrantsPage() {
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {visible.map((e) => <EntryCard key={e.id} entry={e} />)}
           </motion.div>
+        )}
+
+        {!isLoading && entries.length < total && (
+          <div className="mt-8 flex flex-col items-center gap-2">
+            <Button variant="outline" onClick={loadMore} disabled={isLoadingMore} className="gap-2">
+              {isLoadingMore && <Loader2 className="h-4 w-4 animate-spin" />}
+              Show more
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              {entries.length.toLocaleString()} of {total.toLocaleString()}
+            </p>
+          </div>
         )}
 
         {/* Funnel: the weekly report carries new grants */}

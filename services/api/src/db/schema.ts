@@ -36,6 +36,10 @@ export const user = pgTable("user", {
   isAdmin: boolean("is_admin").notNull().default(false),
   isApproved: boolean("is_approved").notNull().default(false),
   image: text("image"),
+  /** First-touch referral attribution (0027): the Boomin referral code this
+   *  user arrived with, persisted at first verify and never overwritten.
+   *  NULL = organic — conversion forwarding early-exits. */
+  referredByCode: text("referred_by_code"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
@@ -224,6 +228,8 @@ export const jobPostings = pgTable("job_postings", {
   salaryMin: integer("salary_min"),
   salaryMax: integer("salary_max"),
   applyUrl: text("apply_url").notNull(),
+  /** Feed identity. Each sync may only expire jobs from its own source. */
+  source: text("source").notNull().default("hiring_cafe"),
   status: text("status").notNull().default("active"),
   postedAt: timestamp("posted_at", { withTimezone: true }),
   content: jsonb("content"),
@@ -573,6 +579,40 @@ export const professionalPreferences = pgTable("professional_preferences", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const introAppetite = pgEnum("intro_appetite", ["none", "some", "all"]);
+export const advisorAvailability = pgEnum("advisor_availability", ["open", "intro_only", "closed"]);
+
+/**
+ * The founder / investor / advisor / recruiter branch answers.
+ *
+ * professional_preferences covers the professional branch; this covers the
+ * rest. Every column here either routes a member to someone or gates a
+ * capability — anything that merely decorates a profile stays in
+ * `profiles.registration_details` and does not earn a column.
+ */
+export const roleDetails = pgTable("role_details", {
+  roleId: uuid("role_id").primaryKey().references(() => memberRoles.id, { onDelete: "cascade" }),
+
+  ventureStage: text("venture_stage"),
+  needs: text("needs").array().notNull().default(sql`'{}'::text[]`),
+
+  checkMin: integer("check_min"),
+  checkMax: integer("check_max"),
+  focusStages: text("focus_stages").array().notNull().default(sql`'{}'::text[]`),
+  /** Whether the curation queue may point founders at this investor at all. */
+  introAppetite: introAppetite("intro_appetite").notNull().default("none"),
+
+  domains: text("domains").array().notNull().default(sql`'{}'::text[]`),
+  engagement: text("engagement").array().notNull().default(sql`'{}'::text[]`),
+  availability: advisorAvailability("availability").notNull().default("intro_only"),
+
+  hiringRoles: text("hiring_roles").array().notNull().default(sql`'{}'::text[]`),
+  hiringContact: text("hiring_contact"),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const memberRoleRelations = relations(memberRoles, ({ one }) => ({
   profile: one(profiles, { fields: [memberRoles.profileId], references: [profiles.id] }),
   entry: one(directoryEntries, { fields: [memberRoles.entryId], references: [directoryEntries.id] }),
@@ -580,6 +620,7 @@ export const memberRoleRelations = relations(memberRoles, ({ one }) => ({
     fields: [memberRoles.id],
     references: [professionalPreferences.roleId],
   }),
+  details: one(roleDetails, { fields: [memberRoles.id], references: [roleDetails.roleId] }),
 }));
 
 // ── P0B: trust primitives (plan §4.2, §4.3, §4.5) ───────────────────────────
@@ -774,4 +815,60 @@ export const introductions = pgTable("introductions", {
 }, (table) => ({
   statusIdx: index("introductions_status_idx").on(table.status, table.createdAt),
   targetIdx: index("introductions_target_idx").on(table.targetProfileId, table.status),
+}));
+
+// ── Org claims (plan §4.6) ──────────────────────────────────────────────────
+
+export const orgRequestKind = pgEnum("org_request_kind", ["claim", "create"]);
+export const orgRequestStatus = pgEnum("org_request_status", ["pending", "approved", "rejected", "withdrawn"]);
+
+/** How a member gets the authority that founder/rep features require. */
+export const orgRequests = pgTable("org_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kind: orgRequestKind("kind").notNull(),
+  profileId: uuid("profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  entryId: uuid("entry_id").references(() => directoryEntries.id, { onDelete: "cascade" }),
+  proposed: jsonb("proposed").$type<Record<string, unknown>>().notNull().default({}),
+  relationship: orgRelationship("relationship").notNull().default("founder"),
+  evidence: text("evidence"),
+  status: orgRequestStatus("status").notNull().default("pending"),
+  decidedBy: text("decided_by").references(() => user.id, { onDelete: "set null" }),
+  decidedAt: timestamp("decided_at", { withTimezone: true }),
+  decisionNote: text("decision_note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  statusIdx: index("org_requests_status_idx").on(table.status, table.createdAt),
+}));
+
+// ── Service requests: the phone-call sales pipeline (training cohort first) ──
+
+export const serviceRequestStatus = pgEnum("service_request_status", [
+  "new", "called", "offered", "paid", "fulfilled", "passed",
+]);
+
+/**
+ * One pipeline for everything sold over a call. `kind` is text validated
+ * against the code registry in lib/service-requests.ts — adding a service is a
+ * registry entry, never a migration. Answers are display-only jsonb; the
+ * pipeline is typed because the queue filters on it.
+ */
+export const serviceRequests = pgTable("service_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kind: text("kind").notNull(),
+  userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+  profileId: uuid("profile_id").references(() => profiles.id, { onDelete: "set null" }),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  answers: jsonb("answers").$type<Record<string, unknown>>().notNull().default({}),
+  status: serviceRequestStatus("status").notNull().default("new"),
+  offerCents: integer("offer_cents"),
+  paymentLinkUrl: text("payment_link_url"),
+  stripeSessionId: text("stripe_session_id"),
+  note: text("note"),
+  calledAt: timestamp("called_at", { withTimezone: true }),
+  paidAt: timestamp("paid_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  queueIdx: index("service_requests_queue_idx").on(table.kind, table.status, table.createdAt),
 }));

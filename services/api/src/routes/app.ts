@@ -6,6 +6,8 @@ import type { Context } from "hono";
 import { z } from "zod";
 import { sendOtpEmail } from "../lib/email";
 import { grantVerification, revokeVerification } from "../lib/verification";
+import { primaryOperatingType, syncProfileAssertions, syncUserAssertions } from "../lib/boomin-assertions";
+import { forwardConversion } from "../lib/boomin-conversions";
 import { areConnected, canInitiate, outreachStatus } from "../lib/outreach";
 import { entitlementsFor } from "../lib/entitlements";
 import {
@@ -14,6 +16,7 @@ import {
   createSubscription,
   ensureCustomer,
   createCheckoutSession,
+  createOneTimeCheckout,
   createPortalSession,
   getSubscription,
   normalizeStatus,
@@ -63,19 +66,25 @@ import {
   dmPolicies,
   dmRequests,
   introductions,
+  orgRequests,
+  serviceRequests,
   entitlementGrants,
   billingEvents,
   threads,
   threadParticipants,
   threadMessages,
   professionalPreferences,
+  roleDetails,
   directoryEntries,
   user,
   verification,
+  contentDocuments,
 } from "../db/schema";
 import type { Env } from "../env";
 import { adminEmails, isDebugAuthCodes, requireEnv } from "../env";
 import { createAuth, getAuthSession } from "../lib/auth";
+import { SERVICES, notifyServiceRequest } from "../lib/service-requests";
+import { sendWelcomeEmail } from "../lib/welcome-email";
 import { HttpError } from "../lib/http";
 import {
   getRecord,
@@ -257,6 +266,13 @@ appRoutes.post(
       await captureEvent(db, "signup_completed", freshUser.id, null, { method: "otp" });
     }
     if (body.referral_code && isNewSignup) {
+      // First-touch attribution (0027): persist the code once, never
+      // overwrite — forwardConversion reads it for the life of the user.
+      await db
+        .update(user)
+        .set({ referredByCode: body.referral_code })
+        .where(and(eq(user.id, freshUser.id), isNull(user.referredByCode)))
+        .catch(() => {});
       try {
         await recordSignup({
           issuer: BOOMIN_ISSUER,
@@ -361,6 +377,43 @@ appRoutes.get("/admin/users", async (c) => {
   for (const p of allProfiles) {
     if (!profileByOwner.has(p.ownerUserId)) profileByOwner.set(p.ownerUserId, p);
   }
+
+  // Persona, affiliation and the branch answers are first-class rows now, not
+  // questionnaire keys — an admin looking at an investor should be able to see
+  // whether they want introductions, which is what decides if the curation
+  // queue may point founders at them.
+  const profileIds = allProfiles.map((p) => p.id);
+  const roleRows = profileIds.length
+    ? await db
+        .select({ role: memberRoles, org: directoryEntries, details: roleDetails, prefs: professionalPreferences })
+        .from(memberRoles)
+        .leftJoin(directoryEntries, eq(directoryEntries.id, memberRoles.entryId))
+        .leftJoin(roleDetails, eq(roleDetails.roleId, memberRoles.id))
+        .leftJoin(professionalPreferences, eq(professionalPreferences.roleId, memberRoles.id))
+        .where(inArray(memberRoles.profileId, profileIds))
+    : [];
+  const pendingClaims = profileIds.length
+    ? await db
+        .select({ profileId: orgRequests.profileId, kind: orgRequests.kind, proposed: orgRequests.proposed,
+          relationship: orgRequests.relationship, org: directoryEntries.name })
+        .from(orgRequests)
+        .leftJoin(directoryEntries, eq(directoryEntries.id, orgRequests.entryId))
+        .where(and(inArray(orgRequests.profileId, profileIds), eq(orgRequests.status, "pending")))
+    : [];
+
+  const rolesByProfile = new Map<string, typeof roleRows>();
+  for (const r of roleRows) {
+    const list = rolesByProfile.get(r.role.profileId) ?? [];
+    list.push(r);
+    rolesByProfile.set(r.role.profileId, list);
+  }
+  const claimsByProfile = new Map<string, typeof pendingClaims>();
+  for (const cl of pendingClaims) {
+    const list = claimsByProfile.get(cl.profileId) ?? [];
+    list.push(cl);
+    claimsByProfile.set(cl.profileId, list);
+  }
+
   return c.json(users.map((u) => {
     const p = profileByOwner.get(u.id);
     const reg = (p?.registrationDetails ?? {}) as Record<string, unknown>;
@@ -373,6 +426,34 @@ appRoutes.get("/admin/users", async (c) => {
       is_email_verified: u.emailVerified,
       onboarding_completed: Boolean(p?.onboardingCompletedAt) || reg.is_completed === true,
       membership_tier: typeof reg.membership_tier === "string" ? reg.membership_tier : null,
+      headline: (p?.metadata as Record<string, unknown> | null)?.bio ?? null,
+      roles: (rolesByProfile.get(p?.id ?? "") ?? []).map((r) => ({
+        role: r.role.role,
+        title: r.role.title,
+        is_primary: r.role.isPrimary,
+        org: r.org ? { name: r.org.name, slug: r.org.slug } : null,
+        seeking: r.prefs ? { status: r.prefs.seeking, visibility: r.prefs.visibility } : null,
+        details: r.details
+          ? {
+              venture_stage: r.details.ventureStage,
+              needs: r.details.needs,
+              check_min: r.details.checkMin,
+              check_max: r.details.checkMax,
+              focus_stages: r.details.focusStages,
+              intro_appetite: r.details.introAppetite,
+              domains: r.details.domains,
+              engagement: r.details.engagement,
+              availability: r.details.availability,
+              hiring_roles: r.details.hiringRoles,
+              hiring_contact: r.details.hiringContact,
+            }
+          : null,
+      })),
+      pending_claims: (claimsByProfile.get(p?.id ?? "") ?? []).map((cl) => ({
+        kind: cl.kind,
+        relationship: cl.relationship,
+        org: cl.org ?? (cl.proposed as Record<string, unknown> | null)?.name ?? null,
+      })),
       registration_details: reg,
       created_at: u.createdAt?.toISOString?.() ?? u.createdAt,
     };
@@ -471,6 +552,7 @@ function publicMemberRole(
   row: typeof memberRoles.$inferSelect,
   prefs: typeof professionalPreferences.$inferSelect | null,
   org: { id: string; name: string; slug: string; kind: string } | null,
+  details?: typeof roleDetails.$inferSelect | null,
 ) {
   return {
     id: row.id,
@@ -494,19 +576,35 @@ function publicMemberRole(
           remote_pref: prefs.remotePref,
         }
       : null,
+    details: details
+      ? {
+          venture_stage: details.ventureStage,
+          needs: details.needs,
+          check_min: details.checkMin,
+          check_max: details.checkMax,
+          focus_stages: details.focusStages,
+          intro_appetite: details.introAppetite,
+          domains: details.domains,
+          engagement: details.engagement,
+          availability: details.availability,
+          hiring_roles: details.hiringRoles,
+          hiring_contact: details.hiringContact,
+        }
+      : null,
   };
 }
 
 /** The member's own personas. Never a route for looking at anybody else. */
 async function loadOwnRoles(db: Db, profileId: string) {
   const rows = await db
-    .select({ role: memberRoles, prefs: professionalPreferences, org: directoryEntries })
+    .select({ role: memberRoles, prefs: professionalPreferences, org: directoryEntries, details: roleDetails })
     .from(memberRoles)
     .leftJoin(professionalPreferences, eq(professionalPreferences.roleId, memberRoles.id))
+    .leftJoin(roleDetails, eq(roleDetails.roleId, memberRoles.id))
     .leftJoin(directoryEntries, eq(directoryEntries.id, memberRoles.entryId))
     .where(eq(memberRoles.profileId, profileId))
     .orderBy(desc(memberRoles.isPrimary), asc(memberRoles.createdAt));
-  return rows.map((r) => publicMemberRole(r.role, r.prefs, r.org));
+  return rows.map((r) => publicMemberRole(r.role, r.prefs, r.org, r.details));
 }
 
 appRoutes.get("/me/roles", async (c) => {
@@ -563,6 +661,10 @@ appRoutes.post("/me/roles", zValidator("json", memberRoleWriteSchema), async (c)
       .onConflictDoNothing({ target: professionalPreferences.roleId });
   }
 
+  // Project the persona change onto the Boomin relationship (B1) — off the
+  // write path, never blocking the member.
+  c.executionCtx.waitUntil(syncProfileAssertions(db, c.env, profile.id));
+
   return c.json({ roles: await loadOwnRoles(db, profile.id) });
 });
 
@@ -614,6 +716,92 @@ appRoutes.patch("/me/roles/:roleId/seeking", zValidator("json", seekingWriteSche
   return c.json({ roles: await loadOwnRoles(db, profile.id) });
 });
 
+/**
+ * The founder / investor / advisor / recruiter branch answers from onboarding.
+ *
+ * One endpoint rather than four: which columns are meaningful is decided by the
+ * role, and sending a field that doesn't belong to your role is rejected rather
+ * than quietly stored — an investor cannot set an advisor's availability, which
+ * is what gates whether founders may reach them.
+ */
+const roleDetailsWriteSchema = z.object({
+  venture_stage: z.string().trim().max(40).optional(),
+  needs: z.array(z.string().trim().max(40)).max(8).optional(),
+  check_min: z.number().int().nonnegative().optional(),
+  check_max: z.number().int().nonnegative().optional(),
+  focus_stages: z.array(z.string().trim().max(40)).max(8).optional(),
+  intro_appetite: z.enum(["none", "some", "all"]).optional(),
+  domains: z.array(z.string().trim().max(40)).max(12).optional(),
+  engagement: z.array(z.string().trim().max(40)).max(8).optional(),
+  availability: z.enum(["open", "intro_only", "closed"]).optional(),
+  hiring_roles: z.array(z.string().trim().max(80)).max(12).optional(),
+  hiring_contact: z.string().trim().max(40).optional(),
+});
+
+const FIELDS_BY_ROLE: Record<string, ReadonlyArray<keyof z.infer<typeof roleDetailsWriteSchema>>> = {
+  founder: ["venture_stage", "needs"],
+  investor: ["check_min", "check_max", "focus_stages", "intro_appetite"],
+  advisor: ["domains", "engagement", "availability"],
+  // A recruiter is a professional whose affiliation carries hiring authority —
+  // "hiring" is not its own persona (plan §3: persona, affiliation and status
+  // are separate axes).
+  professional: ["hiring_roles", "hiring_contact"],
+};
+
+appRoutes.patch(
+  "/me/roles/:roleId/details",
+  zValidator("json", roleDetailsWriteSchema),
+  async (c) => {
+    const { db, authUser } = await requireAppUser(c);
+    const profile = await ensureDefaultProfile(db, authUser);
+    const input = c.req.valid("json");
+
+    const [role] = await db
+      .select()
+      .from(memberRoles)
+      .where(and(eq(memberRoles.id, c.req.param("roleId")), eq(memberRoles.profileId, profile.id)))
+      .limit(1);
+    if (!role) throw new HttpError(404, "not_found", "Role not found.");
+
+    const allowed = FIELDS_BY_ROLE[role.role] ?? [];
+    const sent = Object.keys(input) as Array<keyof typeof input>;
+    const rejected = sent.filter((f) => !allowed.includes(f));
+    if (rejected.length > 0) {
+      throw new HttpError(400, "wrong_role",
+        `A ${role.role} role can't set: ${rejected.join(", ")}.`);
+    }
+
+    if (input.check_min !== undefined && input.check_max !== undefined
+      && input.check_min > input.check_max) {
+      throw new HttpError(400, "bad_range", "The smaller check goes first.");
+    }
+
+    const columns = {
+      ...(input.venture_stage !== undefined ? { ventureStage: input.venture_stage } : {}),
+      ...(input.needs !== undefined ? { needs: input.needs } : {}),
+      ...(input.check_min !== undefined ? { checkMin: input.check_min } : {}),
+      ...(input.check_max !== undefined ? { checkMax: input.check_max } : {}),
+      ...(input.focus_stages !== undefined ? { focusStages: input.focus_stages } : {}),
+      ...(input.intro_appetite !== undefined ? { introAppetite: input.intro_appetite } : {}),
+      ...(input.domains !== undefined ? { domains: input.domains } : {}),
+      ...(input.engagement !== undefined ? { engagement: input.engagement } : {}),
+      ...(input.availability !== undefined ? { availability: input.availability } : {}),
+      ...(input.hiring_roles !== undefined ? { hiringRoles: input.hiring_roles } : {}),
+      ...(input.hiring_contact !== undefined ? { hiringContact: input.hiring_contact } : {}),
+    };
+
+    await db
+      .insert(roleDetails)
+      .values({ roleId: role.id, ...columns })
+      .onConflictDoUpdate({
+        target: roleDetails.roleId,
+        set: { ...columns, updatedAt: new Date() },
+      });
+
+    return c.json({ roles: await loadOwnRoles(db, profile.id) });
+  },
+);
+
 appRoutes.delete("/me/roles/:roleId", async (c) => {
   const { db, authUser } = await requireAppUser(c);
   const profile = await ensureDefaultProfile(db, authUser);
@@ -622,6 +810,8 @@ appRoutes.delete("/me/roles/:roleId", async (c) => {
     .where(and(eq(memberRoles.id, c.req.param("roleId")), eq(memberRoles.profileId, profile.id)))
     .returning();
   if (deleted.length === 0) throw new HttpError(404, "not_found", "Role not found.");
+  // Dropping a persona revokes its projected claims (B1).
+  c.executionCtx.waitUntil(syncProfileAssertions(db, c.env, profile.id));
   return c.json({ roles: await loadOwnRoles(db, profile.id) });
 });
 
@@ -744,6 +934,9 @@ appRoutes.post(
       evidence: "email_domain_otp",
       evidenceRef: pending.domain,
     });
+
+    // employment_verified projects onto the Boomin relationship (B1).
+    c.executionCtx.waitUntil(syncProfileAssertions(db, c.env, profile.id));
 
     return c.json({
       verified: true,
@@ -1149,15 +1342,54 @@ appRoutes.post("/billing/webhook", async (c) => {
     .returning({ id: billingEvents.id });
   if (inserted.length === 0) return c.json({ received: true, duplicate: true });
 
+  // Boomin side-effects (B1/B3) collect here and are SCHEDULED only after the
+  // event is fully processed — via waitUntil, OUTSIDE the delete-on-throw
+  // path, so a Boomin hiccup can never 500 a processed webhook into a Stripe
+  // retry loop. Both helpers are non-throwing and idempotent.
+  const afterProcessed: Array<() => Promise<unknown>> = [];
+
   try {
     const object = event.data.object;
     switch (event.type) {
       case "checkout.session.completed": {
-        const userId = (object.client_reference_id ?? (object.metadata as Record<string, string>)?.user_id) as string | undefined;
+        const meta = (object.metadata ?? {}) as Record<string, string>;
+
+        // A service-request payment (training tuition etc.) — one-time, not a
+        // subscription. Marked paid only here, from a verified event, never
+        // from the success redirect.
+        if (meta.service_request_id) {
+          const [request] = await db
+            .update(serviceRequests)
+            .set({ status: "paid", paidAt: new Date(), stripeSessionId: object.id as string })
+            .where(eq(serviceRequests.id, meta.service_request_id))
+            .returning({ userId: serviceRequests.userId });
+          // Referred tuition counts as gmv on the relationship (B3). Keyed by
+          // the SESSION id — a redelivery replays the same event_id. Anonymous
+          // requests (null userId) have no attribution to forward.
+          const amountTotal = Number(object.amount_total ?? 0);
+          const requestUserId = request?.userId;
+          if (requestUserId && amountTotal > 0) {
+            afterProcessed.push(() => forwardConversion(db, c.env, {
+              userId: requestUserId,
+              amountCents: amountTotal,
+              eventId: `atlantium_purchase_${object.id as string}`,
+              eventType: "service_purchase",
+              currency: (object.currency as string | undefined) ?? "usd",
+              metadata: { kind: "service_request", serviceRequestId: meta.service_request_id },
+            }));
+          }
+          break;
+        }
+
+        const userId = (object.client_reference_id ?? meta.user_id) as string | undefined;
         const subscriptionId = object.subscription as string | undefined;
         if (userId && subscriptionId) {
           const sub = await getSubscription(c.env, subscriptionId);
           await applySubscription(db, c.env, userId, sub);
+          // Membership changed → club_member re-projects (B1). The PURCHASE
+          // itself is NOT forwarded here — its first invoice carries the
+          // amount and invoice.payment_succeeded forwards it exactly once.
+          afterProcessed.push(() => syncUserAssertions(db, c.env, userId));
         }
         break;
       }
@@ -1178,6 +1410,36 @@ appRoutes.post("/billing/webhook", async (c) => {
             ...sub,
             status: event.type === "customer.subscription.deleted" ? "canceled" : sub.status,
           });
+          const syncUserId = userId;
+          afterProcessed.push(() => syncUserAssertions(db, c.env, syncUserId));
+        }
+        break;
+      }
+      // Renewals are invisible through subscription.updated (it carries no
+      // amount) — the INVOICE is where subscription money actually moves, so
+      // this is the one forward for Club revenue (B3). The first invoice
+      // covers the initial purchase too; the checkout branch above stays
+      // amount-silent, so nothing double-counts. Keyed by invoice id — a
+      // Stripe redelivery or our replay hits Boomin's dedupe.
+      case "invoice.payment_succeeded": {
+        const amountPaid = Number(object.amount_paid ?? 0);
+        const subscriptionDetails = object.subscription_details as { metadata?: Record<string, string> } | undefined;
+        let userId = subscriptionDetails?.metadata?.user_id;
+        if (!userId && typeof object.customer === "string") {
+          const [row] = await db.select({ userId: memberships.userId }).from(memberships)
+            .where(eq(memberships.stripeCustomerId, object.customer)).limit(1);
+          userId = row?.userId;
+        }
+        if (userId && amountPaid > 0) {
+          const invoiceUserId = userId;
+          afterProcessed.push(() => forwardConversion(db, c.env, {
+            userId: invoiceUserId,
+            amountCents: amountPaid,
+            eventId: `atlantium_purchase_${object.id as string}`,
+            eventType: "subscription_payment",
+            currency: (object.currency as string | undefined) ?? "usd",
+            metadata: { kind: "club_invoice", billingReason: (object.billing_reason as string | undefined) ?? null },
+          }));
         }
         break;
       }
@@ -1185,6 +1447,14 @@ appRoutes.post("/billing/webhook", async (c) => {
         break;
     }
     await db.update(billingEvents).set({ processedAt: new Date() }).where(eq(billingEvents.id, event.id));
+    for (const task of afterProcessed) {
+      try {
+        c.executionCtx.waitUntil(task());
+      } catch {
+        // No execution context (tests) — the nightly reconcile and Stripe's
+        // own retraversal of history cover anything dropped here.
+      }
+    }
     return c.json({ received: true });
   } catch (error) {
     // Record the failure and 500 so Stripe retries; the event row stays
@@ -1587,6 +1857,10 @@ appRoutes.post(
           : null,
     });
 
+    // <type>_verified projects onto the Boomin relationship, expiry forwarded
+    // in lockstep (B1) — re-verification later refreshes the claim.
+    c.executionCtx.waitUntil(syncProfileAssertions(db, c.env, role.profileId));
+
     // A verified investor is the scarce side. Protect their inbox BY DEFAULT
     // rather than relying on them to find a setting (§8.3). Only when they have
     // no policy of their own — never overriding a choice they already made.
@@ -1637,6 +1911,10 @@ appRoutes.post(
     const revoked = await revokeVerification(
       db, { memberRoleId: input.member_role_id }, input.verification, input.reason);
     if (revoked === 0) throw new HttpError(404, "not_found", "No live grant to revoke.");
+
+    // Withdrawn trust de-qualifies on Boomin too: the sync revokes the
+    // projected claim, and assert:-gated standing hard-invalidates (B1).
+    if (role) c.executionCtx.waitUntil(syncProfileAssertions(db, c.env, role.profileId));
 
     // Revoking the verification must revoke what it bought, or a revoked
     // investor keeps unlimited outreach forever.
@@ -2030,6 +2308,373 @@ appRoutes.get("/admin/introductions/funnel", async (c) => {
 });
 
 
+
+// ── Org claims: how a founder gets the authority the rules require (§4.6) ───
+
+
+// ── Service requests: the phone-call pipeline (training cohort first) ────────
+
+const serviceRequestSchema = z.object({
+  kind: z.string().refine((k) => k in SERVICES, "Unknown service."),
+  name: z.string().trim().min(2).max(80),
+  email: z.string().trim().email().max(120),
+  phone: z.string().trim().min(7).max(24).optional(),
+  answers: z.record(z.string(), z.string().max(600)).default({}),
+});
+
+/**
+ * Public on purpose — the leads come off the job board, logged out. A session
+ * at submit time links the request to the member, nothing more.
+ */
+appRoutes.post("/service-requests", zValidator("json", serviceRequestSchema), async (c) => {
+  const input = c.req.valid("json");
+  const db = createDb(c.env);
+  const service = SERVICES[input.kind];
+
+  // Only the questions the service actually asks survive into the row.
+  const answers = Object.fromEntries(
+    Object.entries(input.answers).filter(([k]) => service.questions.includes(k)),
+  );
+
+  const session = await getAuthSession(c.env, c.req.raw).catch(() => null);
+  let profileId: string | null = null;
+  if (session?.user?.id) {
+    const [p] = await db.select({ id: profiles.id }).from(profiles)
+      .where(eq(profiles.ownerUserId, session.user.id)).limit(1);
+    profileId = p?.id ?? null;
+  }
+
+  // Mashing submit — or applying twice in a week — must not stack queue rows.
+  // A live request for the same service+email is THE request.
+  const [existing] = await db.select().from(serviceRequests).where(and(
+    eq(serviceRequests.kind, input.kind),
+    sql`lower(${serviceRequests.email}) = ${input.email.toLowerCase()}`,
+    inArray(serviceRequests.status, ["new", "called", "offered"]),
+  )).limit(1);
+  if (existing) return c.json({ request: { id: existing.id, status: existing.status }, duplicate: true });
+
+  const [row] = await db.insert(serviceRequests).values({
+    kind: input.kind,
+    userId: session?.user?.id ?? null,
+    profileId,
+    name: input.name,
+    email: input.email,
+    phone: input.phone ?? null,
+    answers,
+  }).returning();
+
+  // The alert races nothing: the row is already committed, so a mail failure
+  // costs speed, never the lead.
+  c.executionCtx.waitUntil(notifyServiceRequest(c.env, {
+    kind: input.kind, name: row.name, email: row.email, phone: row.phone, answers,
+  }).catch(() => undefined));
+
+  return c.json({ request: { id: row.id, status: row.status } });
+});
+
+/**
+ * A member's own live request — so the inline form can show "you're in the
+ * queue" instead of a blank form that looks like the application vanished.
+ */
+appRoutes.get("/service-requests/mine", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const kind = c.req.query("kind");
+  if (!kind || !(kind in SERVICES)) throw new HttpError(400, "bad_kind", "Unknown service.");
+  const [row] = await db.select().from(serviceRequests).where(and(
+    eq(serviceRequests.kind, kind),
+    or(
+      eq(serviceRequests.userId, authUser.id),
+      sql`lower(${serviceRequests.email}) = ${authUser.email.toLowerCase()}`,
+    ),
+    inArray(serviceRequests.status, ["new", "called", "offered", "paid", "fulfilled"]),
+  )).orderBy(desc(serviceRequests.createdAt)).limit(1);
+  return c.json({
+    request: row ? { id: row.id, status: row.status, created_at: row.createdAt.toISOString() } : null,
+  });
+});
+
+appRoutes.get("/admin/service-requests", async (c) => {
+  const { db } = await requireAdminUser(c);
+  const kind = c.req.query("kind");
+  const rows = await db
+    .select({ req: serviceRequests, memberName: profiles.displayName })
+    .from(serviceRequests)
+    .leftJoin(profiles, eq(profiles.id, serviceRequests.profileId))
+    .where(kind ? eq(serviceRequests.kind, kind) : undefined)
+    .orderBy(desc(serviceRequests.createdAt))
+    .limit(200);
+  return c.json({
+    requests: rows.map(({ req, memberName }) => ({
+      id: req.id,
+      kind: req.kind,
+      service: SERVICES[req.kind]?.title ?? req.kind,
+      name: req.name,
+      email: req.email,
+      phone: req.phone,
+      answers: req.answers,
+      status: req.status,
+      offer_cents: req.offerCents,
+      payment_link_url: req.paymentLinkUrl,
+      note: req.note,
+      member: req.profileId ? { profile_id: req.profileId, name: memberName } : null,
+      called_at: req.calledAt?.toISOString() ?? null,
+      paid_at: req.paidAt?.toISOString() ?? null,
+      created_at: req.createdAt.toISOString(),
+    })),
+  });
+});
+
+const serviceRequestUpdateSchema = z.object({
+  status: z.enum(["new", "called", "offered", "paid", "fulfilled", "passed"]).optional(),
+  offer_cents: z.number().int().min(100).max(2_000_000).optional(),
+  note: z.string().max(2000).optional(),
+});
+
+appRoutes.post(
+  "/admin/service-requests/:id/update",
+  zValidator("json", serviceRequestUpdateSchema),
+  async (c) => {
+    const { db } = await requireAdminUser(c);
+    const input = c.req.valid("json");
+    const [updated] = await db.update(serviceRequests).set({
+      ...(input.status !== undefined ? { status: input.status } : {}),
+      ...(input.status === "called" ? { calledAt: new Date() } : {}),
+      ...(input.offer_cents !== undefined ? { offerCents: input.offer_cents } : {}),
+      ...(input.note !== undefined ? { note: input.note } : {}),
+    }).where(eq(serviceRequests.id, c.req.param("id"))).returning();
+    if (!updated) throw new HttpError(404, "not_found", "Request not found.");
+    return c.json({ status: updated.status });
+  },
+);
+
+/**
+ * The close-on-the-call button. Generates a checkout link at the offer amount —
+ * the grant is already baked into the number, so the lead sees one price, paid
+ * in full. The link is stored so it can be re-copied or re-sent.
+ */
+appRoutes.post("/admin/service-requests/:id/payment-link", async (c) => {
+  const { db } = await requireAdminUser(c);
+  const [row] = await db.select().from(serviceRequests)
+    .where(eq(serviceRequests.id, c.req.param("id"))).limit(1);
+  if (!row) throw new HttpError(404, "not_found", "Request not found.");
+  if (!row.offerCents) throw new HttpError(400, "no_offer", "Set the offer amount first.");
+
+  const service = SERVICES[row.kind];
+  const sessionOut = await createOneTimeCheckout(c.env, {
+    amountCents: row.offerCents,
+    productName: service?.productName ?? service?.title ?? row.kind,
+    email: row.email,
+    metadata: { service_request_id: row.id },
+    successUrl: "https://atlantium.ai/training?enrolled=1",
+    cancelUrl: "https://atlantium.ai/training",
+  });
+
+  await db.update(serviceRequests).set({
+    status: "offered",
+    paymentLinkUrl: sessionOut.url,
+    stripeSessionId: sessionOut.id,
+  }).where(eq(serviceRequests.id, row.id));
+
+  return c.json({ url: sessionOut.url });
+});
+
+appRoutes.get("/me/org-requests", async (c) => {
+  const { db, authUser } = await requireAppUser(c);
+  const me = await ensureDefaultProfile(db, authUser);
+
+  const [requests, memberships] = await Promise.all([
+    db.select({ req: orgRequests, org: directoryEntries })
+      .from(orgRequests)
+      .leftJoin(directoryEntries, eq(directoryEntries.id, orgRequests.entryId))
+      .where(eq(orgRequests.profileId, me.id))
+      .orderBy(desc(orgRequests.createdAt)),
+    db.select({ membership: orgMemberships, org: directoryEntries })
+      .from(orgMemberships)
+      .innerJoin(directoryEntries, eq(directoryEntries.id, orgMemberships.entryId))
+      .where(and(eq(orgMemberships.profileId, me.id), eq(orgMemberships.isCurrent, true))),
+  ]);
+
+  return c.json({
+    requests: requests.map(({ req, org }) => ({
+      id: req.id,
+      kind: req.kind,
+      status: req.status,
+      relationship: req.relationship,
+      org_name: org?.name ?? (req.proposed as { name?: string }).name ?? "—",
+      decision_note: req.decisionNote,
+      created_at: req.createdAt.toISOString(),
+    })),
+    // What they already hold, so the UI can say "you're set" rather than
+    // inviting a second claim on the same company.
+    memberships: memberships.map(({ membership, org }) => ({
+      id: membership.id,
+      org: { id: org.id, name: org.name, slug: org.slug },
+      relationship: membership.relationship,
+      authority: membership.authority,
+    })),
+  });
+});
+
+appRoutes.post(
+  "/org-requests",
+  zValidator("json", z.object({
+    entry_id: z.string().uuid().optional(),
+    proposed_name: z.string().trim().min(2).max(120).optional(),
+    proposed_website: z.string().trim().max(200).optional(),
+    relationship: z.enum(["founder", "executive", "recruiter", "representative", "employee"]).default("founder"),
+    evidence: z.string().trim().max(1000).optional(),
+  })),
+  async (c) => {
+    const { db, authUser } = await requireAppUser(c);
+    const me = await ensureDefaultProfile(db, authUser);
+    const input = c.req.valid("json");
+
+    if (!input.entry_id && !input.proposed_name) {
+      throw new HttpError(400, "org_required", "Pick your company, or tell us its name so we can add it.");
+    }
+
+    if (input.entry_id) {
+      const [entry] = await db.select({ id: directoryEntries.id })
+        .from(directoryEntries).where(eq(directoryEntries.id, input.entry_id)).limit(1);
+      if (!entry) throw new HttpError(404, "not_found", "That organization isn't in the directory.");
+
+      const [already] = await db.select({ id: orgMemberships.id }).from(orgMemberships)
+        .where(and(
+          eq(orgMemberships.profileId, me.id),
+          eq(orgMemberships.entryId, input.entry_id),
+          eq(orgMemberships.isCurrent, true),
+          ne(orgMemberships.authority, "none"),
+        )).limit(1);
+      if (already) throw new HttpError(409, "already_claimed", "You already represent this organization.");
+    }
+
+    try {
+      const [row] = await db.insert(orgRequests).values({
+        kind: input.entry_id ? "claim" : "create",
+        profileId: me.id,
+        entryId: input.entry_id ?? null,
+        proposed: input.entry_id ? {} : { name: input.proposed_name, website: input.proposed_website },
+        relationship: input.relationship,
+        evidence: input.evidence ?? null,
+      }).returning();
+      return c.json({ request: { id: row.id, status: row.status, kind: row.kind } });
+    } catch {
+      throw new HttpError(409, "already_requested", "You already have a request pending for this organization.");
+    }
+  },
+);
+
+appRoutes.get("/admin/org-requests", async (c) => {
+  const { db } = await requireAdminUser(c);
+  const rows = await db
+    .select({ req: orgRequests, org: directoryEntries, profile: profiles })
+    .from(orgRequests)
+    .leftJoin(directoryEntries, eq(directoryEntries.id, orgRequests.entryId))
+    .innerJoin(profiles, eq(profiles.id, orgRequests.profileId))
+    .where(eq(orgRequests.status, "pending"))
+    .orderBy(asc(orgRequests.createdAt))
+    .limit(100);
+
+  return c.json({
+    requests: rows.map(({ req, org, profile }) => ({
+      id: req.id,
+      kind: req.kind,
+      relationship: req.relationship,
+      evidence: req.evidence,
+      member: { profile_id: profile.id, name: profile.displayName },
+      org: org ? { id: org.id, name: org.name, slug: org.slug } : null,
+      proposed: req.proposed,
+      created_at: req.createdAt.toISOString(),
+    })),
+  });
+});
+
+appRoutes.post(
+  "/admin/org-requests/:id/decide",
+  zValidator("json", z.object({
+    approve: z.boolean(),
+    // Employment is not authority (§4.4): approving a claim says what they may
+    // DO, and that is an explicit choice rather than a default.
+    authority: z.enum(["none", "page_editor", "hiring", "admin"]).default("admin"),
+    note: z.string().trim().max(500).optional(),
+  })),
+  async (c) => {
+    const { db, authUser } = await requireAdminUser(c);
+    const input = c.req.valid("json");
+
+    const [row] = await db.select().from(orgRequests)
+      .where(and(eq(orgRequests.id, c.req.param("id")), eq(orgRequests.status, "pending")))
+      .limit(1);
+    if (!row) throw new HttpError(404, "not_found", "Request not found.");
+
+    const now = new Date();
+    if (!input.approve) {
+      await db.update(orgRequests)
+        .set({ status: "rejected", decidedBy: authUser.id, decidedAt: now, decisionNote: input.note ?? null })
+        .where(eq(orgRequests.id, row.id));
+      return c.json({ status: "rejected" });
+    }
+
+    // A 'create' request adds the organization the member named. Slugified so
+    // it lands in the same namespace the scrapers use.
+    let entryId = row.entryId;
+    if (!entryId) {
+      const proposed = row.proposed as { name?: string; website?: string };
+      const name = proposed.name?.trim();
+      if (!name) throw new HttpError(400, "missing_name", "That request has no organization name.");
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
+      const [created] = await db.insert(directoryEntries).values({
+        kind: "company",
+        slug,
+        name,
+        website: proposed.website ?? null,
+      }).onConflictDoNothing().returning();
+      if (created) {
+        entryId = created.id;
+      } else {
+        const [existing] = await db.select({ id: directoryEntries.id }).from(directoryEntries)
+          .where(and(eq(directoryEntries.kind, "company"), eq(directoryEntries.slug, slug))).limit(1);
+        entryId = existing?.id ?? null;
+      }
+      if (!entryId) throw new HttpError(500, "create_failed", "Couldn't create that organization.");
+    }
+
+    const [membership] = await db.insert(orgMemberships).values({
+      profileId: row.profileId,
+      entryId,
+      relationship: row.relationship,
+      authority: input.authority,
+    }).onConflictDoNothing().returning();
+
+    const resolved = membership ?? (await db.select().from(orgMemberships)
+      .where(and(
+        eq(orgMemberships.profileId, row.profileId),
+        eq(orgMemberships.entryId, entryId),
+        eq(orgMemberships.relationship, row.relationship),
+      )).limit(1))[0];
+
+    // Approving a claim IS the verification — record it as one so the grant has
+    // an author, an evidence trail and a revocation path.
+    if (resolved && input.authority !== "none") {
+      await grantVerification(db, {
+        subject: { orgMembershipId: resolved.id },
+        verification: "org_authority",
+        evidence: "admin_review",
+        evidenceRef: row.evidence ?? null,
+        grantedBy: authUser.id,
+      });
+      // org_authority_verified projects onto the Boomin relationship (B1).
+      c.executionCtx.waitUntil(syncProfileAssertions(db, c.env, row.profileId));
+    }
+
+    await db.update(orgRequests)
+      .set({ status: "approved", decidedBy: authUser.id, decidedAt: now, decisionNote: input.note ?? null })
+      .where(eq(orgRequests.id, row.id));
+
+    return c.json({ status: "approved", entry_id: entryId, authority: input.authority });
+  },
+);
+
 appRoutes.post(
   "/profile/edit",
   zValidator("json", z.object({
@@ -2076,6 +2721,43 @@ appRoutes.post(
         .update(user)
         .set({ isApproved: true, updatedAt: new Date() })
         .where(eq(user.id, authUser.id));
+    }
+
+    // First completion is the moment they become a member — the founder's
+    // welcome goes out once, here. The metadata flag (not the completion
+    // column) is the once-guard, so an admin questionnaire reset doesn't
+    // re-welcome someone on their second pass through the form.
+    const firstCompletion = isCompleted && !activeProfile.onboardingCompletedAt;
+    const alreadyWelcomed = Boolean(
+      (activeProfile.metadata as Record<string, unknown> | null)?.welcome_email,
+    );
+    if (firstCompletion && !alreadyWelcomed) {
+      const reg = registrationDetails as Record<string, unknown>;
+      const profileId = activeProfile.id;
+      c.executionCtx.waitUntil((async () => {
+        try {
+          const result = await sendWelcomeEmail(c.env, authUser.email, {
+            name: displayName || authUser.name,
+            branch: typeof reg.branch === "string" ? reg.branch : null,
+            headline: typeof reg.headline === "string" ? reg.headline : null,
+            needs: Array.isArray(reg.needs) ? (reg.needs as string[]) : [],
+            seeking: typeof reg.seeking === "string" ? reg.seeking : null,
+            orgNamed: Boolean(reg.org_entry_id || reg.org_proposed_name),
+          });
+          await db
+            .update(profiles)
+            .set({
+              metadata: sql`${profiles.metadata} || ${JSON.stringify({
+                welcome_email: { at: new Date().toISOString(), ...result },
+              })}::jsonb`,
+            })
+            .where(eq(profiles.id, profileId));
+        } catch (error) {
+          // A lost welcome never blocks membership; it just stays unmarked so
+          // there's something to find when someone asks why it didn't arrive.
+          console.error("welcome email error", error);
+        }
+      })());
     }
 
     const [updated] = await db
@@ -2527,7 +3209,27 @@ appRoutes.get("/handoff/boomin/status", async (c) => {
 appRoutes.get("/dashboard/creators", async (c) => {
   const { db, authUser } = await requireAppUser(c);
   const activeProfile = await ensureDefaultProfile(db, authUser);
-  return creatorStandingResponse(c, profileExternalUserId(activeProfile));
+  const response = await creatorStandingResponse(c, profileExternalUserId(activeProfile));
+  // Additive (B4): the member's local capacity next to the Boomin standing —
+  // the badge the FE renders without a second round trip. Boomin-side fields
+  // (enrollment operating_type, requirement provenance) flow through the
+  // standing payload untouched.
+  try {
+    const roles = await db
+      .select({ role: memberRoles.role, confirmedAt: memberRoles.confirmedAt })
+      .from(memberRoles)
+      .where(eq(memberRoles.profileId, activeProfile.id));
+    const body = await response.clone().json() as Record<string, unknown>;
+    return jsonWithStatus({
+      ...body,
+      atlantium: {
+        personas: roles.filter((r) => r.confirmedAt).map((r) => r.role),
+        primary_operating_type: primaryOperatingType(roles) ?? null,
+      },
+    }, response.status);
+  } catch {
+    return response;
+  }
 });
 
 appRoutes.get("/admin/partnerships/creators", async (c) => {
@@ -2761,6 +3463,70 @@ appRoutes.get("/digest/preview", async (c) => {
   return c.html(renderDigest(sections, unsub));
 });
 
+
+/** The homepage console: every panel's numbers in one cached call.
+ *  Public, and every value is a real query — a panel that can't show a
+ *  true number doesn't ship (see the console's design rule). */
+appRoutes.get("/console", async (c) => {
+  const db = createDb(c.env);
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const [jobTotals, latestJobs, dirCounts, latestPosts] = await Promise.all([
+    db
+      .select({
+        total: sql<number>`count(*)::int`,
+        remote: sql<number>`count(*) filter (where ${jobPostings.workplaceType} = 'Remote')::int`,
+        newThisWeek: sql<number>`count(*) filter (where coalesce(${jobPostings.postedAt}, ${jobPostings.createdAt}) > ${weekAgo})::int`,
+        reach200k: sql<number>`count(*) filter (where coalesce(${jobPostings.salaryMax}, ${jobPostings.salaryMin}) >= 200000)::int`,
+      })
+      .from(jobPostings)
+      .where(eq(jobPostings.status, "active")),
+    db
+      .select({
+        slug: jobPostings.slug,
+        title: jobPostings.title,
+        company: jobPostings.company,
+        salaryMin: jobPostings.salaryMin,
+        salaryMax: jobPostings.salaryMax,
+      })
+      .from(jobPostings)
+      .where(eq(jobPostings.status, "active"))
+      .orderBy(sql`coalesce(${jobPostings.postedAt}, ${jobPostings.createdAt}) desc`)
+      .limit(6),
+    db
+      .select({
+        kind: directoryEntries.kind,
+        n: sql<number>`count(*)::int`,
+      })
+      .from(directoryEntries)
+      .where(eq(directoryEntries.status, "active"))
+      .groupBy(directoryEntries.kind),
+    db
+      .select({
+        slug: contentDocuments.slug,
+        title: contentDocuments.title,
+        publishedAt: contentDocuments.publishedAt,
+      })
+      .from(contentDocuments)
+      .where(and(eq(contentDocuments.type, "post"), eq(contentDocuments.status, "published")))
+      .orderBy(desc(contentDocuments.publishedAt))
+      .limit(3),
+  ]);
+  const dir: Record<string, number> = {};
+  for (const row of dirCounts) dir[row.kind] = row.n;
+  c.header("Cache-Control", "public, s-maxage=300, max-age=60");
+  return c.json({
+    jobs: {
+      total: jobTotals[0]?.total ?? 0,
+      remote: jobTotals[0]?.remote ?? 0,
+      new_this_week: jobTotals[0]?.newThisWeek ?? 0,
+      reach_200k: jobTotals[0]?.reach200k ?? 0,
+      latest: latestJobs,
+    },
+    directory: dir,
+    wire: latestPosts,
+  });
+});
+
 appRoutes.get("/job_postings", async (c) => {
   const db = createDb(c.env);
   const status = c.req.query("status") ?? "active";
@@ -2782,6 +3548,22 @@ appRoutes.get("/job_postings", async (c) => {
   if (c.req.query("no_degree") === "1") {
     conditions.push(
       sql`${jobPostings.review}->>'degree_required' in ('not_required','equivalent_accepted')`,
+    );
+  }
+  // Mirrors the new_this_week count's window so the metric tile and its
+  // filtered list always agree.
+  if (c.req.query("new_this_week") === "1") {
+    conditions.push(
+      sql`coalesce(${jobPostings.postedAt}, ${jobPostings.createdAt}) > now() - interval '7 days'`,
+    );
+  }
+  // Salary floor: the role's range must REACH the floor (its top ≥ floor).
+  // Roles with no salary data can't prove it, so they drop out while the
+  // filter is active — an honest floor, not a hopeful one.
+  const salaryFloor = Number(c.req.query("salary_floor"));
+  if (Number.isFinite(salaryFloor) && salaryFloor > 0) {
+    conditions.push(
+      sql`coalesce(${jobPostings.salaryMax}, ${jobPostings.salaryMin}) >= ${salaryFloor}`,
     );
   }
   const where = and(...conditions);
@@ -3087,6 +3869,15 @@ async function buildHandoffOptions(c: Context<{ Bindings: Env }>) {
   const activeProfile = await ensureDefaultProfile(db, authUser);
   const redirectUri = c.env.BOOMIN_HANDOFF_REDIRECT_URI
     || `${c.env.APP_BASE_URL || "https://atlantium.ai"}/creator-program`;
+  // The member's confirmed personas ride the SIGNED payload (B2):
+  // `operatingType` sets the enrollment's capacity on Boomin (advisor >
+  // investor > founder > professional), `personas` is context. `profileType`
+  // stays what it is — personal|child|team — never repurposed for capacity.
+  const profileRoles = await db
+    .select({ role: memberRoles.role, confirmedAt: memberRoles.confirmedAt })
+    .from(memberRoles)
+    .where(eq(memberRoles.profileId, activeProfile.id));
+  const operatingType = primaryOperatingType(profileRoles);
   const options = {
     issuer: BOOMIN_ISSUER,
     audience: BOOMIN_AUDIENCE,
@@ -3095,10 +3886,12 @@ async function buildHandoffOptions(c: Context<{ Bindings: Env }>) {
     externalUserId: profileExternalUserId(activeProfile),
     email: authUser.email,
     name: activeProfile.displayName,
+    ...(operatingType ? { operatingType } : {}),
     metadata: {
       atlantiumUserId: authUser.id,
       atlantiumProfileId: activeProfile.id,
       profileType: activeProfile.type,
+      personas: profileRoles.filter((r) => r.confirmedAt).map((r) => r.role),
     },
     signingSecret: requireEnv(c.env, "HANDOFF_SIGNING_SECRET"),
     expiresInSeconds: BOOMIN_HANDOFF_EXPIRES_IN,

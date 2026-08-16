@@ -29,7 +29,12 @@ const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
 
 const SHARD_LIMIT = 350;
-const REVIEW_STALE_HOURS = 22;
+// 46, not 48: a 48-hour target with the same 2-hour slack the daily cycle
+// used (22 for 24) — without the slack a job drifts one cron slot later every
+// cycle and "every two days" quietly becomes every three. Founder call
+// 2026-08-14: halves the review spend; a dead link can now survive up to two
+// days instead of one.
+const REVIEW_STALE_HOURS = 46;
 const MAX_INFLIGHT_BATCHES = 3;
 const DAILY_SUBMIT_CEILING = 8000;
 const PAGE_TEXT_CAP = 8000; // chars ≈ 2k tokens

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion } from "motion/react";
 import {
-  ChevronLeft, Loader2, Landmark, ExternalLink, CalendarClock, Building2, CheckCircle2, ShieldCheck, Globe,
+  ChevronLeft, Loader2, Landmark, ExternalLink, CalendarClock, Building2, CheckCircle2, ShieldCheck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,6 +81,14 @@ export function DirectoryEntryPage() {
   const amount = money(grant?.amount_min, grant?.amount_max);
   const days = grant?.days_until_close;
   const applyUrl = grant?.application_url ?? resource?.application_url ?? entry?.website;
+
+  // The page predates investors and companies being kinds here — everything
+  // that wasn't a grant rendered as "Program", which put PROGRAM over a VC
+  // firm's name and "Apply" on its website button. One vocabulary per kind.
+  const KIND_LABEL: Record<string, string> = {
+    grant: "Grant", resource: "Program", investor: "Investor", company: "Company", person: "Person",
+  };
+  const isFunnelKind = kind === "grant" || kind === "resource";
   const eligibility = grant?.eligibility ?? resource?.eligibility ?? [];
 
   return (
@@ -92,11 +100,11 @@ export function DirectoryEntryPage() {
 
       <main className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 py-8 w-full">
         <Link
-          to={kind === "grant" || kind === "resource" ? "/grants" : `/directory?kind=${kind}`}
+          to={`/directory?kind=${kind}`}
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
         >
           <ChevronLeft className="h-4 w-4" />
-          {kind === "grant" || kind === "resource" ? "Back to Grants" : "Back to Directory"}
+          Back to Directory
         </Link>
 
         {isLoading ? (
@@ -107,7 +115,7 @@ export function DirectoryEntryPage() {
           <div className="text-center py-24 text-muted-foreground">
             <Landmark className="h-12 w-12 mx-auto mb-4 opacity-30" />
             <h2 className="text-xl font-semibold text-foreground mb-2">Not Found</h2>
-            <p className="text-sm">This program may have closed or moved.</p>
+            <p className="text-sm">This listing may have closed or moved.</p>
           </div>
         ) : (
           <motion.article initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
@@ -115,7 +123,7 @@ export function DirectoryEntryPage() {
               <div className="flex flex-wrap items-center gap-2 mb-2.5 text-[11px] font-semibold uppercase tracking-widest">
                 <span className="inline-flex items-center gap-1.5 text-cyan-400">
                   <Landmark className="h-3 w-3" />
-                  {entry.kind === "grant" ? "Grant" : "Program"}
+                  {KIND_LABEL[entry.kind] ?? "Listing"}
                 </span>
                 {entry.status === "expired" && (
                   <Badge variant="outline" className="text-[10px] bg-red-500/10 border-red-500/30 text-red-300">Closed</Badge>
@@ -228,7 +236,7 @@ export function DirectoryEntryPage() {
             {applyUrl && (
               <a href={applyUrl} target="_blank" rel="noreferrer noopener" className="block mb-6">
                 <Button className="w-full gap-2 bg-white text-black hover:bg-gray-100">
-                  Apply on the official site <ExternalLink className="h-4 w-4" />
+                  {isFunnelKind ? "Apply on the official site" : "Visit website"} <ExternalLink className="h-4 w-4" />
                 </Button>
               </a>
             )}
@@ -239,22 +247,22 @@ export function DirectoryEntryPage() {
                 <h2 className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2 inline-flex items-center gap-1.5">
                   <ShieldCheck className="h-3 w-3" /> Source
                 </h2>
-                {provenance.map((p) => (
-                  <div key={p.source} className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <span className="capitalize">{p.source.replace(/_/g, " ")}</span>
-                    {p.source_url && (
-                      <a href={p.source_url} target="_blank" rel="noreferrer noopener" className="text-cyan-400 hover:text-cyan-300 inline-flex items-center gap-1">
-                        <Globe className="h-3 w-3" /> official page
-                      </a>
-                    )}
-                    <span className="opacity-60">
-                      last checked {new Date(p.last_seen_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                    </span>
-                  </div>
-                ))}
-                <p className="text-[11px] text-muted-foreground/70 mt-2">
-                  Always confirm amounts and deadlines on the funder's page before applying.
-                </p>
+                {/* Deliberately unbranded: where a listing came from is ops
+                    detail, and a third-party name here reads as someone else's
+                    endorsement. The freshness date is the part a reader needs. */}
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span>Verified listing</span>
+                  <span className="opacity-60">
+                    · last checked {new Date(
+                      provenance.reduce((a, p) => (p.last_seen_at > a ? p.last_seen_at : a), provenance[0].last_seen_at),
+                    ).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  </span>
+                </div>
+                {isFunnelKind && (
+                  <p className="text-[11px] text-muted-foreground/70 mt-2">
+                    Always confirm amounts and deadlines on the funder's page before applying.
+                  </p>
+                )}
               </section>
             )}
           </motion.article>
