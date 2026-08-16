@@ -23,6 +23,13 @@ ADMIN_EMAILS = "kleveland.bishop@gmail.com"
 BOOMIN_CONNECT_PUBLIC_KEY = "pk_live_atlantium_creator_program_63xwon9h"
 BOOMIN_CONNECT_API_BASE = "https://api.boomin.ai/v1/connect"
 BOOMIN_HANDOFF_REDIRECT_URI = "https://atlantium.ai/creator-program"
+# Head Hunter Program (task #23 hub): its own Connect surface + program.
+# The signing secret is a wrangler SECRET (BOOMIN_HEADHUNTER_SIGNING_SECRET).
+BOOMIN_HEADHUNTER_PUBLIC_KEY = "pk_live_head_hunter_program_uiv4txgv"
+BOOMIN_HEADHUNTER_PROGRAM_ID = "b7100f48-59a4-4f14-89f9-4eae932d8f4d"
+# Platform reads for program cards (requirements/tiers) ride
+# BOOMIN_PLATFORM_SECRET (secret; scopes: assertions + program reads).
+BOOMIN_PLATFORM_API_BASE = "https://api.boomin.ai/v1/platform"
 
 # ── Membership price IDs — TEST MODE ─────────────────────────────────────────
 # Not secret: price ids are public identifiers, so they live here rather than

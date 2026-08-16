@@ -35,24 +35,26 @@ function maskEmail(email: string): string {
   return `${local[0]}${"*".repeat(local.length - 2)}${local[local.length - 1]}@${domain}`;
 }
 
+/** No invented people on this panel — the slides are the platform's own
+ *  claims, each one verifiable on the surface it names. */
 const testimonials = [
   {
     image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&q=80",
-    quote: "The Frontier Feed changed how I stay ahead in AI. I was shipping features before my competitors even heard the news.",
-    name: "Marcus Rivera",
-    role: "CTO, Synth Labs",
+    quote: "Every apply link on the board is checked by AI on a rolling cycle. Dead postings don't survive here.",
+    name: "The Job Board",
+    role: "5,000+ live Atlanta tech roles",
   },
   {
     image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&q=80",
-    quote: "Atlantium's events connected me with the exact investors I needed. Closed our seed round in three weeks.",
-    name: "Priya Sharma",
-    role: "Founder, NeuralPath",
+    quote: "Every investor writing checks in the Southeast. Every accelerator, every open grant. Profiled, linked, verified.",
+    name: "The Directory",
+    role: "1,100+ companies · 131 investors",
   },
   {
     image: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1200&q=80",
-    quote: "The community here is different. Everyone is building, shipping, and helping each other win. No noise, just signal.",
-    name: "Jordan Kim",
-    role: "Engineer, Scale AI",
+    quote: "Atlanta tech, covered — the people, the companies, and the money moving the scene.",
+    name: "The Wire",
+    role: "Reports and guides, free to read",
   },
 ];
 

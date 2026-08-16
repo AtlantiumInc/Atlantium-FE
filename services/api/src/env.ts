@@ -22,11 +22,17 @@ export type Env = {
   BOOMIN_CONNECT_PROGRAM_ID?: string;
   BOOMIN_CONNECT_API_BASE?: string;
   BOOMIN_HANDOFF_REDIRECT_URI?: string;
-  /** Platform sk_ key (assertions:write) — a wrangler SECRET, never a var
-   *  (vars/secrets share one namespace). Absent = assertion sync + conversion
-   *  forwarding are INERT: every helper early-exits. Deploy-order safe. */
+  /** Platform sk_ key (assertions:write + program reads) — a wrangler SECRET,
+   *  never a var (vars/secrets share one namespace). Absent = assertion sync,
+   *  conversion forwarding, and program cards are INERT. Deploy-order safe. */
   BOOMIN_PLATFORM_SECRET?: string;
   BOOMIN_PLATFORM_API_BASE?: string;
+  /** Head Hunter Program surface (task #23 hub) — its own publicKey/program;
+   *  the signing secret is a wrangler SECRET. Absent = the hub lists only the
+   *  creator program. */
+  BOOMIN_HEADHUNTER_PUBLIC_KEY?: string;
+  BOOMIN_HEADHUNTER_PROGRAM_ID?: string;
+  BOOMIN_HEADHUNTER_SIGNING_SECRET?: string;
   REFERRAL_LANDING_URL?: string;
   BOOMIN_APP_API_BASE?: string;
   BOOMIN_APP_STANDING_EMAIL?: string;
