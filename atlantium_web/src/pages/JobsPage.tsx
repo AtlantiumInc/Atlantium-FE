@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useWindowVirtualizer } from "@tanstack/react-virtual";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Link } from "react-router-dom";
-import { motion } from "motion/react";
-import { ExternalLink, Lock, MapPin, Briefcase, Search, Building2, Clock, ChevronDown, ChevronUp, Cpu, GraduationCap, Bell, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { toast } from "sonner";
+import { ExternalLink, Lock, MapPin, Briefcase, Search, Building2, Clock, ChevronDown, ChevronUp, Cpu, GraduationCap, Bell, ArrowRight, CheckCircle2, Loader2, Star, Sparkles, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PublicNavbar } from "@/components/PublicNavbar";
@@ -37,6 +38,14 @@ function toJob(p: JobPosting): Job {
     security_clearance: p.content?.security_clearance,
     visa_sponsorship: p.content?.visa_sponsorship,
   };
+}
+
+/** Starred roles live in localStorage as full snapshots, so the Starred view
+ *  renders without the API and survives filter/pagination changes. This is
+ *  the seed data for the coming AI scout ("find more like my stars"). */
+const STARS_KEY = "atlantium_starred_jobs_v1";
+function loadStars(): Record<string, Job> {
+  try { return JSON.parse(localStorage.getItem(STARS_KEY) ?? "{}"); } catch { return {}; }
 }
 
 const WORKPLACE_FILTERS = ["All", "Remote", "Hybrid", "Onsite"];
@@ -78,11 +87,15 @@ function JobCard({
   index,
   onGatedApply,
   gatedApplyLabel,
+  starred,
+  onToggleStar,
 }: {
   job: Job;
   index: number;
   onGatedApply: () => void;
   gatedApplyLabel: string;
+  starred: boolean;
+  onToggleStar: (job: Job) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const salary = formatSalary(job.salary_min, job.salary_max);
@@ -108,12 +121,38 @@ function JobCard({
               <span className="truncate">{job.company}</span>
             </div>
           </Link>
-          <Link to={`/jobs/${job.slug}`} onClick={(e) => e.stopPropagation()}>
-            <Button size="sm" variant="outline" className="gap-1.5 flex-shrink-0 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300 hover:border-cyan-500/50 md:opacity-0 md:group-hover:opacity-100 transition-all h-8 text-xs sm:h-9 sm:text-sm">
-              View
-              <ArrowRight className="h-3 w-3" />
-            </Button>
-          </Link>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); onToggleStar(job); }}
+              aria-label={starred ? "Unstar this role" : "Star this role"}
+              aria-pressed={starred}
+              className={`h-8 w-8 rounded-md border flex items-center justify-center transition-all ${
+                starred
+                  ? "border-amber-400/50 text-amber-300 bg-amber-500/10"
+                  : "border-border/50 text-muted-foreground hover:text-amber-300 hover:border-amber-400/40"
+              }`}
+            >
+              <Star className={`h-4 w-4 ${starred ? "fill-current" : ""}`} />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                toast("The AI scout is coming — starred roles will teach it what to hunt for.");
+              }}
+              aria-label="Find roles like this (coming soon)"
+              className="hidden sm:flex h-8 w-8 rounded-md border border-border/50 text-muted-foreground hover:text-cyan-300 hover:border-cyan-400/40 items-center justify-center transition-all md:opacity-0 md:group-hover:opacity-100"
+            >
+              <Sparkles className="h-4 w-4" />
+            </button>
+            <Link to={`/jobs/${job.slug}`} onClick={(e) => e.stopPropagation()}>
+              <Button size="sm" variant="outline" className="gap-1.5 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300 hover:border-cyan-500/50 md:opacity-0 md:group-hover:opacity-100 transition-all h-8 text-xs sm:h-9 sm:text-sm">
+                View
+                <ArrowRight className="h-3 w-3" />
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Meta row */}
@@ -260,11 +299,11 @@ function CompactTrainingCard() {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[9px] font-bold text-violet-400 uppercase tracking-widest">Training Program</p>
-          <h3 className="font-semibold text-foreground text-xs leading-tight">4-Week AI Engineering</h3>
+          <h3 className="font-semibold text-foreground text-xs leading-tight">8-Week AI Engineering</h3>
         </div>
       </div>
       <p className="text-[11px] text-muted-foreground leading-relaxed mb-2.5">
-        Build enterprise apps, refactor legacy code, land a role — with daily office hours.
+        Live sessions, a real client build, and warm introductions to hiring partners.
       </p>
       <Link to="/training" className="block">
         <Button size="sm" className="w-full gap-1.5 bg-violet-500/20 border border-violet-500/40 text-violet-300 hover:bg-violet-500/30 h-8 text-xs">
@@ -353,6 +392,10 @@ export function JobsPage() {
   const [workplaceFilter, setWorkplaceFilter] = useState("All");
   const [seniorityFilter, setSeniorityFilter] = useState("All");
   const [noDegreeOnly, setNoDegreeOnly] = useState(false);
+  const [newThisWeekOnly, setNewThisWeekOnly] = useState(false);
+  // 0 = no floor; 200_000 renders as "$200k+"
+  const [salaryFloor, setSalaryFloor] = useState(0);
+  const [debouncedSalaryFloor, setDebouncedSalaryFloor] = useState(0);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [total, setTotal] = useState(0);
   const [counts, setCounts] = useState({ remote: 0, hybrid: 0, new_this_week: 0, no_degree: 0 });
@@ -371,13 +414,37 @@ export function JobsPage() {
     signup.openQuestionnaire();
   }, [signup]);
   const listRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   // Guards against out-of-order responses when filters change mid-flight.
   const requestSeq = useRef(0);
+  // Stars: id → full job snapshot (localStorage-backed; seeds the AI scout)
+  const [stars, setStars] = useState<Record<string, Job>>(loadStars);
+  const [starredOnly, setStarredOnly] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  // Session-scoped so the bar stays gone while browsing but isn't killed forever
+  const [promoDismissed, setPromoDismissed] = useState(
+    () => sessionStorage.getItem("atlantium_jobs_promo_dismissed") === "1",
+  );
+  const toggleStar = useCallback((job: Job) => {
+    setStars((prev) => {
+      const next = { ...prev };
+      if (next[job.id]) delete next[job.id];
+      else next[job.id] = job;
+      localStorage.setItem(STARS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+  const starredJobs = Object.values(stars);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
     return () => clearTimeout(t);
   }, [search]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSalaryFloor(salaryFloor), 350);
+    return () => clearTimeout(t);
+  }, [salaryFloor]);
 
   const queryParams = useCallback(
     (offset: number) => ({
@@ -385,10 +452,12 @@ export function JobsPage() {
       workplace_type: workplaceFilter !== "All" ? workplaceFilter : undefined,
       seniority: seniorityFilter !== "All" ? seniorityFilter : undefined,
       no_degree: noDegreeOnly || undefined,
+      new_this_week: newThisWeekOnly || undefined,
+      salary_floor: debouncedSalaryFloor || undefined,
       limit: PAGE_SIZE,
       offset,
     }),
-    [debouncedSearch, workplaceFilter, seniorityFilter, noDegreeOnly],
+    [debouncedSearch, workplaceFilter, seniorityFilter, noDegreeOnly, newThisWeekOnly, debouncedSalaryFloor],
   );
 
   // First page — refetches whenever search or filters change.
@@ -425,25 +494,278 @@ export function JobsPage() {
       .finally(() => setIsLoadingMore(false));
   }, [isLoading, isLoadingMore, jobs.length, total, queryParams]);
 
-  // Virtual scroll: only ~a screenful of cards lives in the DOM no matter how
-  // many rows are loaded; heights are measured (cards expand).
-  const virtualizer = useWindowVirtualizer({
-    count: jobs.length,
+  // The app shell scrolls in one place: the list column. Virtualization is
+  // bound to that element (not the window); only ~a screenful of measured
+  // cards lives in the DOM.
+  const displayJobs = starredOnly ? starredJobs : jobs;
+  const virtualizer = useVirtualizer({
+    count: displayJobs.length,
+    getScrollElement: () => scrollRef.current,
     estimateSize: () => 190,
     overscan: 8,
     scrollMargin: listRef.current?.offsetTop ?? 0,
-    getItemKey: (i) => jobs[i]?.id ?? i,
+    getItemKey: (i) => displayJobs[i]?.id ?? i,
   });
   const virtualItems = virtualizer.getVirtualItems();
 
   useEffect(() => {
+    if (starredOnly) return; // local list, nothing to page in
     const last = virtualItems[virtualItems.length - 1];
     if (last && last.index >= jobs.length - 8) loadMore();
-  }, [virtualItems, jobs.length, loadMore]);
+  }, [virtualItems, jobs.length, loadMore, starredOnly]);
 
+
+  const filterRail = (
+    <div className="flex flex-col gap-6">
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <input
+          type="text"
+          placeholder="Search title, company, tech..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-9 pr-3 py-2 rounded-lg bg-card/60 border border-border/60 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all"
+        />
+      </div>
+
+      {/* Workplace */}
+      <div>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+          <span className="text-primary/70 mr-1">01</span>Workplace
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {WORKPLACE_FILTERS.map((f) => (
+            <button
+              key={f}
+              onClick={() => setWorkplaceFilter(f)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                workplaceFilter === f
+                  ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-300"
+                  : "bg-card/40 border-border/50 text-muted-foreground hover:border-border hover:text-foreground"
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Seniority */}
+      <div>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+          <span className="text-primary/70 mr-1">02</span>Seniority
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {SENIORITY_FILTERS.map((f) => (
+            <button
+              key={f}
+              onClick={() => setSeniorityFilter(f)}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-medium border transition-all ${
+                seniorityFilter === f
+                  ? "bg-violet-500/20 border-violet-500/40 text-violet-300"
+                  : "bg-card/40 border-border/40 text-muted-foreground hover:border-border hover:text-foreground"
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Salary floor */}
+      <div>
+        <div className="flex items-baseline justify-between mb-2">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <span className="text-primary/70 mr-1">03</span>Salary
+          </p>
+          <span className={`font-mono text-xs ${salaryFloor > 0 ? "text-emerald-400" : "text-muted-foreground"}`}>
+            {salaryFloor === 0 ? "Any" : salaryFloor >= 200000 ? "$200k+" : `$${salaryFloor / 1000}k+`}
+          </span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={200000}
+          step={10000}
+          value={salaryFloor}
+          onChange={(e) => setSalaryFloor(Number(e.target.value))}
+          aria-label="Minimum salary"
+          className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-border/60 accent-emerald-400"
+        />
+        <div className="flex justify-between font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60 mt-1">
+          <span>Any</span>
+          <span>$100k</span>
+          <span>$200k+</span>
+        </div>
+        {salaryFloor > 0 && (
+          <p className="text-[10px] text-muted-foreground mt-1.5">
+            Roles without published salary are hidden while a floor is set.
+          </p>
+        )}
+      </div>
+
+      {/* Signals */}
+      <div>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+          <span className="text-primary/70 mr-1">04</span>Signals
+        </p>
+        <div className="flex flex-col gap-1.5">
+          <button
+            onClick={() => setNoDegreeOnly(!noDegreeOnly)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium border text-left transition-all ${
+              noDegreeOnly
+                ? "bg-teal-500/20 border-teal-500/40 text-teal-300"
+                : "bg-card/40 border-border/40 text-muted-foreground hover:border-border hover:text-foreground"
+            }`}
+          >
+            No degree required
+          </button>
+          <button
+            onClick={() => setStarredOnly(!starredOnly)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium border text-left flex items-center gap-2 transition-all ${
+              starredOnly
+                ? "bg-amber-500/20 border-amber-500/40 text-amber-300"
+                : "bg-card/40 border-border/40 text-muted-foreground hover:border-border hover:text-foreground"
+            }`}
+          >
+            <Star className={`h-3.5 w-3.5 ${starredOnly ? "fill-current" : ""}`} />
+            Starred
+            <span className="ml-auto font-mono text-[10px]">{starredJobs.length}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* AI scout teaser — stars are its training data */}
+      <div className="rounded-lg border border-dashed border-border/60 p-3">
+        <div className="flex items-center gap-2 mb-1">
+          <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
+          <span className="text-xs font-semibold">AI Scout</span>
+          <span className="ml-auto font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Soon</span>
+        </div>
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          Star roles you like — the scout will learn your taste and hunt for more.
+        </p>
+      </div>
+    </div>
+  );
+
+  /* Metric bar: the counts the API computes UNDER the current filters, as
+     controls. Each tile both reports and narrows — click Remote and every
+     number recomputes within Remote. */
+  const metricTile = (
+    label: string,
+    value: number,
+    active: boolean,
+    colorClass: string,
+    activeClass: string,
+    onClick: () => void,
+  ) => (
+    <button
+      key={label}
+      onClick={() => { setStarredOnly(false); onClick(); }}
+      aria-pressed={active}
+      className={`flex-1 min-w-[96px] rounded-lg border px-3 py-2 text-left transition-all ${
+        active ? activeClass : "border-border/40 bg-card/30 hover:border-border hover:bg-card/50"
+      }`}
+    >
+      <span className={`block font-mono text-lg leading-tight ${colorClass}`}>{value.toLocaleString()}</span>
+      <span className="block font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{label}</span>
+    </button>
+  );
+
+  const metricBar = (
+    <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Job metrics and quick filters">
+      {metricTile("Open roles", total, workplaceFilter === "All" && !noDegreeOnly && !newThisWeekOnly && !starredOnly && salaryFloor === 0, "text-foreground",
+        "border-foreground/30 bg-foreground/5",
+        () => { setWorkplaceFilter("All"); setNoDegreeOnly(false); setNewThisWeekOnly(false); setSalaryFloor(0); })}
+      {metricTile("Remote", counts.remote, workplaceFilter === "Remote", "text-emerald-400",
+        "border-emerald-500/40 bg-emerald-500/10",
+        () => setWorkplaceFilter(workplaceFilter === "Remote" ? "All" : "Remote"))}
+      {metricTile("Hybrid", counts.hybrid, workplaceFilter === "Hybrid", "text-violet-400",
+        "border-violet-500/40 bg-violet-500/10",
+        () => setWorkplaceFilter(workplaceFilter === "Hybrid" ? "All" : "Hybrid"))}
+      {metricTile("New this week", counts.new_this_week, newThisWeekOnly, "text-cyan-400",
+        "border-cyan-500/40 bg-cyan-500/10",
+        () => setNewThisWeekOnly(!newThisWeekOnly))}
+      {metricTile("No degree", counts.no_degree, noDegreeOnly, "text-teal-400",
+        "border-teal-500/40 bg-teal-500/10",
+        () => setNoDegreeOnly(!noDegreeOnly))}
+    </div>
+  );
+
+  const jobList = isLoading && !starredOnly ? (
+    <div className="flex items-center justify-center py-16 text-muted-foreground">
+      <Loader2 className="h-6 w-6 animate-spin mr-2" />
+      <span>Loading jobs...</span>
+    </div>
+  ) : error && !starredOnly ? (
+    <div className="text-center py-16 text-muted-foreground">
+      <Briefcase className="h-10 w-10 mx-auto mb-3 opacity-30" />
+      <p>{error}</p>
+    </div>
+  ) : displayJobs.length === 0 ? (
+    <div className="text-center py-16 text-muted-foreground">
+      {starredOnly ? (
+        <>
+          <Star className="h-10 w-10 mx-auto mb-3 opacity-30" />
+          <p>No starred roles yet — tap the star on any job.</p>
+        </>
+      ) : (
+        <>
+          <Briefcase className="h-10 w-10 mx-auto mb-3 opacity-30" />
+          <p>No jobs match your filters.</p>
+          <button
+            className="mt-2 text-sm text-cyan-400 hover:underline"
+            onClick={() => { setSearch(""); setWorkplaceFilter("All"); setSeniorityFilter("All"); setNoDegreeOnly(false); setNewThisWeekOnly(false); setSalaryFloor(0); }}
+          >
+            Clear filters
+          </button>
+        </>
+      )}
+    </div>
+  ) : (
+    <>
+      <div
+        ref={listRef}
+        className="relative w-full"
+        style={{ height: `${virtualizer.getTotalSize()}px` }}
+      >
+        {virtualItems.map((vi) => (
+          <div
+            key={vi.key}
+            data-index={vi.index}
+            ref={virtualizer.measureElement}
+            className="absolute top-0 left-0 w-full pb-3"
+            style={{ transform: `translateY(${vi.start - virtualizer.options.scrollMargin}px)` }}
+          >
+            <JobCard
+              job={displayJobs[vi.index]}
+              index={vi.index}
+              onGatedApply={handleGatedApply}
+              gatedApplyLabel={gatedApplyLabel}
+              starred={!!stars[displayJobs[vi.index].id]}
+              onToggleStar={toggleStar}
+            />
+          </div>
+        ))}
+      </div>
+      {isLoadingMore && !starredOnly && (
+        <div className="flex items-center justify-center py-4 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin mr-2" />
+          <span className="text-sm">Loading more roles...</span>
+        </div>
+      )}
+      {!starredOnly && jobs.length >= total && total > PAGE_SIZE && (
+        <p className="text-center text-xs text-muted-foreground py-4">
+          That's all {total} roles.
+        </p>
+      )}
+    </>
+  );
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
+    <div className="h-screen bg-background relative overflow-hidden flex flex-col">
       {/* Aurora */}
       <div className="fixed inset-0 z-0 opacity-20 dark:opacity-30">
         <Aurora
@@ -462,203 +784,122 @@ export function JobsPage() {
 
       <PublicNavbar />
 
-      <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-8 w-full overflow-x-hidden">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <div className="flex items-center gap-4 mb-4">
-            <div className="h-12 w-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center flex-shrink-0">
-              <Cpu className="h-6 w-6 text-cyan-500" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">Tech Job Postings</h1>
-              <div className="flex items-center gap-1.5 mt-0.5 text-sm text-muted-foreground">
-                <MapPin className="h-3.5 w-3.5" />
-                <span>Atlanta, GA · 50 mile radius</span>
+      {/* App frame: fixed rail, one scrolling column */}
+      <div className="relative z-10 flex-1 flex min-h-0">
+        {/* Filter rail (desktop) */}
+        <aside className="hidden lg:flex flex-col w-72 xl:w-80 shrink-0 border-r border-border/40 overflow-y-auto">
+          <div className="p-5 flex flex-col gap-6 flex-1">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                <Cpu className="h-4.5 w-4.5 text-cyan-500" />
               </div>
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-            <span><span className="text-foreground font-semibold">{total}</span> open roles</span>
-            <span><span className="text-emerald-400 font-semibold">{counts.remote}</span> remote</span>
-            <span><span className="text-violet-400 font-semibold">{counts.hybrid}</span> hybrid</span>
-            {counts.new_this_week > 0 && (
-              <span><span className="text-cyan-400 font-semibold">{counts.new_this_week}</span> new this week</span>
-            )}
-            {counts.no_degree > 0 && (
-              <span><span className="text-teal-400 font-semibold">{counts.no_degree}</span> no degree required</span>
-            )}
-            {jobs.length > 0 && jobs[0].posted_at && (
-              <span className="text-xs self-center opacity-60">
-                updated {jobs[0]?.posted_at ? new Date(jobs[0].posted_at).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : ""}
-              </span>
-            )}
-          </div>
-        </motion.div>
-
-        {/* Filters */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="flex flex-col sm:flex-row gap-3 mb-6"
-        >
-          {/* Search */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search title, company, or tech..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 rounded-lg bg-card/60 border border-border/60 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all"
-            />
-          </div>
-
-          {/* Workplace filter */}
-          <div className="flex gap-1.5 flex-wrap">
-            {WORKPLACE_FILTERS.map((f) => (
-              <button
-                key={f}
-                onClick={() => setWorkplaceFilter(f)}
-                className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
-                  workplaceFilter === f
-                    ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-300"
-                    : "bg-card/40 border-border/50 text-muted-foreground hover:border-border hover:text-foreground"
-                }`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Seniority filter */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.15 }}
-          className="hidden sm:flex gap-1.5 flex-wrap mb-6"
-        >
-          {SENIORITY_FILTERS.map((f) => (
-            <button
-              key={f}
-              onClick={() => setSeniorityFilter(f)}
-              className={`px-2.5 py-1 rounded-md text-[10px] font-medium border transition-all ${
-                seniorityFilter === f
-                  ? "bg-violet-500/20 border-violet-500/40 text-violet-300"
-                  : "bg-card/40 border-border/40 text-muted-foreground hover:border-border hover:text-foreground"
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-          <button
-            onClick={() => setNoDegreeOnly(!noDegreeOnly)}
-            className={`px-2.5 py-1 rounded-md text-[10px] font-medium border transition-all ${
-              noDegreeOnly
-                ? "bg-teal-500/20 border-teal-500/40 text-teal-300"
-                : "bg-card/40 border-border/40 text-muted-foreground hover:border-border hover:text-foreground"
-            }`}
-          >
-            No degree required
-          </button>
-        </motion.div>
-
-        {/* Results count */}
-        {(search || workplaceFilter !== "All" || seniorityFilter !== "All" || noDegreeOnly) && (
-          <p className="text-xs text-muted-foreground mb-4">
-            {total} result{total !== 1 ? "s" : ""}
-            {search && ` for "${search}"`}
-          </p>
-        )}
-
-        {/* Two-column layout: job list + sidebar */}
-        <div className="flex flex-col lg:flex-row gap-6 items-start pb-32 lg:pb-0 w-full min-w-0">
-          {/* Job list */}
-          <div className="w-full lg:flex-1 lg:min-w-0 space-y-3">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-16 text-muted-foreground">
-                <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                <span>Loading jobs...</span>
-              </div>
-            ) : error ? (
-              <div className="text-center py-16 text-muted-foreground">
-                <Briefcase className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                <p>{error}</p>
-              </div>
-            ) : jobs.length === 0 ? (
-              <div className="text-center py-16 text-muted-foreground">
-                <Briefcase className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                <p>No jobs match your filters.</p>
-                <button
-                  className="mt-2 text-sm text-cyan-400 hover:underline"
-                  onClick={() => { setSearch(""); setWorkplaceFilter("All"); setSeniorityFilter("All"); setNoDegreeOnly(false); }}
-                >
-                  Clear filters
-                </button>
-              </div>
-            ) : (
-              <>
-                <div
-                  ref={listRef}
-                  className="relative w-full"
-                  style={{ height: `${virtualizer.getTotalSize()}px` }}
-                >
-                  {virtualItems.map((vi) => (
-                    <div
-                      key={vi.key}
-                      data-index={vi.index}
-                      ref={virtualizer.measureElement}
-                      className="absolute top-0 left-0 w-full pb-3"
-                      style={{ transform: `translateY(${vi.start - virtualizer.options.scrollMargin}px)` }}
-                    >
-                      <JobCard
-                        job={jobs[vi.index]}
-                        index={vi.index}
-                        onGatedApply={handleGatedApply}
-                        gatedApplyLabel={gatedApplyLabel}
-                      />
-                    </div>
-                  ))}
+              <div className="min-w-0">
+                <h1 className="text-sm font-bold leading-tight">Tech Job Board</h1>
+                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <MapPin className="h-3 w-3" />
+                  <span>Atlanta, GA · 50mi</span>
                 </div>
-                {isLoadingMore && (
-                  <div className="flex items-center justify-center py-4 text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                    <span className="text-sm">Loading more roles...</span>
-                  </div>
-                )}
-                {jobs.length >= total && total > PAGE_SIZE && (
-                  <p className="text-center text-xs text-muted-foreground py-4">
-                    That's all {total} roles.
-                  </p>
-                )}
-              </>
-            )}
+              </div>
+            </div>
+            {filterRail}
+          </div>
+        </aside>
 
-            {/* Footer attribution */}
+        {/* The one scrolling column */}
+        <div ref={scrollRef} className="relative flex-1 min-w-0 overflow-y-auto overscroll-contain">
+          {/* Mobile-only strip: board identity + the way into the filter drawer.
+              Desktop needs neither — the rail says who we are and the metric
+              bar says what's here. */}
+          <div className="lg:hidden px-4 sm:px-6 pt-5 pb-3 flex items-center gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <Cpu className="h-4 w-4 text-cyan-500 shrink-0" />
+              <span className="text-sm font-bold truncate">Tech Job Board</span>
+            </div>
+            <button
+              onClick={() => setMobileFiltersOpen(true)}
+              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 bg-card/40 text-xs font-medium text-muted-foreground"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Filters
+            </button>
+          </div>
+
+          <div className="sticky top-0 z-20 bg-background/85 backdrop-blur-xl px-4 sm:px-6 py-2 border-b border-border/30">
+            <div className="max-w-3xl">{metricBar}</div>
+          </div>
+
+          <main className="px-4 sm:px-6 pt-4 pb-32 lg:pb-10 max-w-3xl">
+            {jobList}
             <div className="mt-6 pt-6 border-t border-border/30 text-xs text-muted-foreground">
               <span>AI Engineering Opportunities in Atlanta, GA · 50mi radius</span>
             </div>
-          </div>
+          </main>
+        </div>
 
-          {/* Desktop sidebar */}
-          <div className="hidden lg:flex lg:flex-col w-72 xl:w-80 flex-shrink-0 space-y-4 sticky top-24">
+        {/* Right rail — what we're selling, out of the filter column so the
+            left stays purely controls */}
+        <aside className="hidden xl:flex flex-col w-80 shrink-0 border-l border-border/40 overflow-y-auto">
+          <div className="p-5 space-y-4">
             <TrainingCard />
             <JobAlertsCard isMember={signup.isMember} onJoin={signup.openWithEmail} onStart={signup.startWithEmail} />
           </div>
-        </div>
+        </aside>
+      </div>
 
-        {/* Mobile: sticky training card at bottom */}
-        <div className="fixed bottom-0 left-0 right-0 z-40 lg:hidden p-3 bg-background/80 backdrop-blur-xl border-t border-border/30">
-          <CompactTrainingCard />
-        </div>
-      </main>
+      {/* Mobile filter drawer */}
+      <AnimatePresence>
+        {mobileFiltersOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] lg:hidden"
+          >
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={() => setMobileFiltersOpen(false)} />
+            <motion.div
+              initial={{ x: -320 }}
+              animate={{ x: 0 }}
+              exit={{ x: -320 }}
+              transition={{ type: "tween", duration: 0.22 }}
+              className="absolute inset-y-0 left-0 w-80 max-w-[85vw] bg-background border-r border-border/60 overflow-y-auto p-5"
+            >
+              <div className="flex items-center justify-between mb-5">
+                <span className="text-sm font-bold">Filters</span>
+                <button onClick={() => setMobileFiltersOpen(false)} aria-label="Close filters" className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-muted/50">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              {filterRail}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile: sticky training card at bottom — dismissible; it covers the
+          last rows of a list that is the whole point of the page */}
+      <AnimatePresence>
+        {!promoDismissed && (
+          <motion.div
+            initial={{ y: 80 }}
+            animate={{ y: 0 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed bottom-0 left-0 right-0 z-40 lg:hidden p-3 pr-11 bg-background/80 backdrop-blur-xl border-t border-border/30"
+          >
+            <CompactTrainingCard />
+            <button
+              onClick={() => {
+                sessionStorage.setItem("atlantium_jobs_promo_dismissed", "1");
+                setPromoDismissed(true);
+              }}
+              aria-label="Dismiss training promo"
+              className="absolute top-1.5 right-1.5 h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <JobReportSignupModal
         open={signup.open}

@@ -1842,6 +1842,8 @@ class ApiClient {
     seniority?: string;
     q?: string;
     no_degree?: boolean;
+    new_this_week?: boolean;
+    salary_floor?: number;
     limit?: number;
     offset?: number;
   }): Promise<{
@@ -1857,6 +1859,8 @@ class ApiClient {
     if (params?.seniority) search.set("seniority", params.seniority);
     if (params?.q) search.set("q", params.q);
     if (params?.no_degree) search.set("no_degree", "1");
+    if (params?.new_this_week) search.set("new_this_week", "1");
+    if (params?.salary_floor) search.set("salary_floor", String(params.salary_floor));
     if (params?.limit) search.set("limit", String(params.limit));
     if (params?.offset) search.set("offset", String(params.offset));
     return this.request(`/job_postings?${search}`, { method: "GET" }, ATLANTIUM_API_BASE_URL);

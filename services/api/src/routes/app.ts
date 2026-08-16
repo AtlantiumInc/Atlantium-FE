@@ -3373,6 +3373,22 @@ appRoutes.get("/job_postings", async (c) => {
       sql`${jobPostings.review}->>'degree_required' in ('not_required','equivalent_accepted')`,
     );
   }
+  // Mirrors the new_this_week count's window so the metric tile and its
+  // filtered list always agree.
+  if (c.req.query("new_this_week") === "1") {
+    conditions.push(
+      sql`coalesce(${jobPostings.postedAt}, ${jobPostings.createdAt}) > now() - interval '7 days'`,
+    );
+  }
+  // Salary floor: the role's range must REACH the floor (its top ≥ floor).
+  // Roles with no salary data can't prove it, so they drop out while the
+  // filter is active — an honest floor, not a hopeful one.
+  const salaryFloor = Number(c.req.query("salary_floor"));
+  if (Number.isFinite(salaryFloor) && salaryFloor > 0) {
+    conditions.push(
+      sql`coalesce(${jobPostings.salaryMax}, ${jobPostings.salaryMin}) >= ${salaryFloor}`,
+    );
+  }
   const where = and(...conditions);
   // Stable order: created_at ties within a scrape batch, so id is the tiebreak.
   const order = [

@@ -481,9 +481,9 @@ export function JobDetailPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[9px] font-bold text-violet-400 uppercase tracking-widest">Training Program</p>
-                    <h3 className="font-semibold text-foreground text-xs leading-tight">4-Week AI Engineering</h3>
+                    <h3 className="font-semibold text-foreground text-xs leading-tight">8-Week AI Engineering</h3>
                     <p className="text-[11px] text-muted-foreground leading-relaxed mt-1 mb-2">
-                      Build enterprise apps, refactor legacy code, land a role — with daily office hours.
+                      Live sessions, a real client build, and warm introductions to hiring partners.
                     </p>
                     <Link to="/training" className="block">
                       <Button size="sm" className="w-full gap-1.5 bg-violet-500/20 border border-violet-500/40 text-violet-300 hover:bg-violet-500/30 h-8 text-xs">
