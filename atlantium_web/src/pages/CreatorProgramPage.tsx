@@ -429,15 +429,19 @@ function ProgramCard({ program, onChanged }: { program: PartnerProgramSummary; o
 
         {program.card && program.card.requirements.length > 0 ? (
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Requirements</h3>
-            <ul className="mt-2 space-y-1.5">
-              {program.card.requirements.filter((r) => r.scope !== "tier").map((req, i) => (
-                <li key={`${req.metricKey}-${i}`} className="flex items-start gap-2 text-sm">
-                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span>{requirementLine(req)}</span>
-                </li>
-              ))}
-            </ul>
+            {program.card.requirements.some((r) => r.scope !== "tier") ? (
+              <>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Requirements</h3>
+                <ul className="mt-2 space-y-1.5">
+                  {program.card.requirements.filter((r) => r.scope !== "tier").map((req, i) => (
+                    <li key={`${req.metricKey}-${i}`} className="flex items-start gap-2 text-sm">
+                      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span>{requirementLine(req)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
             {program.card.tiers.length > 1 ? (
               <div className="mt-3">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tier ladder</h3>
