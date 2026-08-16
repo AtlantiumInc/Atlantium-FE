@@ -23,6 +23,7 @@ import { motion, useAnimationFrame } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import jobsData from "@/data/jobs.json";
 import { api } from "@/lib/api";
+import { useTheme } from "@/contexts/ThemeContext";
 
 
 interface Event {
@@ -153,7 +154,7 @@ function EventsMarquee() {
     if (isPaused || events.length === 0) return;
     setScrollX((prev) => {
       const newX = prev + 0.8;
-      const cardWidth = 280;
+      const cardWidth = 316; // tile width + gap — keeps the loop reset seamless
       const totalWidth = events.length * cardWidth;
       return newX >= totalWidth ? 0 : newX;
     });
@@ -222,11 +223,11 @@ function EventsMarquee() {
         {duplicatedEvents.map((event, index) => (
           <motion.div
             key={`${event.id}-${index}`}
-            className="flex-shrink-0 w-[260px] rounded-xl overflow-hidden bg-background/60 border border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
+            className="flex-shrink-0 w-[300px] rounded-xl overflow-hidden bg-background/60 border border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
             whileHover={{ scale: 1.02, y: -2 }}
           >
             {/* Event image */}
-            <div className="relative h-24 overflow-hidden">
+            <div className="relative h-40 overflow-hidden">
               <img
                 src={event.featured_image}
                 alt={event.title}
@@ -327,6 +328,10 @@ function FocusGroupsCard() {
 }
 
 export function LandingPage() {
+  const { resolvedTheme } = useTheme();
+  // The glint needs ink that exists in both themes — near-white type is
+  // invisible on the light fog.
+  const heroInk = resolvedTheme === "dark" ? "#eef2f8" : "#1c2942";
   const [freshJobCount, setFreshJobCount] = useState(0);
   // Live counts for The Network card — the numbers ARE the pitch, so they come
   // from the same API the directory itself reads, never hardcoded.
@@ -394,8 +399,8 @@ export function LandingPage() {
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight leading-[1.05] mb-5">
                   {/* Narrow white glint over solid type — a pass of light,
                       not a color gradient; long rest between sweeps */}
-                  <ShinyText text="Your Path to" className="block" color="#eef2f8" shineColor="#ffffff" spread={36} speed={2.2} delay={4.5} />
-                  <ShinyText text="the Frontier" className="block" color="#eef2f8" shineColor="#ffffff" spread={36} speed={2.2} delay={4.5} />
+                  <ShinyText text="Your Path to" className="block" color={heroInk} shineColor="#ffffff" spread={36} speed={2.2} delay={4.5} />
+                  <ShinyText text="the Frontier" className="block" color={heroInk} shineColor="#ffffff" spread={36} speed={2.2} delay={4.5} />
                 </h1>
 
                 {/* Subhead */}
@@ -443,7 +448,7 @@ export function LandingPage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-bold text-white">Tech Job Postings</h3>
+                      <h3 className="text-lg font-bold text-foreground">Tech Job Postings</h3>
                       {freshJobCount > 0 && (
                         <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
                           <span className="relative flex h-1.5 w-1.5">
@@ -495,7 +500,7 @@ export function LandingPage() {
                     <Calendar className="h-5 w-5 text-blue-500" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white">Upcoming Events</h3>
+                    <h3 className="text-lg font-bold text-foreground">Upcoming Events</h3>
                     <p className="text-xs text-muted-foreground">Weekly meetups with builders & investors</p>
                   </div>
                 </div>
@@ -649,7 +654,7 @@ export function LandingPage() {
                     <Radio className="h-5 w-5 text-cyan-400" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white">The Lobby</h3>
+                    <h3 className="text-lg font-bold text-foreground">The Lobby</h3>
                     <p className="text-xs text-muted-foreground">Live with 12 builders now</p>
                   </div>
                 </div>
