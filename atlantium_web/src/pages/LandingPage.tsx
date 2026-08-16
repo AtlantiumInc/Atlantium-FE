@@ -10,7 +10,6 @@ import {
   Briefcase,
   ArrowRight,
   Sparkles,
-  Quote,
   Star,
   Video,
   Rocket,
@@ -425,72 +424,52 @@ export function LandingPage() {
             </SpotlightCard>
           </motion.div>
 
-          {/* Testimonial Card */}
+          {/* Live jobs widget — real feed with the 48h pulse pill; replaced
+              a testimonial from a member who did not exist */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.6 }}
             className="col-span-12 lg:col-span-4 row-span-3"
           >
-            <div className="relative h-full group">
-              {/* Animated gradient border */}
-              <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-slate-500 via-blue-500 to-cyan-500 opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-500" />
-              <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-slate-500 via-blue-500 to-cyan-500 opacity-20 group-hover:opacity-40 transition-opacity duration-500" />
-
-              <SpotlightCard
-                className="relative h-full p-6 flex flex-col justify-center overflow-hidden"
-                spotlightColor="rgba(59, 130, 246, 0.15)"
-              >
-                {/* Large decorative quote */}
-                <div className="absolute -top-4 -right-4 opacity-[0.07]">
-                  <Quote className="h-32 w-32 text-blue-500" strokeWidth={1} />
-                </div>
-
-                <div className="relative z-10">
-                  {/* 5 stars */}
-                  <div className="flex gap-1 mb-4">
-                    {[...Array(5)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ opacity: 0, scale: 0 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 0.3 + i * 0.1, duration: 0.3 }}
-                      >
-                        <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                      </motion.div>
-                    ))}
-                  </div>
-
-                  {/* Quote */}
-                  <blockquote className="text-lg font-medium text-foreground leading-relaxed mb-6">
-                    "Being in Atlantium gave me an unfair advantage. I was shipping production features
-                    <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent font-semibold"> twice as fast as my peers</span> -- while they were still figuring out the tools, I was already building with them."
-                  </blockquote>
-                </div>
-
-                {/* Author */}
-                <div className="relative z-10 flex items-center gap-4 pt-4 border-t border-border/30">
-                  {/* Avatar with glow */}
-                  <div className="relative">
-                    <div className="absolute inset-0 rounded-full bg-gradient-to-r from-slate-500 to-blue-500 blur-md opacity-50" />
-                    <div className="relative h-12 w-12 rounded-full bg-gradient-to-br from-slate-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg ring-2 ring-background">
-                      JK
-                    </div>
+            <SpotlightCard
+              className="h-full p-5 flex flex-col"
+              spotlightColor="rgba(6, 182, 212, 0.12)"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                    <Briefcase className="h-5 w-5 text-cyan-500" />
                   </div>
                   <div>
-                    <div className="font-semibold text-foreground flex items-center gap-2">
-                      Jordan Kim
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        <span className="text-[10px] font-medium text-emerald-500">Verified</span>
-                      </span>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-bold text-white">Tech Job Postings</h3>
+                      {freshJobCount > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          </span>
+                          {freshJobCount} new · 48h
+                        </span>
+                      )}
                     </div>
-                    <div className="text-sm text-muted-foreground">Full-Stack Engineer</div>
-                    <div className="text-xs text-muted-foreground/70">Atlantium Member • Early Access</div>
+                    <p className="text-xs text-muted-foreground">Latest opportunities in tech</p>
                   </div>
                 </div>
-              </SpotlightCard>
-            </div>
+              </div>
+
+              <div className="flex-1 min-h-0">
+                <AutoScrollingJobsFeed onFreshCount={setFreshJobCount} />
+              </div>
+
+              <Link to="/jobs" className="block mt-4">
+                <Button size="sm" variant="outline" className="w-full gap-2 border-cyan-500/30 bg-transparent text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-400 dark:bg-transparent dark:border-cyan-500/30 dark:hover:bg-cyan-500/10 dark:hover:text-cyan-300">
+                  Open Board
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </Link>
+            </SpotlightCard>
           </motion.div>
 
           {/* The Console — the network's live instruments, one cached call,
@@ -524,53 +503,6 @@ export function LandingPage() {
 
               {/* Auto-scrolling events marquee */}
               <EventsMarquee />
-            </SpotlightCard>
-          </motion.div>
-
-          {/* Tech Job Postings - Auto Scroll */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.22, duration: 0.6 }}
-            className="col-span-12 lg:col-span-6 row-span-2"
-          >
-            <SpotlightCard
-              className="h-full p-5"
-              spotlightColor="rgba(6, 182, 212, 0.12)"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-                    <Briefcase className="h-5 w-5 text-cyan-500" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-bold text-white">Tech Job Postings</h3>
-                      {freshJobCount > 0 && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
-                          <span className="relative flex h-1.5 w-1.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
-                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                          </span>
-                          {freshJobCount} new · 48h
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">Latest opportunities in tech</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Auto-scrolling jobs feed */}
-              <AutoScrollingJobsFeed onFreshCount={setFreshJobCount} />
-
-              {/* Button */}
-              <Link to="/jobs" className="block mt-4">
-                <Button size="sm" variant="outline" className="w-full gap-2 border-cyan-500/30 bg-transparent text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-400 dark:bg-transparent dark:border-cyan-500/30 dark:hover:bg-cyan-500/10 dark:hover:text-cyan-300">
-                  Open Board
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Button>
-              </Link>
             </SpotlightCard>
           </motion.div>
 
@@ -615,7 +547,7 @@ export function LandingPage() {
                   {/* Key Stats - Horizontal Row */}
                   <div className="flex gap-4 mb-6 pb-6 border-b border-border/30">
                     <div className="text-center flex-1">
-                      <div className="text-lg font-bold text-violet-400 mb-0.5">4</div>
+                      <div className="text-lg font-bold text-violet-400 mb-0.5">8</div>
                       <p className="text-xs text-muted-foreground">weeks</p>
                     </div>
                     <div className="text-center flex-1">
