@@ -511,21 +511,21 @@ export function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25, duration: 0.6 }}
-            className="col-span-12 row-span-2"
+            className="col-span-12 lg:col-span-6 row-span-2"
           >
             <SpotlightCard
               className="h-full overflow-hidden"
               spotlightColor="rgba(139, 92, 246, 0.15)"
             >
-              <div className="flex flex-col lg:flex-row h-full">
+              <div className="flex flex-col h-full">
                 {/* Image Section - Left Side */}
-                <div className="relative w-full lg:w-2/5 h-64 lg:h-auto overflow-hidden bg-gradient-to-br from-violet-500/20 via-purple-500/10 to-violet-500/20">
+                <div className="relative w-full h-44 overflow-hidden bg-gradient-to-br from-violet-500/20 via-purple-500/10 to-violet-500/20">
                   <img
                     src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&h=500&fit=crop"
                     alt="AI Engineering Training"
                     className="w-full h-full object-cover opacity-80"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-r from-background via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
 
                   {/* Badge overlay */}
                   <div className="absolute bottom-4 left-4">

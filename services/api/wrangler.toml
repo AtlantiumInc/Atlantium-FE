@@ -21,6 +21,7 @@ RESEND_FROM = "Atlantium <team@notifications.atlantium.ai>"
 DEBUG_AUTH_CODES = "false"
 ADMIN_EMAILS = "kleveland.bishop@gmail.com"
 BOOMIN_CONNECT_PUBLIC_KEY = "pk_live_atlantium_creator_program_63xwon9h"
+BOOMIN_CONNECT_PROGRAM_ID = "55930faa-0420-48ee-95fa-37bbe9207666"
 BOOMIN_CONNECT_API_BASE = "https://api.boomin.ai/v1/connect"
 BOOMIN_HANDOFF_REDIRECT_URI = "https://atlantium.ai/creator-program"
 # Head Hunter Program (task #23 hub): its own Connect surface + program.
