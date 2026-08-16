@@ -17,6 +17,7 @@ import {
   ArrowRight,
   BadgeCheck,
   Check,
+  ChevronDown,
   Copy,
   Instagram,
   KeyRound,
@@ -385,14 +386,33 @@ function ProgramHub() {
   );
 }
 
+/** The evaluator's met/failed lists mix metric keys with requirement row ids —
+ *  a raw uuid means nothing to a member, so those entries never render. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const displayableKeys = (keys: string[]) => keys.filter((k) => !UUID_RE.test(k));
+
+/** The collapsed card's at-a-glance chips, from live card data when present. */
+function summaryChips(program: PartnerProgramSummary): string[] {
+  const chips: string[] = [];
+  const followers = program.card?.requirements.find((r) => r.metricKey === "followers" && r.scope !== "tier");
+  if (followers?.threshold) chips.push(`${followers.threshold.toLocaleString()}+ followers`);
+  if (program.key === "tech_creator") chips.push("Instagram");
+  if (program.key === "head_hunter") chips.push("Degree-holding candidates", "Revenue startups");
+  const tiers = program.card?.tiers ?? [];
+  if (tiers.length > 1) chips.push(`${tiers.length} tiers`);
+  for (const reward of program.rewards.slice(0, 2)) chips.push(reward.amount.replace("credits", "cr"));
+  return chips.slice(0, 5);
+}
+
 function ProgramCard({ program, onChanged }: { program: PartnerProgramSummary; onChanged: () => void }) {
+  const [expanded, setExpanded] = useState(false);
   const membership = program.membership;
   const approval = membership?.member?.approvalStatus ?? membership?.member?.approval_status ?? null;
   const qualification = membership?.member?.qualificationStatus ?? membership?.member?.qualification_status ?? null;
   const referralCode = membership?.referral?.code ?? membership?.member?.referralCode ?? membership?.member?.referral_code ?? null;
   const referralUrl = membership?.referral?.url ?? null;
-  const met = membership?.qualification?.requirementsMet ?? membership?.qualification?.requirements_met ?? [];
-  const failed = membership?.qualification?.requirementsFailed ?? membership?.qualification?.requirements_failed ?? [];
+  const met = displayableKeys(membership?.qualification?.requirementsMet ?? membership?.qualification?.requirements_met ?? []);
+  const failed = displayableKeys(membership?.qualification?.requirementsFailed ?? membership?.qualification?.requirements_failed ?? []);
   const icon = program.key === "tech_creator" ? <Instagram className="h-5 w-5" /> : <UserSearch className="h-5 w-5" />;
 
   const join = () => {
@@ -401,7 +421,7 @@ function ProgramCard({ program, onChanged }: { program: PartnerProgramSummary; o
 
   return (
     <section className="flex flex-col rounded-xl border border-border/60 bg-background/60">
-      <header className="border-b border-border/40 p-5">
+      <header className="p-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-cyan-300">
             {icon}
@@ -415,91 +435,109 @@ function ProgramCard({ program, onChanged }: { program: PartnerProgramSummary; o
           ) : null}
         </div>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">{program.tagline}</p>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {summaryChips(program).map((chip) => (
+            <span key={chip} className="inline-flex items-center rounded-full bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground">
+              {chip}
+            </span>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-cyan-300 hover:text-cyan-200"
+        >
+          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")} />
+          {expanded ? "Hide details" : "Requirements, tiers & rewards"}
+        </button>
       </header>
 
-      <div className="flex-1 space-y-5 p-5">
-        <ul className="space-y-1.5">
-          {program.details.map((line) => (
-            <li key={line} className="flex items-start gap-2 text-sm leading-6 text-muted-foreground">
-              <Check className="mt-1 h-3.5 w-3.5 shrink-0 text-cyan-400" />
-              {line}
-            </li>
-          ))}
-        </ul>
-
-        {program.card && program.card.requirements.length > 0 ? (
-          <div>
-            {program.card.requirements.some((r) => r.scope !== "tier") ? (
-              <>
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Requirements</h3>
-                <ul className="mt-2 space-y-1.5">
-                  {program.card.requirements.filter((r) => r.scope !== "tier").map((req, i) => (
-                    <li key={`${req.metricKey}-${i}`} className="flex items-start gap-2 text-sm">
-                      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                      <span>{requirementLine(req)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
-            {program.card.tiers.length > 1 ? (
-              <div className="mt-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tier ladder</h3>
-                <ul className="mt-2 space-y-1.5">
-                  {program.card.tiers.map((tier) => {
-                    const rungs = program.card!.requirements.filter((r) => r.tier === tier.name);
-                    return (
-                      <li key={tier.name} className="flex items-start gap-2 text-sm">
-                        <Trophy className="mt-0.5 h-4 w-4 shrink-0 text-amber-300/80" />
-                        <span>
-                          <span className="font-medium">{tier.name}</span>
-                          {rungs.length ? (
-                            <span className="text-muted-foreground"> — {rungs.map(requirementLine).join(" · ")}</span>
-                          ) : (
-                            <span className="text-muted-foreground"> — everyone starts here</span>
-                          )}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
-        <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rewards</h3>
-          <ul className="mt-2 space-y-1.5">
-            {program.rewards.map((reward) => (
-              <li key={reward.label} className="flex items-center justify-between gap-3 text-sm">
-                <span>{reward.label}</span>
-                <span className="font-mono text-xs text-cyan-200">{reward.amount}</span>
+      {expanded ? (
+        <div className="space-y-5 border-t border-border/40 p-5">
+          <ul className="space-y-1.5">
+            {program.details.map((line) => (
+              <li key={line} className="flex items-start gap-2 text-sm leading-6 text-muted-foreground">
+                <Check className="mt-1 h-3.5 w-3.5 shrink-0 text-cyan-400" />
+                {line}
               </li>
             ))}
           </ul>
-        </div>
 
-        {membership && (met.length + failed.length > 0) ? (
+          {program.card && program.card.requirements.length > 0 ? (
+            <div>
+              {program.card.requirements.some((r) => r.scope !== "tier") ? (
+                <>
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Requirements</h3>
+                  <ul className="mt-2 space-y-1.5">
+                    {program.card.requirements.filter((r) => r.scope !== "tier").map((req, i) => (
+                      <li key={`${req.metricKey}-${i}`} className="flex items-start gap-2 text-sm">
+                        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span>{requirementLine(req)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+              {program.card.tiers.length > 1 ? (
+                <div className="mt-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tier ladder</h3>
+                  <ul className="mt-2 space-y-1.5">
+                    {program.card.tiers.map((tier) => {
+                      const rungs = program.card!.requirements.filter((r) => r.tier === tier.name);
+                      return (
+                        <li key={tier.name} className="flex items-start gap-2 text-sm">
+                          <Trophy className="mt-0.5 h-4 w-4 shrink-0 text-amber-300/80" />
+                          <span>
+                            <span className="font-medium">{tier.name}</span>
+                            {rungs.length ? (
+                              <span className="text-muted-foreground"> — {rungs.map(requirementLine).join(" · ")}</span>
+                            ) : (
+                              <span className="text-muted-foreground"> — everyone starts here</span>
+                            )}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Your standing</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rewards</h3>
             <ul className="mt-2 space-y-1.5">
-              {met.map((key) => (
-                <li key={`met-${key}`} className="flex items-center gap-2 text-sm">
-                  <Check className="h-4 w-4 shrink-0 text-emerald-400" />
-                  <span className="font-mono text-xs text-muted-foreground">{METRIC_LABELS[key] ?? key}</span>
-                </li>
-              ))}
-              {failed.map((key) => (
-                <li key={`failed-${key}`} className="flex items-center gap-2 text-sm">
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
-                  <span className="font-mono text-xs text-muted-foreground">{METRIC_LABELS[key] ?? key}</span>
+              {program.rewards.map((reward) => (
+                <li key={reward.label} className="flex items-center justify-between gap-3 text-sm">
+                  <span>{reward.label}</span>
+                  <span className="font-mono text-xs text-cyan-200">{reward.amount}</span>
                 </li>
               ))}
             </ul>
           </div>
-        ) : null}
-      </div>
+
+          {membership && (met.length + failed.length > 0) ? (
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Your standing</h3>
+              <ul className="mt-2 space-y-1.5">
+                {met.map((key) => (
+                  <li key={`met-${key}`} className="flex items-center gap-2 text-sm">
+                    <Check className="h-4 w-4 shrink-0 text-emerald-400" />
+                    <span className="font-mono text-xs text-muted-foreground">{METRIC_LABELS[key] ?? key}</span>
+                  </li>
+                ))}
+                {failed.map((key) => (
+                  <li key={`failed-${key}`} className="flex items-center gap-2 text-sm">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
+                    <span className="font-mono text-xs text-muted-foreground">{METRIC_LABELS[key] ?? key}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <footer className="border-t border-border/40 p-5">
         {!membership ? (
