@@ -518,29 +518,17 @@ export function LandingPage() {
               spotlightColor="rgba(139, 92, 246, 0.15)"
             >
               <div className="flex flex-col h-full">
-                {/* Image Section - Left Side */}
-                <div className="relative w-full h-44 overflow-hidden bg-gradient-to-br from-violet-500/20 via-purple-500/10 to-violet-500/20">
-                  <img
-                    src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&h=500&fit=crop"
-                    alt="AI Engineering Training"
-                    className="w-full h-full object-cover opacity-80"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
-
-                  {/* Badge overlay */}
-                  <div className="absolute bottom-4 left-4">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-500/40 border border-violet-500/60 backdrop-blur-sm">
-                      <span className="h-2 w-2 rounded-full bg-violet-300 animate-pulse" />
-                      <span className="text-xs font-semibold text-violet-200">Now Enrolling</span>
-                    </span>
-                  </div>
-                </div>
-
                 {/* Content Section - Right Side */}
                 <div className="p-6 lg:p-8 flex flex-col flex-1 justify-between">
                   {/* Header */}
                   <div className="mb-6">
-                    <h3 className="text-2xl font-bold text-foreground mb-1">AI Engineering Bootcamp</h3>
+                    <div className="flex items-center gap-3 mb-1">
+                      <h3 className="text-2xl font-bold text-foreground">AI Engineering Bootcamp</h3>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-500/20 border border-violet-500/40">
+                        <span className="h-1.5 w-1.5 rounded-full bg-violet-300 animate-pulse" />
+                        <span className="text-[10px] font-semibold text-violet-200">Now Enrolling</span>
+                      </span>
+                    </div>
                     <p className="text-sm text-muted-foreground">Go from learner to job-ready in 8 weeks</p>
                   </div>
 
