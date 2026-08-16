@@ -23,6 +23,7 @@ import { motion, useAnimationFrame } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import jobsData from "@/data/jobs.json";
 import { api } from "@/lib/api";
+import { useTheme } from "@/contexts/ThemeContext";
 
 
 interface Event {
@@ -153,7 +154,7 @@ function EventsMarquee() {
     if (isPaused || events.length === 0) return;
     setScrollX((prev) => {
       const newX = prev + 0.8;
-      const cardWidth = 280;
+      const cardWidth = 316; // tile width + gap — keeps the loop reset seamless
       const totalWidth = events.length * cardWidth;
       return newX >= totalWidth ? 0 : newX;
     });
@@ -222,11 +223,11 @@ function EventsMarquee() {
         {duplicatedEvents.map((event, index) => (
           <motion.div
             key={`${event.id}-${index}`}
-            className="flex-shrink-0 w-[260px] rounded-xl overflow-hidden bg-background/60 border border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
+            className="flex-shrink-0 w-[300px] rounded-xl overflow-hidden bg-background/60 border border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
             whileHover={{ scale: 1.02, y: -2 }}
           >
             {/* Event image */}
-            <div className="relative h-24 overflow-hidden">
+            <div className="relative h-40 overflow-hidden">
               <img
                 src={event.featured_image}
                 alt={event.title}
@@ -327,6 +328,10 @@ function FocusGroupsCard() {
 }
 
 export function LandingPage() {
+  const { resolvedTheme } = useTheme();
+  // The glint needs ink that exists in both themes — near-white type is
+  // invisible on the light fog.
+  const heroInk = resolvedTheme === "dark" ? "#eef2f8" : "#1c2942";
   const [freshJobCount, setFreshJobCount] = useState(0);
   // Live counts for The Network card — the numbers ARE the pitch, so they come
   // from the same API the directory itself reads, never hardcoded.
@@ -394,8 +399,8 @@ export function LandingPage() {
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight leading-[1.05] mb-5">
                   {/* Narrow white glint over solid type — a pass of light,
                       not a color gradient; long rest between sweeps */}
-                  <ShinyText text="Your Path to" className="block" color="#eef2f8" shineColor="#ffffff" spread={36} speed={2.2} delay={4.5} />
-                  <ShinyText text="the Frontier" className="block" color="#eef2f8" shineColor="#ffffff" spread={36} speed={2.2} delay={4.5} />
+                  <ShinyText text="Your Path to" className="block" color={heroInk} shineColor="#ffffff" spread={36} speed={2.2} delay={4.5} />
+                  <ShinyText text="the Frontier" className="block" color={heroInk} shineColor="#ffffff" spread={36} speed={2.2} delay={4.5} />
                 </h1>
 
                 {/* Subhead */}
@@ -443,7 +448,7 @@ export function LandingPage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-bold text-white">Tech Job Postings</h3>
+                      <h3 className="text-lg font-bold text-foreground">Tech Job Postings</h3>
                       {freshJobCount > 0 && (
                         <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
                           <span className="relative flex h-1.5 w-1.5">
@@ -495,7 +500,7 @@ export function LandingPage() {
                     <Calendar className="h-5 w-5 text-blue-500" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white">Upcoming Events</h3>
+                    <h3 className="text-lg font-bold text-foreground">Upcoming Events</h3>
                     <p className="text-xs text-muted-foreground">Weekly meetups with builders & investors</p>
                   </div>
                 </div>
@@ -518,29 +523,17 @@ export function LandingPage() {
               spotlightColor="rgba(139, 92, 246, 0.15)"
             >
               <div className="flex flex-col h-full">
-                {/* Image Section - Left Side */}
-                <div className="relative w-full h-44 overflow-hidden bg-gradient-to-br from-violet-500/20 via-purple-500/10 to-violet-500/20">
-                  <img
-                    src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&h=500&fit=crop"
-                    alt="AI Engineering Training"
-                    className="w-full h-full object-cover opacity-80"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
-
-                  {/* Badge overlay */}
-                  <div className="absolute bottom-4 left-4">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-500/40 border border-violet-500/60 backdrop-blur-sm">
-                      <span className="h-2 w-2 rounded-full bg-violet-300 animate-pulse" />
-                      <span className="text-xs font-semibold text-violet-200">Now Enrolling</span>
-                    </span>
-                  </div>
-                </div>
-
                 {/* Content Section - Right Side */}
                 <div className="p-6 lg:p-8 flex flex-col flex-1 justify-between">
                   {/* Header */}
                   <div className="mb-6">
-                    <h3 className="text-2xl font-bold text-foreground mb-1">AI Engineering Bootcamp</h3>
+                    <div className="flex items-center gap-3 mb-1">
+                      <h3 className="text-2xl font-bold text-foreground">AI Engineering Bootcamp</h3>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-500/20 border border-violet-500/40">
+                        <span className="h-1.5 w-1.5 rounded-full bg-violet-300 animate-pulse" />
+                        <span className="text-[10px] font-semibold text-violet-200">Now Enrolling</span>
+                      </span>
+                    </div>
                     <p className="text-sm text-muted-foreground">Go from learner to job-ready in 8 weeks</p>
                   </div>
 
@@ -661,7 +654,7 @@ export function LandingPage() {
                     <Radio className="h-5 w-5 text-cyan-400" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white">The Lobby</h3>
+                    <h3 className="text-lg font-bold text-foreground">The Lobby</h3>
                     <p className="text-xs text-muted-foreground">Live with 12 builders now</p>
                   </div>
                 </div>
