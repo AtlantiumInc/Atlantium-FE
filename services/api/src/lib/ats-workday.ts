@@ -22,6 +22,10 @@ const SEARCH_TERMS = ["Atlanta", "Georgia"];
 const PAGE_LIMIT = 20; // CXS max
 const MAX_PAGES_PER_TERM = 10;
 const ATL_RE = /(atlanta|georgia|\bga\b)/i;
+// The CXS search returns every department at the company; clearly clinical /
+// retail / trades titles never ingest. Mirrors the title_rules triage regex.
+const NON_TECH_RE =
+  /\b(nurse|nursing|rn|lpn|cna|prn|clinical|physician|surgeon|dental|dentist|pharmac\w*|therapist|therapy|patient|caregiver|hospice|phlebotom\w*|radiolog\w*|sonograph\w*|paramedic|medical assistant|respiratory|dietitian|nutrition|chaplain|housekeep\w*|custodian|janitor|cook|culinary|barista|cashier|bartender|dishwasher|forklift|warehouse associate|material handler|delivery driver|cdl|truck driver|landscap\w*|groundskeep\w*|security guard|patrol officer|teller|retail associate|merchandis\w*|stocker|loss prevention|welder|electrician|plumber|hvac|carpenter|painter|assembler|machine operator|production (worker|operator|associate)|maintenance (worker|mechanic)|occupational therap\w*|speech language)\b/i;
 
 type WorkdayConfig = { tenant: string; base: string; cxs: string; last_polled?: string };
 type CxsPosting = { title?: string; externalPath?: string; locationsText?: string; postedOn?: string };
@@ -81,6 +85,7 @@ async function pullBoard(cfg: WorkdayConfig): Promise<Map<string, CxsPosting> | 
       for (const h of hits) {
         if (!h.externalPath) continue;
         if (!ATL_RE.test(h.locationsText ?? "")) continue; // text filter: GA only, no remote-anywhere floods
+        if (NON_TECH_RE.test(h.title ?? "")) continue; // tech board, tech jobs
         byPath.set(h.externalPath, h);
       }
       if (hits.length < PAGE_LIMIT) break;

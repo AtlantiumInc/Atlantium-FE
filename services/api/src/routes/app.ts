@@ -3678,7 +3678,13 @@ appRoutes.get("/job_postings", async (c) => {
   const workplaceType = c.req.query("workplace_type");
   const seniority = c.req.query("seniority");
   const q = c.req.query("q")?.trim();
-  const conditions = [eq(jobPostings.status, status)];
+  const conditions = [
+    eq(jobPostings.status, status),
+    // Direct enterprise pulls drag in every department; anything judged
+    // off-board (clinical, retail, trades — by title rules or agent review)
+    // carries content.non_tech and never surfaces.
+    sql`${jobPostings.content}->>'non_tech' is null`,
+  ];
   if (workplaceType) conditions.push(eq(jobPostings.workplaceType, workplaceType));
   if (seniority) conditions.push(eq(jobPostings.seniority, seniority));
   if (q) {
