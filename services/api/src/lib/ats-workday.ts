@@ -37,6 +37,26 @@ function parsePostedOn(text: string | undefined): Date | null {
   return null;
 }
 
+function inferWorkplace(title?: string, locationsText?: string): string {
+  const t = `${title ?? ""} ${locationsText ?? ""}`;
+  if (/(remote|virtual|work from home|wfh)/i.test(t)) return "Remote";
+  if (/hybrid/i.test(t)) return "Hybrid";
+  return "Onsite";
+}
+
+/** "GEORGIA - VIRTUAL - GA01" → "Georgia (Remote)"; "Atlanta, GA" stays. */
+function cleanLocation(text?: string): string | null {
+  if (!text) return null;
+  const virtual = /(virtual|remote)/i.test(text);
+  let t = text
+    .replace(/\s*-\s*(virtual|remote)\s*/gi, " ")
+    .replace(/\s*-\s*[A-Z]{2,4}\d{2,4}\s*$/g, "")
+    .replace(/\s*-\s*/g, ", ")
+    .trim().replace(/,\s*$/, "");
+  if (/^[A-Z\s,]+$/.test(t)) t = t.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+  return virtual ? `${t} (Remote)` : t || null;
+}
+
 function slugify(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "job";
 }
@@ -101,8 +121,10 @@ export async function syncWorkdayJobs(env: Env, maxCompanies = 40): Promise<Work
       slug: `${slugify(`${entry.name} ${h.title ?? "role"}`)}-${crypto.randomUUID().slice(0, 8)}`,
       title: h.title ?? "Untitled",
       company: entry.name,
-      location: h.locationsText || "Atlanta, Georgia, United States",
-      workplaceType: /remote/i.test(h.locationsText ?? "") ? "Remote" : "Onsite",
+      location: cleanLocation(h.locationsText) ?? "Atlanta, Georgia, United States",
+      // Workday spells remote many ways: "VIRTUAL", "Remote", a (Remote)
+      // title suffix; "hybrid" occasionally appears in either.
+      workplaceType: inferWorkplace(h.title, h.locationsText),
       seniority: null as string | null,
       salaryMin: null as number | null,
       salaryMax: null as number | null,

@@ -253,7 +253,7 @@ function JobCard({
             </div>
           )}
           <div className="flex flex-wrap gap-2 sm:gap-4 text-xs text-muted-foreground pt-1">
-            {job.yoe !== null && <span><span className="text-foreground font-medium">{job.yoe}+</span> yrs exp</span>}
+            {job.yoe != null && <span><span className="text-foreground font-medium">{job.yoe}+</span> yrs exp</span>}
             {job.company_size && <span><span className="text-foreground font-medium">{job.company_size.toLocaleString()}</span> employees</span>}
             {job.visa_sponsorship && <span className="text-emerald-400">✓ Visa Sponsorship</span>}
           </div>
