@@ -441,18 +441,18 @@ export function LandingPage() {
               className="h-full p-5 flex flex-col"
               spotlightColor="rgba(6, 182, 212, 0.12)"
             >
-              {/* Pill floats in the card corner — outside the header's flow,
-                  so the title and subtext never flex around it */}
-              {freshJobCount > 0 && (
-                <span className="absolute top-4 right-4 z-10 whitespace-nowrap inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-400">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
-                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <div className="relative flex items-center gap-3 mb-3">
+                {/* Pill hangs off the subtitle line, right-aligned — out of
+                    the flow, and the title's lane stays clear at every width */}
+                {freshJobCount > 0 && (
+                  <span className="absolute right-0 bottom-0 z-10 whitespace-nowrap inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-400">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    </span>
+                    {freshJobCount} new · 48h
                   </span>
-                  {freshJobCount} new · 48h
-                </span>
-              )}
-              <div className="flex items-center gap-3 mb-3">
+                )}
                 <div className="h-10 w-10 shrink-0 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
                   <Briefcase className="h-5 w-5 text-cyan-500" />
                 </div>
