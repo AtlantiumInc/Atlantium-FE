@@ -3654,6 +3654,24 @@ appRoutes.get("/console", async (c) => {
   });
 });
 
+// Field taxonomy for the board's filter rail: title-regex buckets, so they
+// work uniformly across every source and every existing row. `security` must
+// stay in sync with SECURITY_TITLE_RE in jobs-sync.ts.
+const JOB_FIELDS: Record<string, string> = {
+  security:
+    "(cyber|security engineer|security analyst|security architect|infosec|information security|application security|appsec|penetration test|pentest|threat (intel|hunt|analyst)|incident response|soc analyst|vulnerabilit|red team|blue team|detection engineer|devsecops|cloud security|network security|malware|security operations|grc |ciso)",
+  software:
+    "(software (engineer|developer|architect)|frontend|front.end|backend|back.end|full.stack|mobile (engineer|developer)|ios (engineer|developer)|android|web developer|platform engineer|(\\.net|java|python|golang|ruby|c\\+\\+) (engineer|developer))",
+  data_ai:
+    "(data (engineer|scientist|analyst|architect|governance)|machine learning|ml engineer|\\bai engineer|analytics engineer|business intelligence)",
+  cloud_devops:
+    "(devops|\\bsre\\b|site reliability|cloud (engineer|architect)|infrastructure engineer|systems engineer|network engineer|solutions architect)",
+  product_design:
+    "(product (manager|owner|designer)|\\bux\\b|ui designer|user experience)",
+  sales_marketing:
+    "(sales|account (executive|manager)|marketing|growth|business development|customer success|partnerships)",
+};
+
 appRoutes.get("/job_postings", async (c) => {
   const db = createDb(c.env);
   const status = c.req.query("status") ?? "active";
@@ -3693,6 +3711,14 @@ appRoutes.get("/job_postings", async (c) => {
       sql`coalesce(${jobPostings.salaryMax}, ${jobPostings.salaryMin}) >= ${salaryFloor}`,
     );
   }
+  // Field filter — applied to results/total, but the per-field counts are
+  // computed WITHOUT it, so the rail's chips stay meaningful while one is
+  // selected (same reason a store's category counts ignore your category).
+  const fieldConditions = [...conditions];
+  const field = c.req.query("field");
+  if (field && JOB_FIELDS[field]) {
+    conditions.push(sql`${jobPostings.title} ~* ${JOB_FIELDS[field]}`);
+  }
   const where = and(...conditions);
   // Stable order: created_at ties within a scrape batch, so id is the tiebreak.
   const order = [
@@ -3714,7 +3740,19 @@ appRoutes.get("/job_postings", async (c) => {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   // 48h, not 24h: the daily scrape can slip and a 24h window would read empty.
   const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
-  const [rows, totals] = await Promise.all([
+  const fieldCountsQuery = db
+    .select({
+      security: sql<number>`count(*) filter (where ${jobPostings.title} ~* ${JOB_FIELDS.security})::int`,
+      software: sql<number>`count(*) filter (where ${jobPostings.title} ~* ${JOB_FIELDS.software})::int`,
+      data_ai: sql<number>`count(*) filter (where ${jobPostings.title} ~* ${JOB_FIELDS.data_ai})::int`,
+      cloud_devops: sql<number>`count(*) filter (where ${jobPostings.title} ~* ${JOB_FIELDS.cloud_devops})::int`,
+      product_design: sql<number>`count(*) filter (where ${jobPostings.title} ~* ${JOB_FIELDS.product_design})::int`,
+      sales_marketing: sql<number>`count(*) filter (where ${jobPostings.title} ~* ${JOB_FIELDS.sales_marketing})::int`,
+    })
+    .from(jobPostings)
+    .where(and(...fieldConditions));
+
+  const [rows, totals, fieldTotals] = await Promise.all([
     db.select().from(jobPostings).where(where).orderBy(...order).limit(limit).offset(offset),
     db
       .select({
@@ -3727,8 +3765,10 @@ appRoutes.get("/job_postings", async (c) => {
       })
       .from(jobPostings)
       .where(where),
+    fieldCountsQuery,
   ]);
   const t = totals[0];
+  const f = fieldTotals[0];
   return c.json({
     jobs: rows.map((row) => publicJobPosting(row, listHasBenefits)),
     total: t?.total ?? 0,
@@ -3738,6 +3778,14 @@ appRoutes.get("/job_postings", async (c) => {
       new_this_week: t?.newThisWeek ?? 0,
       new_48h: t?.new48h ?? 0,
       no_degree: t?.noDegree ?? 0,
+    },
+    fields: {
+      security: f?.security ?? 0,
+      software: f?.software ?? 0,
+      data_ai: f?.data_ai ?? 0,
+      cloud_devops: f?.cloud_devops ?? 0,
+      product_design: f?.product_design ?? 0,
+      sales_marketing: f?.sales_marketing ?? 0,
     },
     limit,
     offset,

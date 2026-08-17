@@ -65,6 +65,23 @@ const SEARCH_STATE = {
   ],
 };
 
+// ── Cybersecurity sweep ──────────────────────────────────────────────────────
+// The department taxonomy has no security bucket, so security roles only
+// arrive when filed under Engineering/IT. A keyword sweep over the same
+// geography catches the rest — gated on a security TITLE, because the feed's
+// keyword search matches full descriptions and half the hits are sales roles
+// at security companies (measured 49% precision without the gate).
+const SWEEP_TERMS = [
+  "cybersecurity",
+  "information security",
+  "security engineer",
+  "SOC analyst",
+  "penetration tester",
+];
+// Mirror of the /job_postings `field=security` SQL regex — keep in sync.
+const SECURITY_TITLE_RE =
+  /(cyber|security engineer|security analyst|security architect|infosec|information security|application security|appsec|penetration test|pentest|threat (intel|hunt|analyst)|incident response|soc analyst|vulnerabilit|red team|blue team|detection engineer|devsecops|cloud security|network security|malware|security operations|grc |ciso)/i;
+
 type ScrapedJob = {
   title: string;
   company: string;
@@ -126,8 +143,8 @@ function mapHit(h: any): ScrapedJob {
   };
 }
 
-async function fetchPage(buildId: string, page: number) {
-  const qs = new URLSearchParams({ searchState: JSON.stringify(SEARCH_STATE) });
+async function fetchPage(buildId: string, page: number, searchState: object = SEARCH_STATE) {
+  const qs = new URLSearchParams({ searchState: JSON.stringify(searchState) });
   if (page > 0) qs.set("page", String(page));
   const res = await fetch(`${BASE}/_next/data/${buildId}/index.json?${qs}`, {
     headers: { "User-Agent": UA },
@@ -166,6 +183,25 @@ export async function syncJobPostings(env: Env): Promise<JobsSyncResult> {
     }
     if (fresh === 0) break;
     await new Promise((r) => setTimeout(r, PAGE_DELAY_MS));
+  }
+
+  // Security sweep: same geography, keyword search, title-gated.
+  for (const term of SWEEP_TERMS) {
+    const state = { locations: SEARCH_STATE.locations, searchQuery: term };
+    for (let page = 0; page < 15; page++) {
+      const hits = await fetchPage(buildId, page, state);
+      if (hits.length === 0) break;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const h of hits as any[]) {
+        if (!h.apply_url || h.is_expired) continue;
+        if (byUrl.has(h.apply_url)) continue;
+        const mapped = mapHit(h);
+        if (!SECURITY_TITLE_RE.test(mapped.title)) continue;
+        mapped.content.security = true;
+        byUrl.set(h.apply_url, mapped);
+      }
+      await new Promise((r) => setTimeout(r, PAGE_DELAY_MS));
+    }
   }
 
   // Keep everything the feed returns — the board is uncapped; the list API

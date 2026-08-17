@@ -1906,12 +1906,14 @@ class ApiClient {
     no_degree?: boolean;
     new_this_week?: boolean;
     salary_floor?: number;
+    field?: string;
     limit?: number;
     offset?: number;
   }): Promise<{
     jobs: JobPosting[];
     total: number;
     counts: { remote: number; hybrid: number; new_this_week: number; new_48h?: number; no_degree: number };
+    fields?: Record<string, number>;
     limit: number;
     offset: number;
   }> {
@@ -1923,6 +1925,7 @@ class ApiClient {
     if (params?.no_degree) search.set("no_degree", "1");
     if (params?.new_this_week) search.set("new_this_week", "1");
     if (params?.salary_floor) search.set("salary_floor", String(params.salary_floor));
+    if (params?.field) search.set("field", params.field);
     if (params?.limit) search.set("limit", String(params.limit));
     if (params?.offset) search.set("offset", String(params.offset));
     return this.request(`/job_postings?${search}`, { method: "GET" }, ATLANTIUM_API_BASE_URL);

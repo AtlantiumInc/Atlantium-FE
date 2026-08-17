@@ -49,6 +49,15 @@ function loadStars(): Record<string, Job> {
 }
 
 const WORKPLACE_FILTERS = ["All", "Remote", "Hybrid", "Onsite"];
+/** Server-side title-regex buckets — keys must match JOB_FIELDS in the API. */
+const FIELD_FILTERS: Array<{ key: string; label: string }> = [
+  { key: "security", label: "Cybersecurity" },
+  { key: "software", label: "Software" },
+  { key: "data_ai", label: "Data & AI" },
+  { key: "cloud_devops", label: "Cloud & DevOps" },
+  { key: "product_design", label: "Product & Design" },
+  { key: "sales_marketing", label: "Sales & Marketing" },
+];
 const SENIORITY_FILTERS = ["All", "Entry Level", "Mid Level", "Senior Level", "Lead", "Manager"];
 
 function formatSalary(min: number | null | undefined, max: number | null | undefined): string | null {
@@ -395,6 +404,8 @@ export function JobsPage() {
   const [newThisWeekOnly, setNewThisWeekOnly] = useState(false);
   // 0 = no floor; 200_000 renders as "$200k+"
   const [salaryFloor, setSalaryFloor] = useState(0);
+  const [fieldFilter, setFieldFilter] = useState<string | null>(null);
+  const [fieldCounts, setFieldCounts] = useState<Record<string, number>>({});
   const [debouncedSalaryFloor, setDebouncedSalaryFloor] = useState(0);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [total, setTotal] = useState(0);
@@ -454,10 +465,11 @@ export function JobsPage() {
       no_degree: noDegreeOnly || undefined,
       new_this_week: newThisWeekOnly || undefined,
       salary_floor: debouncedSalaryFloor || undefined,
+      field: fieldFilter || undefined,
       limit: PAGE_SIZE,
       offset,
     }),
-    [debouncedSearch, workplaceFilter, seniorityFilter, noDegreeOnly, newThisWeekOnly, debouncedSalaryFloor],
+    [debouncedSearch, workplaceFilter, seniorityFilter, noDegreeOnly, newThisWeekOnly, debouncedSalaryFloor, fieldFilter],
   );
 
   // First page — refetches whenever search or filters change.
@@ -471,6 +483,7 @@ export function JobsPage() {
         setJobs(res.jobs.map(toJob));
         setTotal(res.total);
         setCounts(res.counts);
+        if (res.fields) setFieldCounts(res.fields);
       })
       .catch(() => {
         if (seq === requestSeq.current) setError("Failed to load job postings. Please try again.");
@@ -605,10 +618,35 @@ export function JobsPage() {
         )}
       </div>
 
+      {/* Field */}
+      <div>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+          <span className="text-primary/70 mr-1">04</span>Field
+        </p>
+        <div className="flex flex-col gap-1.5">
+          {FIELD_FILTERS.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setFieldFilter(fieldFilter === key ? null : key)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border text-left flex items-center transition-all ${
+                fieldFilter === key
+                  ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-300"
+                  : "bg-card/40 border-border/40 text-muted-foreground hover:border-border hover:text-foreground"
+              }`}
+            >
+              {label}
+              <span className="ml-auto font-mono text-[10px] text-muted-foreground">
+                {(fieldCounts[key] ?? 0).toLocaleString()}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Signals */}
       <div>
         <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
-          <span className="text-primary/70 mr-1">04</span>Signals
+          <span className="text-primary/70 mr-1">05</span>Signals
         </p>
         <div className="flex flex-col gap-1.5">
           <button
@@ -676,9 +714,9 @@ export function JobsPage() {
 
   const metricBar = (
     <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Job metrics and quick filters">
-      {metricTile("Open roles", total, workplaceFilter === "All" && !noDegreeOnly && !newThisWeekOnly && !starredOnly && salaryFloor === 0, "text-foreground",
+      {metricTile("Open roles", total, workplaceFilter === "All" && !noDegreeOnly && !newThisWeekOnly && !starredOnly && salaryFloor === 0 && !fieldFilter, "text-foreground",
         "border-foreground/30 bg-foreground/5",
-        () => { setWorkplaceFilter("All"); setNoDegreeOnly(false); setNewThisWeekOnly(false); setSalaryFloor(0); })}
+        () => { setWorkplaceFilter("All"); setNoDegreeOnly(false); setNewThisWeekOnly(false); setSalaryFloor(0); setFieldFilter(null); })}
       {metricTile("Remote", counts.remote, workplaceFilter === "Remote", "text-emerald-400",
         "border-emerald-500/40 bg-emerald-500/10",
         () => setWorkplaceFilter(workplaceFilter === "Remote" ? "All" : "Remote"))}
@@ -717,7 +755,7 @@ export function JobsPage() {
           <p>No jobs match your filters.</p>
           <button
             className="mt-2 text-sm text-cyan-400 hover:underline"
-            onClick={() => { setSearch(""); setWorkplaceFilter("All"); setSeniorityFilter("All"); setNoDegreeOnly(false); setNewThisWeekOnly(false); setSalaryFloor(0); }}
+            onClick={() => { setSearch(""); setWorkplaceFilter("All"); setSeniorityFilter("All"); setNoDegreeOnly(false); setNewThisWeekOnly(false); setSalaryFloor(0); setFieldFilter(null); }}
           >
             Clear filters
           </button>
