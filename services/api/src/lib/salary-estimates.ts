@@ -27,6 +27,7 @@ const FIELD_REGEXES: Array<[string, string]> = [
   ["cloud_devops", "(devops|\\ysre\\y|site reliability|cloud (engineer|architect)|infrastructure engineer|systems engineer|network engineer|solutions architect)"],
   ["product_design", "(product (manager|owner|designer)|\\yux\\y|ui designer|user experience)"],
   ["sales_marketing", "(sales|account (executive|manager)|marketing|growth|business development|customer success|partnerships)"],
+  ["business_ops", "(project manager|program manager|\\ypmo\\y|business analyst|\\yanalyst\\y|procurement|supply chain|operations (manager|analyst|specialist)|finance|financial|accountant|accounting|\\yhr\\y|human resources|people operations|recruit|talent|legal|counsel|compliance|auditor|strategy|consultant)"],
 ];
 
 export type SalaryEstimatesResult = { cells: number; estimated: number; cleared: number };
@@ -78,5 +79,33 @@ export async function computeSalaryEstimates(env: Env): Promise<SalaryEstimatesR
     estimated += res.rows?.length ?? (res as unknown as unknown[]).length ?? 0;
     cells++;
   }
+
+  // Fallback for jobs matching no field bucket: median of ALL same-seniority
+  // postings board-wide. Coarser comps, so the method label says exactly that
+  // and the UI's receipt reflects it.
+  const anyField = sql.join(FIELD_REGEXES.map(([, r]) => sql` and title !~* ${r}`), sql``);
+  const fb = await db.execute(sql`
+    with comps as (
+      select seniority,
+             count(*)::int as n,
+             percentile_cont(0.5) within group (order by salary_min)::int as med_min,
+             percentile_cont(0.5) within group (order by salary_max)::int as med_max
+      from job_postings
+      where status = 'active' and content->>'non_tech' is null
+        and salary_max is not null and seniority is not null
+      group by seniority
+      having count(*) >= ${MIN_COMPS}
+    )
+    update job_postings j
+    set content = j.content || jsonb_build_object('salary_est', jsonb_build_object(
+          'min', c.med_min, 'max', c.med_max, 'n', c.n,
+          'method', ${"median of same-seniority postings, all fields"}::text, 'at', ${today}::text)),
+        updated_at = now()
+    from comps c
+    where j.status = 'active' and j.content->>'non_tech' is null
+      and j.salary_max is null and j.content->'salary_est' is null
+      and j.seniority = c.seniority ${anyField}
+    returning j.id`);
+  estimated += fb.rows?.length ?? (fb as unknown as unknown[]).length ?? 0;
   return { cells, estimated, cleared: cleared.rows?.length ?? (cleared as unknown as unknown[]).length ?? 0 };
 }
