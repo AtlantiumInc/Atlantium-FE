@@ -24,6 +24,7 @@ type Job = JobPosting & {
   company_website?: string;
   security_clearance?: string;
   visa_sponsorship?: boolean;
+  salary_est?: { min: number; max: number; n: number } | null;
 };
 
 function toJob(p: JobPosting): Job {
@@ -37,6 +38,7 @@ function toJob(p: JobPosting): Job {
     company_website: p.content?.company_website,
     security_clearance: p.content?.security_clearance,
     visa_sponsorship: p.content?.visa_sponsorship,
+    salary_est: (p.content as Record<string, any> | undefined)?.salary_est ?? null,
   };
 }
 
@@ -196,9 +198,17 @@ function JobCard({
               Clearance Req.
             </Badge>
           )}
-          {salary && (
+          {salary ? (
             <span className="text-xs font-medium text-emerald-400 ml-auto">{salary}</span>
-          )}
+          ) : job.salary_est ? (
+            <span
+              className="text-xs font-medium text-muted-foreground ml-auto cursor-help"
+              title={`Estimated from ${job.salary_est.n} comparable Atlanta postings on this board — not employer-published.`}
+            >
+              ~{formatSalary(job.salary_est.min, job.salary_est.max)}
+              <span className="ml-1 font-mono text-[9px] uppercase tracking-wide opacity-70">est.</span>
+            </span>
+          ) : null}
         </div>
 
         {/* Location & date */}

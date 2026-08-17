@@ -295,9 +295,17 @@ export function JobDetailPage() {
                         Clearance Req.
                       </Badge>
                     )}
-                    {salary && (
+                    {salary ? (
                       <span className="text-sm font-semibold text-emerald-400">{salary}</span>
-                    )}
+                    ) : (job as any)?.content?.salary_est ? (
+                      <span
+                        className="text-sm font-medium text-muted-foreground cursor-help"
+                        title={`Estimated from ${(job as any).content.salary_est.n} comparable Atlanta postings on this board — not employer-published.`}
+                      >
+                        ~{formatSalary((job as any).content.salary_est.min, (job as any).content.salary_est.max)}
+                        <span className="ml-1 font-mono text-[10px] uppercase tracking-wide opacity-70">est.</span>
+                      </span>
+                    ) : null}
                   </div>
 
                   {/* Verified-open line (AI review, fresh within 48h) */}

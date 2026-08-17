@@ -13,6 +13,7 @@ import { syncGrants } from "./lib/grants-sync";
 import { syncJobPostings } from "./lib/jobs-sync";
 import { syncWorkdayJobs } from "./lib/ats-workday";
 import { syncUsaJobs } from "./lib/ats-usajobs";
+import { computeSalaryEstimates } from "./lib/salary-estimates";
 import { appRoutes } from "./routes/app";
 import { contentRoutes } from "./routes/content";
 
@@ -139,6 +140,9 @@ export default {
         // cleanly until USAJOBS_API_KEY/USAJOBS_USER_AGENT exist.
         .then(() => syncUsaJobs(env))
         .then((r) => console.log("usajobs-sync ok", JSON.stringify(r)))
+        // Estimates recompute last, over the day's fresh salary corpus.
+        .then(() => computeSalaryEstimates(env))
+        .then((r) => console.log("salary-estimates ok", JSON.stringify(r)))
         .catch((error) => {
           console.error("jobs-sync failed", error);
           throw error;
