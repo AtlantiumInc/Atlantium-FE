@@ -11,6 +11,7 @@ import { createDb } from "./db/client";
 import { syncCompaniesFromJobs } from "./lib/companies-sync";
 import { syncGrants } from "./lib/grants-sync";
 import { syncJobPostings } from "./lib/jobs-sync";
+import { syncWorkdayJobs } from "./lib/ats-workday";
 import { appRoutes } from "./routes/app";
 import { contentRoutes } from "./routes/content";
 
@@ -128,6 +129,11 @@ export default {
         // the same morning, instead of waiting for someone to press a button.
         .then(() => syncCompaniesFromJobs(env))
         .then((r) => console.log("companies-sync ok", JSON.stringify(r)))
+        // Direct Workday pulls: a rotating 40-company slice per night (every
+        // request — CXS and neon alike — is a worker subrequest, so the full
+        // ~150 would blow the budget; full coverage every ~4 nights).
+        .then(() => syncWorkdayJobs(env, 40))
+        .then((r) => console.log("workday-sync ok", JSON.stringify(r)))
         .catch((error) => {
           console.error("jobs-sync failed", error);
           throw error;
