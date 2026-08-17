@@ -12,6 +12,7 @@ import { syncCompaniesFromJobs } from "./lib/companies-sync";
 import { syncGrants } from "./lib/grants-sync";
 import { syncJobPostings } from "./lib/jobs-sync";
 import { syncWorkdayJobs } from "./lib/ats-workday";
+import { syncUsaJobs } from "./lib/ats-usajobs";
 import { appRoutes } from "./routes/app";
 import { contentRoutes } from "./routes/content";
 
@@ -134,6 +135,10 @@ export default {
         // ~150 would blow the budget; full coverage every ~4 nights).
         .then(() => syncWorkdayJobs(env, 40))
         .then((r) => console.log("workday-sync ok", JSON.stringify(r)))
+        // Federal jobs: one keyed API, a couple of calls; skips itself
+        // cleanly until USAJOBS_API_KEY/USAJOBS_USER_AGENT exist.
+        .then(() => syncUsaJobs(env))
+        .then((r) => console.log("usajobs-sync ok", JSON.stringify(r)))
         .catch((error) => {
           console.error("jobs-sync failed", error);
           throw error;

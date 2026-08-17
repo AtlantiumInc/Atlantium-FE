@@ -10,6 +10,11 @@ export type Env = {
   SERVICE_REQUEST_NOTIFY_EMAIL?: string;
   RESEND_FROM?: string;
   DEBUG_AUTH_CODES?: string;
+  /** USAJOBS Search API — free key from developer.usajobs.gov. Both must be
+   *  set (the API wants the registered email as User-Agent); the sync skips
+   *  gracefully when absent. */
+  USAJOBS_API_KEY?: string;
+  USAJOBS_USER_AGENT?: string;
   /** Billing (P1b). Set with `wrangler secret put` — never committed. */
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
