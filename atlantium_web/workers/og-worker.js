@@ -50,10 +50,11 @@ export default {
     // they unfurl as the generic site card.
     if (pathname === '/jobs' || pathname === '/jobs/') {
       return handleOgRoute(request, () => staticHubOg({
-        title: 'Atlanta Tech Jobs — Verified Daily | Atlantium',
+        title: 'Largest ATL Tech Job Board | Atlantium',
         description:
-          'Thousands of live Atlanta tech and AI roles — every apply link checked by AI on a rolling cycle, salary and no-degree signals included. Free to browse.',
+          '7,600+ live Atlanta tech and AI roles — every apply link checked by AI on a rolling cycle, salary and no-degree signals included. Free to browse.',
         path: '/jobs',
+        image: 'og-jobs.png',
       }));
     }
 
@@ -587,13 +588,13 @@ async function renderJobOgImage(slug, request) {
   return response;
 }
 
-function staticHubOg({ title, description, path }) {
+function staticHubOg({ title, description, path, image = 'og-image.png' }) {
   return buildOgString({
     type: 'website',
     siteName: 'Atlantium',
     title,
     description,
-    image: `${SITE_ORIGIN}/og-image.png`,
+    image: `${SITE_ORIGIN}/${image}`,
     url: `${SITE_ORIGIN}${path}`,
     twitterCard: 'summary_large_image',
   });
