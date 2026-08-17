@@ -3663,11 +3663,11 @@ const JOB_FIELDS: Record<string, string> = {
   software:
     "(software (engineer|developer|architect)|frontend|front.end|backend|back.end|full.stack|mobile (engineer|developer)|ios (engineer|developer)|android|web developer|platform engineer|(\\.net|java|python|golang|ruby|c\\+\\+) (engineer|developer))",
   data_ai:
-    "(data (engineer|scientist|analyst|architect|governance)|machine learning|ml engineer|\\bai engineer|analytics engineer|business intelligence)",
+    "(data (engineer|scientist|analyst|architect|governance)|machine learning|ml engineer|\\yai engineer|analytics engineer|business intelligence)",
   cloud_devops:
-    "(devops|\\bsre\\b|site reliability|cloud (engineer|architect)|infrastructure engineer|systems engineer|network engineer|solutions architect)",
+    "(devops|\\ysre\\y|site reliability|cloud (engineer|architect)|infrastructure engineer|systems engineer|network engineer|solutions architect)",
   product_design:
-    "(product (manager|owner|designer)|\\bux\\b|ui designer|user experience)",
+    "(product (manager|owner|designer)|\\yux\\y|ui designer|user experience)",
   sales_marketing:
     "(sales|account (executive|manager)|marketing|growth|business development|customer success|partnerships)",
 };
