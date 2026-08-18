@@ -420,6 +420,7 @@ export function JobsPage() {
   const [debouncedSalaryFloor, setDebouncedSalaryFloor] = useState(0);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [total, setTotal] = useState(0);
+  const [counts, setCounts] = useState({ remote: 0, hybrid: 0, new_this_week: 0, no_degree: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -492,6 +493,7 @@ export function JobsPage() {
         if (seq !== requestSeq.current) return;
         setJobs(res.jobs.map(toJob));
         setTotal(res.total);
+        setCounts(res.counts);
         if (res.fields) setFieldCounts(res.fields);
       })
       .catch(() => {
@@ -511,6 +513,7 @@ export function JobsPage() {
         if (seq !== requestSeq.current) return;
         setJobs((prev) => [...prev, ...res.jobs.map(toJob)]);
         setTotal(res.total);
+        setCounts(res.counts);
       })
       .catch(() => {})
       .finally(() => setIsLoadingMore(false));
@@ -697,6 +700,50 @@ export function JobsPage() {
     </div>
   );
 
+  /* Metric bar: the counts the API computes UNDER the current filters, as
+     controls. Each tile both reports and narrows — click Remote and every
+     number recomputes within Remote. */
+  const metricTile = (
+    label: string,
+    value: number,
+    active: boolean,
+    colorClass: string,
+    activeClass: string,
+    onClick: () => void,
+  ) => (
+    <button
+      key={label}
+      onClick={() => { setStarredOnly(false); onClick(); }}
+      aria-pressed={active}
+      className={`flex-1 min-w-[96px] rounded-lg border px-3 py-2 text-left transition-all ${
+        active ? activeClass : "border-border/40 bg-card/30 hover:border-border hover:bg-card/50"
+      }`}
+    >
+      <span className={`block font-mono text-lg leading-tight ${colorClass}`}>{value.toLocaleString()}</span>
+      <span className="block font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{label}</span>
+    </button>
+  );
+
+  const metricBar = (
+    <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Job metrics and quick filters">
+      {metricTile("Open roles", total, workplaceFilter === "All" && !noDegreeOnly && !newThisWeekOnly && !starredOnly && salaryFloor === 0 && !fieldFilter, "text-foreground",
+        "border-foreground/30 bg-foreground/5",
+        () => { setWorkplaceFilter("All"); setNoDegreeOnly(false); setNewThisWeekOnly(false); setSalaryFloor(0); setFieldFilter(null); })}
+      {metricTile("Remote", counts.remote, workplaceFilter === "Remote", "text-emerald-400",
+        "border-emerald-500/40 bg-emerald-500/10",
+        () => setWorkplaceFilter(workplaceFilter === "Remote" ? "All" : "Remote"))}
+      {metricTile("Hybrid", counts.hybrid, workplaceFilter === "Hybrid", "text-violet-400",
+        "border-violet-500/40 bg-violet-500/10",
+        () => setWorkplaceFilter(workplaceFilter === "Hybrid" ? "All" : "Hybrid"))}
+      {metricTile("New this week", counts.new_this_week, newThisWeekOnly, "text-cyan-400",
+        "border-cyan-500/40 bg-cyan-500/10",
+        () => setNewThisWeekOnly(!newThisWeekOnly))}
+      {metricTile("No degree", counts.no_degree, noDegreeOnly, "text-teal-400",
+        "border-teal-500/40 bg-teal-500/10",
+        () => setNoDegreeOnly(!noDegreeOnly))}
+    </div>
+  );
+
   const jobList = isLoading && !starredOnly ? (
     <div className="flex items-center justify-center py-16 text-muted-foreground">
       <Loader2 className="h-6 w-6 animate-spin mr-2" />
@@ -827,10 +874,10 @@ export function JobsPage() {
             </button>
           </div>
 
-          <div className="sticky top-0 z-20 bg-background/85 backdrop-blur-xl px-4 sm:px-6 py-2 border-b border-border/30">
-            {/* Daily snapshot bar: the market numbers + email opt-in into inline
-                signup — replaced the clickable metric tiles */}
-            <MarketSnapshotBar />
+          <div className="sticky top-0 z-20 bg-background/85 backdrop-blur-xl px-4 sm:px-6 py-2 border-b border-border/30 space-y-2">
+            {/* Full-width snapshot strip (headline + opt-in), metric tiles below */}
+            <MarketSnapshotBar showStats={false} />
+            <div className="max-w-3xl">{metricBar}</div>
           </div>
 
           <main className="px-4 sm:px-6 pt-4 pb-32 lg:pb-10 max-w-3xl">

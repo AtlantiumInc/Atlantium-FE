@@ -31,7 +31,7 @@ function maskEmail(email: string): string {
  * signup — submit sends the OTP immediately and the modal opens on the code
  * step, then hands off to the normal authed onboarding flow.
  */
-export function MarketSnapshotBar() {
+export function MarketSnapshotBar({ showStats = true }: { showStats?: boolean } = {}) {
   const [stats, setStats] = useState<{
     total: number;
     remote: number;
@@ -146,7 +146,9 @@ export function MarketSnapshotBar() {
     }
   };
 
-  const tiles: Array<{ value: number; label: string; className: string }> = stats
+  const tiles: Array<{ value: number; label: string; className: string }> = !showStats
+    ? []
+    : stats
     ? [
         { value: stats.total, label: "Open roles", className: "text-foreground" },
         { value: stats.remote, label: "Remote", className: "text-emerald-400" },
@@ -170,7 +172,7 @@ export function MarketSnapshotBar() {
         </div>
 
         {/* Stats */}
-        <div className="flex flex-1 items-center justify-start lg:justify-center gap-6 sm:gap-8 overflow-x-auto">
+        <div className={`flex flex-1 items-center justify-start lg:justify-center gap-6 sm:gap-8 overflow-x-auto ${showStats ? "" : "lg:justify-end"}`}>
           {tiles.map((t) => (
             <div key={t.label} className="text-center shrink-0">
               <div className={`text-lg font-bold tabular-nums ${t.className}`}>
