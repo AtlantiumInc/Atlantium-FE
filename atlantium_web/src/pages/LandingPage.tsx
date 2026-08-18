@@ -24,7 +24,6 @@ import { useEffect, useRef, useState } from "react";
 import jobsData from "@/data/jobs.json";
 import { api } from "@/lib/api";
 import { useTheme } from "@/contexts/ThemeContext";
-import { MarketSnapshotBar } from "@/components/MarketSnapshotBar";
 
 
 interface Event {
@@ -479,12 +478,6 @@ export function LandingPage() {
               </Link>
             </SpotlightCard>
           </motion.div>
-
-          {/* Daily market snapshot strip: live board counts + email opt-in
-              that flows straight into inline OTP signup */}
-          <div className="col-span-12">
-            <MarketSnapshotBar />
-          </div>
 
           {/* The Console — the network's live instruments, one cached call,
               every number real (see ConsolePanels). */}
