@@ -396,11 +396,13 @@ export function LandingPage() {
                 </motion.div>
 
                 {/* Headline */}
-                <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight leading-[1.05] mb-6">
+                {/* Fluid size + nowrap per line: the two lines must never
+                    break internally at any viewport width */}
+                <h1 className="text-[clamp(2.5rem,8.5vw,6rem)] font-bold tracking-tight leading-[1.05] mb-6">
                   {/* Narrow white glint over solid type — a pass of light,
                       not a color gradient; long rest between sweeps */}
-                  <ShinyText text="Your Path to" className="block" color={heroInk} shineColor="#ffffff" spread={36} speed={2.2} delay={4.5} />
-                  <ShinyText text="the Frontier" className="block" color={heroInk} shineColor="#ffffff" spread={36} speed={2.2} delay={4.5} />
+                  <ShinyText text="Your Path to" className="block whitespace-nowrap" color={heroInk} shineColor="#ffffff" spread={36} speed={2.2} delay={4.5} />
+                  <ShinyText text="the Frontier" className="block whitespace-nowrap" color={heroInk} shineColor="#ffffff" spread={36} speed={2.2} delay={4.5} />
                 </h1>
 
                 {/* Subhead */}
