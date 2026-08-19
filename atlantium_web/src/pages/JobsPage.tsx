@@ -1018,19 +1018,21 @@ export function JobsPage() {
             animate={{ y: 0 }}
             exit={{ y: 80, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-0 left-0 right-0 z-40 lg:hidden p-3 pr-11 bg-background/80 backdrop-blur-xl border-t border-border/30"
+            className="fixed bottom-0 left-0 right-0 z-40 lg:hidden p-3 bg-background/80 backdrop-blur-xl border-t border-border/30"
           >
-            <CompactTrainingCard />
-            <button
-              onClick={() => {
-                sessionStorage.setItem("atlantium_jobs_promo_dismissed", "1");
-                setPromoDismissed(true);
-              }}
-              aria-label="Dismiss training promo"
-              className="absolute top-1.5 right-1.5 h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <div className="relative">
+              <CompactTrainingCard />
+              <button
+                onClick={() => {
+                  sessionStorage.setItem("atlantium_jobs_promo_dismissed", "1");
+                  setPromoDismissed(true);
+                }}
+                aria-label="Dismiss training promo"
+                className="absolute top-2 right-2 z-10 h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
