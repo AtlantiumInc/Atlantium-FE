@@ -391,7 +391,7 @@ export function LandingPage() {
                   className="mb-8"
                 >
                   <span className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                    Citizen Technology Network
+                    Atlanta's Technology Network
                   </span>
                 </motion.div>
 
