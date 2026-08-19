@@ -923,7 +923,7 @@ export function JobsPage() {
           <div className="lg:hidden px-4 sm:px-6 pt-5 pb-3 flex items-center gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <Cpu className="h-4 w-4 text-cyan-500 shrink-0" />
-              <span className="text-sm font-bold truncate">Tech Job Board</span>
+              <span className="text-sm font-bold truncate">Tech Job Index</span>
             </div>
             <button
               onClick={() => setMobileFiltersOpen(true)}

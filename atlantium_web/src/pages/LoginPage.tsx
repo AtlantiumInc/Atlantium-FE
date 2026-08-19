@@ -40,8 +40,8 @@ function maskEmail(email: string): string {
 const testimonials = [
   {
     image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&q=80",
-    quote: "Every apply link on the board is checked by AI on a rolling cycle. Dead postings don't survive here.",
-    name: "The Job Board",
+    quote: "Every apply link on the index is checked by AI on a rolling cycle. Dead postings don't survive here.",
+    name: "The Job Index",
     role: "5,000+ live Atlanta tech roles",
   },
   {

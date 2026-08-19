@@ -36,8 +36,8 @@ const solutionItems: DeckItem[] = [
   },
   {
     to: "/jobs",
-    label: "Job Board",
-    description: "Curated AI engineering roles from top companies in your area",
+    label: "Job Index",
+    description: "Every Atlanta tech role, verified and updated every 4 hours — with live market data",
     icon: Briefcase,
     readout: null, // live: "{total} live roles · {new} new this week"
   },
@@ -125,7 +125,7 @@ const missionLink = { to: "/mission", label: "Mission" };
 function pageTitle(pathname: string): string {
   if (pathname === "/") return "Home";
   const map: Array<[string, string]> = [
-    ["/jobs", "Job Board"],
+    ["/jobs", "Job Index"],
     ["/directory", "Directory"],
     ["/grants", "Directory"],
     ["/training", "Training"],
