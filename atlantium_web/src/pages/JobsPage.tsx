@@ -846,8 +846,8 @@ export function JobsPage() {
 
       {/* Slim full-width strip: snapshot label + Board/Realtime switch */}
       <div className="relative z-10 px-4 sm:px-6 py-1.5 border-b border-border/30 bg-background/85 backdrop-blur-xl">
-        <div className="flex items-center gap-3">
-          <span className="flex-1 flex items-baseline gap-2 whitespace-nowrap">
+        <div className="relative flex items-center justify-center gap-3">
+          <span className="flex items-baseline gap-2 whitespace-nowrap">
             <span className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Powered by</span>
             <span className="text-sm sm:text-base font-bold tracking-tight text-foreground">Atlantium Technology Network</span>
           </span>
@@ -855,14 +855,14 @@ export function JobsPage() {
           {viewMode === "realtime" ? (
             <button
               onClick={() => setViewMode("board")}
-              className="lg:hidden px-3 py-1.5 rounded-md border border-border/60 bg-card/40 text-xs font-semibold text-muted-foreground"
+              className="lg:hidden absolute right-0 px-3 py-1.5 rounded-md border border-border/60 bg-card/40 text-xs font-semibold text-muted-foreground"
             >
               ← Board
             </button>
           ) : (
             <button
               onClick={() => setViewMode("realtime")}
-              className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-xs font-semibold text-emerald-300"
+              className="lg:hidden absolute right-0 flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-xs font-semibold text-emerald-300"
             >
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
               Dashboard
