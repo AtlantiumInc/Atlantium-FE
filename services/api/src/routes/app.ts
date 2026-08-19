@@ -3844,7 +3844,7 @@ appRoutes.get("/job_postings/insights", async (c) => {
     // Every role from the window with its 5-hour intake bucket, so the chart
     // can show WHO arrived in each bar, not just how many.
     db.execute(sql`
-      select floor(extract(epoch from (created_at - (now() - interval '7 days'))) / 18000)::int as b,
+      select floor(extract(epoch from (coalesce((content->>'posted_at')::timestamptz, created_at) - (now() - interval '7 days'))) / 18000)::int as b,
              slug, title, company, salary_min, salary_max, seniority
       from job_postings where ${recent}
       order by created_at desc limit 600`),
