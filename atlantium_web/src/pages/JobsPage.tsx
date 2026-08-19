@@ -847,7 +847,10 @@ export function JobsPage() {
       {/* Slim full-width strip: snapshot label + Board/Realtime switch */}
       <div className="relative z-10 px-4 sm:px-6 py-1.5 border-b border-border/30 bg-background/85 backdrop-blur-xl">
         <div className="flex items-center gap-3">
-          <span className="flex-1 text-sm sm:text-base font-semibold tracking-wide text-foreground whitespace-nowrap">Atlanta Technology Network</span>
+          <span className="flex-1 flex items-baseline gap-2 whitespace-nowrap">
+            <span className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Built inside</span>
+            <span className="text-sm sm:text-base font-bold tracking-tight text-foreground">Atlantium</span>
+          </span>
           {/* mobile-only affordances — desktop stays bare per design */}
           {viewMode === "realtime" ? (
             <button
