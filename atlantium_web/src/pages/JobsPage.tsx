@@ -858,7 +858,7 @@ export function JobsPage() {
               onClick={() => setViewMode("board")}
               className="lg:hidden absolute right-0 px-3 py-1.5 rounded-md border border-border/60 bg-card/40 text-xs font-semibold text-muted-foreground"
             >
-              ← Board
+              ← Index
             </button>
           ) : (
             <button
@@ -898,7 +898,7 @@ export function JobsPage() {
                   onClick={() => { setViewMode("board"); setFeedSlug(null); }}
                   className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  ← Back to board
+                  ← Back to index
                 </button>
                 <div className="flex items-center gap-2 mt-2">
                   <span className="relative flex h-2 w-2">
