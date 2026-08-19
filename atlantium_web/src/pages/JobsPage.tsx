@@ -14,6 +14,7 @@ import { api, type JobPosting } from "@/lib/api";
 import { isNewThisWeek } from "@/lib/utils";
 import { JobReportSignupModal, useJobReportSignup } from "@/components/JobReportSignupModal";
 import { RealtimeMarketPanel } from "@/components/RealtimeMarketPanel";
+import { RealtimeFeedRail } from "@/components/RealtimeFeedRail";
 
 type Job = JobPosting & {
   // convenience aliases derived from content
@@ -421,6 +422,7 @@ export function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [total, setTotal] = useState(0);
   const [viewMode, setViewMode] = useState<"board" | "realtime">("board");
+  const [insights, setInsights] = useState<Awaited<ReturnType<typeof api.getJobInsights>> | null>(null);
   const [counts, setCounts] = useState({ remote: 0, hybrid: 0, new_this_week: 0, no_degree: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -458,6 +460,11 @@ export function JobsPage() {
     });
   }, []);
   const starredJobs = Object.values(stars);
+
+  useEffect(() => {
+    if (viewMode !== "realtime" || insights) return;
+    api.getJobInsights().then(setInsights).catch(() => {});
+  }, [viewMode, insights]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -843,56 +850,80 @@ export function JobsPage() {
             <span className="text-[13px] font-semibold text-foreground whitespace-nowrap leading-tight">Atlanta Technology Market</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <span className="hidden sm:inline text-[10px] font-mono text-muted-foreground uppercase tracking-wide">updates every 24h</span>
-            <div className="flex rounded-lg border border-border/60 bg-card/40 p-0.5" role="tablist" aria-label="Board view mode">
+            <span className="hidden sm:inline text-[10px] font-mono text-muted-foreground uppercase tracking-wide">updates every 4h</span>
+            {viewMode === "realtime" ? (
               <button
-                role="tab"
-                aria-selected={viewMode === "board"}
                 onClick={() => setViewMode("board")}
-                className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  viewMode === "board" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
-                }`}
+                className="px-3.5 py-1.5 rounded-md border border-border/60 bg-card/40 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all"
               >
-                Board
+                ← Board
               </button>
+            ) : (
               <button
-                role="tab"
-                aria-selected={viewMode === "realtime"}
                 onClick={() => setViewMode("realtime")}
-                className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                  viewMode === "realtime" ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" : "text-muted-foreground hover:text-foreground"
-                }`}
+                className="lg:hidden flex items-center gap-1.5 px-3.5 py-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-xs font-semibold text-emerald-300"
               >
-                <span className={`h-1.5 w-1.5 rounded-full ${viewMode === "realtime" ? "bg-emerald-400 animate-pulse" : "bg-muted-foreground/40"}`} />
-                Insights
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Realtime
               </button>
-            </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* App frame: fixed rail, one scrolling column */}
       <div className="relative z-10 flex-1 flex min-h-0">
-        {/* Filter rail (desktop) — board mode only; realtime goes full-bleed */}
-        {viewMode === "board" && (
-        <aside className="hidden lg:flex flex-col w-72 xl:w-80 shrink-0 border-r border-border/40 overflow-y-auto">
-          <div className="p-5 flex flex-col gap-6 flex-1">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
-                <Cpu className="h-4.5 w-4.5 text-cyan-500" />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-sm font-bold leading-tight">Tech Job Board</h1>
-                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                  <MapPin className="h-3 w-3" />
-                  <span>Atlanta, GA · 50mi</span>
+        {/* Left rail (desktop): filters in board mode, the live feed in realtime */}
+        <aside className="hidden lg:flex flex-col w-72 xl:w-80 shrink-0 border-r border-border/40 overflow-hidden">
+          {viewMode === "board" ? (
+            <div className="p-5 flex flex-col gap-6 flex-1 overflow-y-auto">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                  <Cpu className="h-4.5 w-4.5 text-cyan-500" />
+                </div>
+                <div className="min-w-0">
+                  <h1 className="text-sm font-bold leading-tight">Tech Job Board</h1>
+                  <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <MapPin className="h-3 w-3" />
+                    <span>Atlanta, GA · 50mi</span>
+                  </div>
                 </div>
               </div>
+              <button
+                onClick={() => setViewMode("realtime")}
+                className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/15 transition-all"
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                </span>
+                Realtime
+                <span className="ml-auto text-[10px] font-mono uppercase tracking-wide text-emerald-500/70">4h feed</span>
+              </button>
+              {filterRail}
             </div>
-            {filterRail}
-          </div>
+          ) : (
+            <>
+              <div className="p-4 pb-3 border-b border-border/40">
+                <button
+                  onClick={() => setViewMode("board")}
+                  className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  ← Back to board
+                </button>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                  </span>
+                  <span className="text-sm font-bold">Realtime feed</span>
+                  <span className="ml-auto text-[10px] font-mono uppercase tracking-wide text-muted-foreground">4h batches</span>
+                </div>
+              </div>
+              <RealtimeFeedRail jobs={insights?.intake_5h ?? []} />
+            </>
+          )}
         </aside>
-        )}
 
         {/* The one scrolling column */}
         <div ref={scrollRef} className="relative flex-1 min-w-0 overflow-y-auto overscroll-contain">
@@ -922,7 +953,7 @@ export function JobsPage() {
           )}
 
           <main className={`px-4 sm:px-6 pt-4 pb-32 lg:pb-10 ${viewMode === "realtime" ? "w-full pt-2" : "max-w-3xl"}`}>
-            {viewMode === "realtime" ? <RealtimeMarketPanel /> : jobList}
+            {viewMode === "realtime" ? <RealtimeMarketPanel preloaded={insights} /> : jobList}
             <div className="mt-6 pt-6 border-t border-border/30 text-xs text-muted-foreground">
               <span>AI Engineering Opportunities in Atlanta, GA · 50mi radius</span>
             </div>

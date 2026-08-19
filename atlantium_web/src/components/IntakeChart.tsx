@@ -98,7 +98,15 @@ function CompSortSwitch({ dir, onChange }: { dir: "high" | "low"; onChange: (d: 
  * comp sort. Mobile (coarse pointer): tapping a bar opens the same list
  * as a bottom sheet.
  */
-export function IntakeChart({ jobs = [] }: { jobs?: IntakeJob[] }) {
+export function IntakeChart({
+  jobs = [],
+  lens = null,
+  onClearLens,
+}: {
+  jobs?: IntakeJob[];
+  lens?: { label: string; jobs: IntakeJob[] } | null;
+  onClearLens?: () => void;
+}) {
   const [selected, setSelected] = useState<number | null>(null);
   const [sheetBucket, setSheetBucket] = useState<number | null>(null);
   const [sortDir, setSortDir] = useState<"high" | "low">("high");
@@ -126,11 +134,16 @@ export function IntakeChart({ jobs = [] }: { jobs?: IntakeJob[] }) {
 
   const openBucket = (i: number) => {
     if (buckets[i].length === 0) return;
+    onClearLens?.();
     if (isCoarse) setSheetBucket(i);
     else setSelected(i);
   };
 
-  const panelJobs = selected != null ? sortJobs(buckets[selected], sortDir) : [];
+  const panelJobs = lens
+    ? sortJobs(lens.jobs, sortDir)
+    : selected != null
+      ? sortJobs(buckets[selected], sortDir)
+      : [];
 
   return (
     <div className="flex items-stretch h-60">
@@ -168,9 +181,12 @@ export function IntakeChart({ jobs = [] }: { jobs?: IntakeJob[] }) {
       {/* Docked batch panel — desktop only; mobile uses the bottom sheet */}
       {!isCoarse && (
         <div className="hidden md:flex w-72 lg:w-80 shrink-0 flex-col border-l border-border/40 bg-background/40">
-          {selected != null && buckets[selected].length > 0 ? (
+          {panelJobs.length > 0 ? (
             <>
-              <div className="flex items-center justify-end px-2 pt-1.5 pb-1">
+              <div className="flex items-center justify-between gap-2 px-2 pt-1.5 pb-1">
+                <span className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground truncate">
+                  {lens ? lens.label : selected != null ? bucketLabel(selected) : ""}
+                </span>
                 <CompSortSwitch dir={sortDir} onChange={setSortDir} />
               </div>
               <div className="flex-1 overflow-y-auto px-1.5 pb-1.5 min-h-0">
