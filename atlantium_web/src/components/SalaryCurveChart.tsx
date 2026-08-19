@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Pin, X } from "lucide-react";
 import type { IntakeJob } from "@/components/IntakeChart";
 
 /* Empirical salary distribution of the last 7 days' roles, smoothed into a
@@ -58,6 +58,7 @@ function smoothPath(pts: Array<[number, number]>): string {
 
 export function SalaryCurveChart({ jobs = [] }: { jobs?: IntakeJob[] }) {
   const [hover, setHover] = useState<number | null>(null);
+  const [pinned, setPinned] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   const { bins, priced, unpriced, medianBin } = useMemo(() => {
@@ -90,7 +91,9 @@ export function SalaryCurveChart({ jobs = [] }: { jobs?: IntakeJob[] }) {
     setHover(Math.min(NBINS - 1, Math.max(0, i)));
   };
 
-  const active = hover ?? medianBin;
+  // hover previews; a click pins the band so it stays mounted after the
+  // cursor leaves; falls back to the median band.
+  const active = hover ?? pinned ?? medianBin;
   const activeJobs = active != null ? [...bins[active]].sort((a, b) => (b.salary_max ?? 0) - (a.salary_max ?? 0)) : [];
 
   // X ticks every $50k
@@ -106,6 +109,8 @@ export function SalaryCurveChart({ jobs = [] }: { jobs?: IntakeJob[] }) {
           className="w-full h-auto select-none"
           onMouseMove={onMove}
           onMouseLeave={() => setHover(null)}
+          onClick={() => hover != null && setPinned(pinned === hover ? null : hover)}
+          style={{ cursor: "crosshair" }}
         >
           {/* Y axis */}
           <line x1={PAD_L} y1={PAD_T} x2={PAD_L} y2={H - PAD_B} stroke="currentColor" className="text-border" strokeWidth="1" />
@@ -141,6 +146,10 @@ export function SalaryCurveChart({ jobs = [] }: { jobs?: IntakeJob[] }) {
           {medianBin != null && (
             <line x1={x(medianBin)} y1={PAD_T} x2={x(medianBin)} y2={H - PAD_B} stroke="rgb(148 163 184)" strokeWidth="1" strokeDasharray="2 4" />
           )}
+          {/* Pinned guide */}
+          {pinned != null && pinned !== active && (
+            <line x1={x(pinned)} y1={PAD_T} x2={x(pinned)} y2={H - PAD_B} stroke="rgb(34 211 238)" strokeWidth="1" opacity="0.5" strokeDasharray="4 3" />
+          )}
           {/* Hover guide + dot */}
           {active != null && (
             <g>
@@ -158,13 +167,25 @@ export function SalaryCurveChart({ jobs = [] }: { jobs?: IntakeJob[] }) {
       <div className="md:w-72 lg:w-80 shrink-0 md:border-l border-t md:border-t-0 border-border/40 bg-background/40 p-3 flex flex-col">
         {active != null ? (
           <>
-            <div className="flex items-baseline justify-between gap-2 pb-2 border-b border-border/40">
-              <span className="text-sm font-bold">{binLabel(active)}</span>
-              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wide">
-                {bins[active].length} role{bins[active].length === 1 ? "" : "s"} · {Math.round((bins[active].length / Math.max(1, priced)) * 100)}% of week
+            <div className="flex items-center justify-between gap-2 pb-2 border-b border-border/40">
+              <span className="flex items-center gap-1.5 text-sm font-bold">
+                {pinned === active && hover == null && <Pin className="h-3 w-3 text-cyan-400" />}
+                {binLabel(active)}
+              </span>
+              <span className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground uppercase tracking-wide">
+                {bins[active].length} role{bins[active].length === 1 ? "" : "s"} · {Math.round((bins[active].length / Math.max(1, priced)) * 100)}%
+                {pinned != null && (
+                  <button
+                    aria-label="Unpin band"
+                    onClick={() => setPinned(null)}
+                    className="h-5 w-5 flex items-center justify-center rounded border border-border/50 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
               </span>
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto pt-1.5 space-y-1">
+            <div className="overflow-y-auto max-h-44 pt-1.5 space-y-1">
               {activeJobs.slice(0, 5).map((j) => (
                 <Link
                   key={j.slug}
@@ -188,7 +209,7 @@ export function SalaryCurveChart({ jobs = [] }: { jobs?: IntakeJob[] }) {
             </div>
           </>
         ) : (
-          <p className="m-auto text-xs text-muted-foreground text-center px-4">Hover the curve to inspect a salary band.</p>
+          <p className="m-auto text-xs text-muted-foreground text-center px-4">Hover the curve to inspect a band — click to pin it.</p>
         )}
       </div>
     </div>
