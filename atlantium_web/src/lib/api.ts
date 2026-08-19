@@ -1898,6 +1898,20 @@ class ApiClient {
     return this.request("/console", { method: "GET" }, ATLANTIUM_API_BASE_URL);
   }
 
+  async getJobInsights(): Promise<{
+    generated_at: string;
+    window: string;
+    totals: { total_7d: number; total_24h: number; med_min: number | null; med_max: number | null; ai_roles: number };
+    by_day: Array<{ day: string; n: number }>;
+    salary_bands: Array<{ bucket: number; n: number; published: number }>;
+    top_tech: Array<{ name: string; n: number }>;
+    seniority_mix: Array<{ name: string; n: number }>;
+    top_companies: Array<{ name: string; n: number }>;
+    intake_5h: Array<{ b: number; slug: string; title: string; company: string; salary_min: number | null; salary_max: number | null; seniority: string | null }>;
+  }> {
+    return this.request("/job_postings/insights", { method: "GET" }, ATLANTIUM_API_BASE_URL);
+  }
+
   async getJobPostingsPaged(params?: {
     status?: string;
     workplace_type?: string;

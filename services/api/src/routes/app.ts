@@ -3798,6 +3798,72 @@ appRoutes.get("/job_postings", async (c) => {
   });
 });
 
+/**
+ * Realtime market read: aggregate what Atlanta employers are asking for,
+ * computed over the visible board. "Realtime" = the board's daily pulse —
+ * new intake by day, salary distribution, and demand (tech, seniority,
+ * companies) over the last 7 days. Pure SQL, no model in the loop.
+ */
+appRoutes.get("/job_postings/insights", async (c) => {
+  const db = createDb(c.env);
+  const visible = sql`status = 'active' and content->>'non_tech' is null`;
+  const recent = sql`${visible} and created_at >= now() - interval '7 days'`;
+
+  const [byDay, salaryBands, topTech, seniorityMix, topCompanies, totals, intakeJobs] = await Promise.all([
+    db.execute(sql`
+      select to_char(created_at at time zone 'America/New_York', 'YYYY-MM-DD') as day, count(*)::int as n
+      from job_postings where ${recent}
+      group by 1 order by 1`),
+    db.execute(sql`
+      select width_bucket(coalesce(salary_max, (content->'salary_est'->>'max')::int), 40000, 300000, 13) as bucket,
+             count(*)::int as n,
+             count(*) filter (where salary_max is not null)::int as published
+      from job_postings
+      where ${recent} and coalesce(salary_max, (content->'salary_est'->>'max')::int) is not null
+      group by 1 order by 1`),
+    db.execute(sql`
+      select t.tool as name, count(*)::int as n
+      from job_postings j, jsonb_array_elements_text(j.content->'tech_stack') t(tool)
+      where ${recent}
+      group by 1 order by n desc limit 14`),
+    db.execute(sql`
+      select seniority as name, count(*)::int as n
+      from job_postings where ${recent} and seniority is not null
+      group by 1 order by n desc`),
+    db.execute(sql`
+      select company as name, count(*)::int as n
+      from job_postings where ${recent}
+      group by 1 order by n desc limit 8`),
+    db.execute(sql`
+      select count(*)::int as total_7d,
+             count(*) filter (where created_at >= now() - interval '24 hours')::int as total_24h,
+             percentile_cont(0.5) within group (order by salary_min) filter (where salary_min is not null)::int as med_min,
+             percentile_cont(0.5) within group (order by salary_max) filter (where salary_max is not null)::int as med_max,
+             count(*) filter (where title ~* '\\y(ai|machine learning|ml engineer|genai|llm)\\y')::int as ai_roles
+      from job_postings where ${recent}`),
+    // Every role from the window with its 5-hour intake bucket, so the chart
+    // can show WHO arrived in each bar, not just how many.
+    db.execute(sql`
+      select floor(extract(epoch from (created_at - (now() - interval '7 days'))) / 18000)::int as b,
+             slug, title, company, salary_min, salary_max, seniority
+      from job_postings where ${recent}
+      order by created_at desc limit 600`),
+  ]);
+  const rows = (r: unknown) => (r as { rows?: unknown[] }).rows ?? (r as unknown[]);
+  c.header("Cache-Control", "public, max-age=300");
+  return c.json({
+    generated_at: new Date().toISOString(),
+    window: "7d",
+    totals: rows(totals)[0],
+    by_day: rows(byDay),
+    salary_bands: rows(salaryBands),
+    top_tech: rows(topTech),
+    seniority_mix: rows(seniorityMix),
+    top_companies: rows(topCompanies),
+    intake_5h: rows(intakeJobs),
+  });
+});
+
 appRoutes.get("/job_postings/:slug", async (c) => {
   const db = createDb(c.env);
   const row = await db.query.jobPostings.findFirst({

@@ -13,7 +13,7 @@ import Aurora from "@/components/Aurora";
 import { api, type JobPosting } from "@/lib/api";
 import { isNewThisWeek } from "@/lib/utils";
 import { JobReportSignupModal, useJobReportSignup } from "@/components/JobReportSignupModal";
-import { MarketSnapshotBar } from "@/components/MarketSnapshotBar";
+import { RealtimeMarketPanel } from "@/components/RealtimeMarketPanel";
 
 type Job = JobPosting & {
   // convenience aliases derived from content
@@ -420,6 +420,7 @@ export function JobsPage() {
   const [debouncedSalaryFloor, setDebouncedSalaryFloor] = useState(0);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [total, setTotal] = useState(0);
+  const [viewMode, setViewMode] = useState<"board" | "realtime">("board");
   const [counts, setCounts] = useState({ remote: 0, hybrid: 0, new_this_week: 0, no_degree: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -834,14 +835,46 @@ export function JobsPage() {
 
       <PublicNavbar />
 
-      {/* Full-width snapshot strip: spans rail, column, and right rail */}
-      <div className="relative z-10 px-4 sm:px-6 py-2 border-b border-border/30 bg-background/85 backdrop-blur-xl">
-        <MarketSnapshotBar showStats={false} />
+      {/* Slim full-width strip: snapshot label + Board/Realtime switch */}
+      <div className="relative z-10 px-4 sm:px-6 py-1.5 border-b border-border/30 bg-background/85 backdrop-blur-xl">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+          <div className="min-w-0">
+            <span className="font-mono text-[9px] uppercase tracking-[0.25em] text-muted-foreground block leading-tight">Daily snapshot</span>
+            <span className="text-[13px] font-semibold text-foreground whitespace-nowrap leading-tight">Atlanta Technology Market</span>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <span className="hidden sm:inline text-[10px] font-mono text-muted-foreground uppercase tracking-wide">updates every 24h</span>
+            <div className="flex rounded-lg border border-border/60 bg-card/40 p-0.5" role="tablist" aria-label="Board view mode">
+              <button
+                role="tab"
+                aria-selected={viewMode === "board"}
+                onClick={() => setViewMode("board")}
+                className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  viewMode === "board" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Board
+              </button>
+              <button
+                role="tab"
+                aria-selected={viewMode === "realtime"}
+                onClick={() => setViewMode("realtime")}
+                className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                  viewMode === "realtime" ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${viewMode === "realtime" ? "bg-emerald-400 animate-pulse" : "bg-muted-foreground/40"}`} />
+                Realtime
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* App frame: fixed rail, one scrolling column */}
       <div className="relative z-10 flex-1 flex min-h-0">
-        {/* Filter rail (desktop) */}
+        {/* Filter rail (desktop) — board mode only; realtime goes full-bleed */}
+        {viewMode === "board" && (
         <aside className="hidden lg:flex flex-col w-72 xl:w-80 shrink-0 border-r border-border/40 overflow-y-auto">
           <div className="p-5 flex flex-col gap-6 flex-1">
             <div className="flex items-center gap-3">
@@ -859,6 +892,7 @@ export function JobsPage() {
             {filterRail}
           </div>
         </aside>
+        )}
 
         {/* The one scrolling column */}
         <div ref={scrollRef} className="relative flex-1 min-w-0 overflow-y-auto overscroll-contain">
@@ -879,12 +913,14 @@ export function JobsPage() {
             </button>
           </div>
 
-          <div className="sticky top-0 z-20 bg-background/85 backdrop-blur-xl px-4 sm:px-6 py-2 border-b border-border/30">
-            <div className="max-w-3xl">{metricBar}</div>
-          </div>
+          {viewMode === "board" && (
+            <div className="sticky top-0 z-20 bg-background/85 backdrop-blur-xl px-4 sm:px-6 py-2 border-b border-border/30">
+              <div className="max-w-3xl">{metricBar}</div>
+            </div>
+          )}
 
-          <main className="px-4 sm:px-6 pt-4 pb-32 lg:pb-10 max-w-3xl">
-            {jobList}
+          <main className={`px-4 sm:px-6 pt-4 pb-32 lg:pb-10 ${viewMode === "realtime" ? "w-full" : "max-w-3xl"}`}>
+            {viewMode === "realtime" ? <RealtimeMarketPanel /> : jobList}
             <div className="mt-6 pt-6 border-t border-border/30 text-xs text-muted-foreground">
               <span>AI Engineering Opportunities in Atlanta, GA · 50mi radius</span>
             </div>
@@ -892,13 +928,15 @@ export function JobsPage() {
         </div>
 
         {/* Right rail — what we're selling, out of the filter column so the
-            left stays purely controls */}
+            left stays purely controls. Board mode only. */}
+        {viewMode === "board" && (
         <aside className="hidden xl:flex flex-col w-80 shrink-0 border-l border-border/40 overflow-y-auto">
           <div className="p-5 space-y-4">
             <TrainingCard />
             <JobAlertsCard isMember={signup.isMember} onJoin={signup.openWithEmail} onStart={signup.startWithEmail} />
           </div>
         </aside>
+        )}
       </div>
 
       {/* Mobile filter drawer */}
