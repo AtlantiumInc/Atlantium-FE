@@ -61,7 +61,10 @@ export function RealtimeFeedRail({ jobs, onSelect }: { jobs: IntakeJob[]; onSele
   const [arrived, setArrived] = useState<Set<string>>(new Set());
   useEffect(() => {
     const slugs = jobs.map((j) => j.slug);
+    // Seed on the first non-empty payload; seeding on the empty mount render
+    // would flash every role on first load.
     if (seen.current === null) {
+      if (slugs.length === 0) return;
       seen.current = new Set(slugs);
       return;
     }

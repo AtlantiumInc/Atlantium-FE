@@ -15,6 +15,7 @@ import { isNewThisWeek } from "@/lib/utils";
 import { JobReportSignupModal, useJobReportSignup } from "@/components/JobReportSignupModal";
 import { RealtimeMarketPanel } from "@/components/RealtimeMarketPanel";
 import { RealtimeFeedRail } from "@/components/RealtimeFeedRail";
+import { RealtimeFeedSheet } from "@/components/RealtimeFeedSheet";
 import { InlineJobDetail } from "@/components/InlineJobDetail";
 
 type Job = JobPosting & {
@@ -477,14 +478,16 @@ export function JobsPage() {
     // of visibilitychange events (rapid tab switching, embedded browsers)
     // cannot turn into a burst of requests.
     const STALE_MS = 55_000;
-    const load = () => {
-      if (document.visibilityState === "hidden") return;
-      if (Date.now() - lastAt < STALE_MS) return;
+    // `force` is the mount load: a tab opened in the background is still a tab
+    // the user will look at, so the first fetch must not wait for focus.
+    const load = (force = false) => {
+      if (!force && document.visibilityState === "hidden") return;
+      if (!force && Date.now() - lastAt < STALE_MS) return;
       lastAt = Date.now();
       api.getJobInsights().then((r) => { if (!cancelled) setInsights(r); }).catch(() => {});
     };
-    load();
-    const id = setInterval(load, 60_000);
+    load(true);
+    const id = setInterval(() => load(), 60_000);
     const onVisible = () => { if (document.visibilityState === "visible") load(); };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
@@ -993,6 +996,12 @@ export function JobsPage() {
         )}
       </div>
 
+      {/* Mobile realtime surface — the desktop rail has no mobile equivalent,
+          so the newest role lives in a peek sheet instead. */}
+      {viewMode === "realtime" && (
+        <RealtimeFeedSheet jobs={insights?.intake_5h ?? []} onSelect={setFeedSlug} />
+      )}
+
       {/* Mobile filter drawer */}
       <AnimatePresence>
         {mobileFiltersOpen && (
@@ -1025,7 +1034,7 @@ export function JobsPage() {
       {/* Mobile: sticky training card at bottom — dismissible; it covers the
           last rows of a list that is the whole point of the page */}
       <AnimatePresence>
-        {!promoDismissed && (
+        {!promoDismissed && viewMode === "board" && (
           <motion.div
             initial={{ y: 80 }}
             animate={{ y: 0 }}
