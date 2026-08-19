@@ -64,18 +64,48 @@ function RoleList({ jobs }: { jobs: IntakeJob[] }) {
  * bucket. Mobile (coarse pointer): tapping a bar opens a scrollable bottom
  * sheet with the same list.
  */
+const COMP_BUCKETS = 15; // <40k, 13 × $20k bands, 300k+
+
+function compBucket(j: IntakeJob): number | null {
+  if (j.salary_max == null) return null;
+  const mid = j.salary_min != null ? (j.salary_min + j.salary_max) / 2 : j.salary_max;
+  if (mid < 40000) return 0;
+  if (mid >= 300000) return COMP_BUCKETS - 1;
+  return 1 + Math.floor((mid - 40000) / 20000);
+}
+
+function compLabel(b: number): string {
+  if (b <= 0) return "<40";
+  if (b >= COMP_BUCKETS - 1) return "300+";
+  return `${40 + (b - 1) * 20}`;
+}
+
 export function IntakeChart({ jobs = [] }: { jobs?: IntakeJob[] }) {
+  const [axis, setAxis] = useState<"time" | "comp">("time");
   const [active, setActive] = useState<number | null>(null);
   const [sheetBucket, setSheetBucket] = useState<number | null>(null);
 
   const buckets = useMemo(() => {
+    if (axis === "comp") {
+      const out: IntakeJob[][] = Array.from({ length: COMP_BUCKETS }, () => []);
+      for (const j of jobs) {
+        const b = compBucket(j);
+        if (b != null) out[b].push(j);
+      }
+      return out;
+    }
     const out: IntakeJob[][] = Array.from({ length: BUCKETS }, () => []);
     for (const j of jobs) {
       const b = Math.min(BUCKETS - 1, Math.max(0, j.b));
       out[b].push(j);
     }
     return out;
-  }, [jobs]);
+  }, [jobs, axis]);
+
+  const unpriced = useMemo(() => jobs.filter((j) => j.salary_max == null).length, [jobs]);
+  const label = (i: number) => (axis === "comp" ? compLabel(i) : bucketLabel(i));
+  const labelEvery = axis === "comp" ? 2 : 7;
+  const nBuckets = buckets.length;
 
   const max = Math.max(1, ...buckets.map((b) => b.length));
   const isCoarse = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
@@ -88,6 +118,29 @@ export function IntakeChart({ jobs = [] }: { jobs?: IntakeJob[] }) {
 
   return (
     <div className="relative" onMouseLeave={() => setActive(null)}>
+      {/* Axis toggle: Time shows the pipeline's pulse; Comp shows where the
+          money lands — immune to scrape batching. */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex rounded-md border border-border/50 bg-card/40 p-0.5">
+          {(["time", "comp"] as const).map((a) => (
+            <button
+              key={a}
+              onClick={() => { setAxis(a); setActive(null); }}
+              aria-pressed={axis === a}
+              className={`px-2.5 py-1 rounded text-[10px] font-mono uppercase tracking-wide transition-all ${
+                axis === a ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {a === "time" ? "Time" : "Comp"}
+            </button>
+          ))}
+        </div>
+        <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wide">
+          {axis === "comp"
+            ? `x = salary ($k/yr)${unpriced > 0 ? ` · ${unpriced} unpriced not shown` : ""}`
+            : "x = arrival time · 5h buckets"}
+        </span>
+      </div>
       <div className="flex items-end gap-[3px] h-36">
         {buckets.map((bucketJobs, i) => (
           <div
@@ -99,30 +152,32 @@ export function IntakeChart({ jobs = [] }: { jobs?: IntakeJob[] }) {
               {bucketJobs.length > 0 ? bucketJobs.length : ""}
             </span>
             <button
-              aria-label={`${bucketJobs.length} roles, ${bucketLabel(i)}`}
+              aria-label={`${bucketJobs.length} roles, ${label(i)}`}
               onClick={() => openBucket(i)}
               className={`w-full rounded-t transition-colors ${
                 bucketJobs.length === 0
                   ? "bg-muted/20"
                   : active === i
-                    ? "bg-cyan-300"
-                    : "bg-cyan-500/70 hover:bg-cyan-400"
+                    ? (axis === "comp" ? "bg-emerald-300" : "bg-cyan-300")
+                    : axis === "comp"
+                      ? "bg-emerald-500/70 hover:bg-emerald-400"
+                      : "bg-cyan-500/70 hover:bg-cyan-400"
               }`}
               style={{ height: `${Math.max(2, (bucketJobs.length / max) * 110)}px` }}
             />
             <span className="text-[8px] font-mono text-muted-foreground leading-none w-full text-center whitespace-nowrap overflow-visible">
-              {i % 7 === 0 ? bucketLabel(i) : "\u00a0"}
+              {i % labelEvery === 0 ? label(i) : "\u00a0"}
             </span>
 
             {/* Desktop popover */}
             {!isCoarse && active === i && (
               <div
                 className={`absolute bottom-full mb-2 z-30 w-72 rounded-xl border border-border/70 bg-background/95 backdrop-blur-xl shadow-2xl p-2 ${
-                  i < 6 ? "left-0" : i > BUCKETS - 7 ? "right-0" : "left-1/2 -translate-x-1/2"
+                  i < 6 ? "left-0" : i > nBuckets - 7 ? "right-0" : "left-1/2 -translate-x-1/2"
                 }`}
               >
                 <p className="px-2 pb-1.5 text-[10px] font-mono uppercase tracking-wide text-muted-foreground border-b border-border/40 mb-1">
-                  {bucketJobs.length} role{bucketJobs.length === 1 ? "" : "s"} · from {bucketLabel(i)}
+                  {bucketJobs.length} role{bucketJobs.length === 1 ? "" : "s"} · {axis === "comp" ? `$${label(i)}k band` : `from ${label(i)}`}
                 </p>
                 <div className="max-h-56 overflow-y-auto">
                   <RoleList jobs={bucketJobs} />
@@ -143,7 +198,7 @@ export function IntakeChart({ jobs = [] }: { jobs?: IntakeJob[] }) {
                 <p className="text-sm font-bold">
                   {buckets[sheetBucket].length} role{buckets[sheetBucket].length === 1 ? "" : "s"} came in
                 </p>
-                <p className="text-[11px] text-muted-foreground font-mono">from {bucketLabel(sheetBucket)} · 5h window</p>
+                <p className="text-[11px] text-muted-foreground font-mono">{axis === "comp" ? `$${label(sheetBucket)}k salary band` : `from ${label(sheetBucket)} · 5h window`}</p>
               </div>
               <button
                 aria-label="Close"

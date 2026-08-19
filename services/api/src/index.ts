@@ -116,6 +116,27 @@ export default {
       );
       return;
     }
+    // Intake ticks between the daily runs: jobs + estimates only — the board
+    // updates every 4 hours (10:00 slot below carries the full daily chain:
+    // companies, grants). hiring.cafe rides every tick by explicit decision;
+    // Workday rotates a smaller slice to stay inside the subrequest budget.
+    if (event.cron === "0 2,6,14,18,22 * * *") {
+      ctx.waitUntil(
+        syncJobPostings(env)
+          .then((r) => console.log("jobs-sync-4h ok", JSON.stringify(r)))
+          .then(() => syncWorkdayJobs(env, 15))
+          .then((r) => console.log("workday-sync-4h ok", JSON.stringify(r)))
+          .then(() => syncUsaJobs(env))
+          .then((r) => console.log("usajobs-sync-4h ok", JSON.stringify(r)))
+          .then(() => computeSalaryEstimates(env))
+          .then((r) => console.log("salary-estimates-4h ok", JSON.stringify(r)))
+          .catch((error) => {
+            console.error("jobs-sync-4h failed", error);
+            throw error;
+          }),
+      );
+      return;
+    }
     // The daily scrape is an EXPLICIT branch, not the fallthrough — an
     // unguarded default here once meant any new cron silently re-ran the
     // scraper (plan Part B risk note).
