@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { SalaryCurveChart } from "@/components/SalaryCurveChart";
+import { CompanyLogo } from "@/components/CompanyLogo";
 
 type Insights = Awaited<ReturnType<typeof api.getJobInsights>>;
 
@@ -83,7 +84,10 @@ export function RealtimeMarketPanel({ preloaded = null }: { preloaded?: Insights
         <div className="relative overflow-hidden rounded-xl border border-border/40 bg-card/30 px-4 py-3">
           <div className="absolute -top-6 -right-6 h-16 w-16 rounded-full bg-violet-500/10 blur-2xl" />
           <p className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground">Heaviest hirer</p>
-          <p className="mt-1 text-lg font-bold text-foreground leading-tight truncate">{topCo?.name ?? "—"}</p>
+          <p className="mt-1 flex items-center gap-1.5 text-lg font-bold text-foreground leading-tight truncate">
+            {topCo && <CompanyLogo name={topCo.name} logo={(topCo as { logo?: string | null }).logo} size={18} />}
+            <span className="truncate">{topCo?.name ?? "—"}</span>
+          </p>
           <p className="text-[11px] text-muted-foreground">{topCo ? `${topCo.n} open roles` : ""}</p>
         </div>
       </div>

@@ -5,6 +5,7 @@ import { X, ArrowUpRight, ArrowDown, ArrowUp } from "lucide-react";
 export type IntakeJob = {
   b: number;
   ts?: string;
+  logo?: string | null;
   slug: string;
   title: string;
   company: string;

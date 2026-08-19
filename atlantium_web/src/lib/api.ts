@@ -1906,8 +1906,8 @@ class ApiClient {
     salary_bands: Array<{ bucket: number; n: number; published: number }>;
     top_tech: Array<{ name: string; n: number }>;
     seniority_mix: Array<{ name: string; n: number }>;
-    top_companies: Array<{ name: string; n: number }>;
-    intake_5h: Array<{ b: number; slug: string; title: string; company: string; salary_min: number | null; salary_max: number | null; seniority: string | null }>;
+    top_companies: Array<{ name: string; n: number; logo?: string | null }>;
+    intake_5h: Array<{ b: number; ts?: string; logo?: string | null; slug: string; title: string; company: string; salary_min: number | null; salary_max: number | null; seniority: string | null }>;
   }> {
     return this.request("/job_postings/insights", { method: "GET" }, ATLANTIUM_API_BASE_URL);
   }

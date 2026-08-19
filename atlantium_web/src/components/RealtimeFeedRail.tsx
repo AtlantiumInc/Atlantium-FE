@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { MoonStar } from "lucide-react";
+import { CompanyLogo } from "@/components/CompanyLogo";
 import type { IntakeJob } from "@/components/IntakeChart";
 
 function fmtPay(min: number | null, max: number | null): string | null {
@@ -83,7 +84,8 @@ export function RealtimeFeedRail({ jobs, onSelect }: { jobs: IntakeJob[]; onSele
               className="block w-full text-left px-4 py-2 border-b border-border/20 hover:bg-cyan-500/5 group"
             >
               <p className="text-xs text-foreground leading-tight truncate group-hover:text-cyan-300">{j.title}</p>
-              <div className="flex items-center gap-2 mt-0.5">
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <CompanyLogo name={j.company} logo={j.logo} size={12} />
                 <span className="text-[10px] text-muted-foreground truncate">{j.company}</span>
                 {fmtPay(j.salary_min, j.salary_max) && (
                   <span className="ml-auto shrink-0 text-[10px] font-mono text-emerald-400">

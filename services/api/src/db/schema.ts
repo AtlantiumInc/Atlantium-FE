@@ -217,6 +217,14 @@ export const lobbyRoomRoles = pgTable("lobby_room_roles", {
 
 // Scraped Atlanta AI/tech job postings (sourced from hiring.cafe, seeded via
 // services/api/scripts/seed-jobs.ts). Public read; admin-only writes.
+export const companyLogos = pgTable("company_logos", {
+  company: text("company").primaryKey(),
+  logoUrl: text("logo_url"),
+  domain: text("domain"),
+  source: text("source").notNull().default("favicon"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const jobPostings = pgTable("job_postings", {
   id: uuid("id").primaryKey().defaultRandom(),
   slug: text("slug").notNull(),

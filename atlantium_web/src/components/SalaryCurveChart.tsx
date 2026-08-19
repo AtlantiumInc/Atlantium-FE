@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight, Pin, X } from "lucide-react";
+import { CompanyLogo } from "@/components/CompanyLogo";
 import type { IntakeJob } from "@/components/IntakeChart";
 
 /* Empirical salary distribution of the last 7 days' roles, smoothed into a
@@ -192,6 +193,7 @@ export function SalaryCurveChart({ jobs = [] }: { jobs?: IntakeJob[] }) {
                   to={`/jobs/${j.slug}`}
                   className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-emerald-500/10 group"
                 >
+                  <CompanyLogo name={j.company} logo={j.logo} size={16} />
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-foreground truncate group-hover:text-emerald-300">{j.title}</p>
                     <p className="text-[10px] text-muted-foreground truncate">{j.company}{j.seniority ? ` · ${j.seniority}` : ""}</p>

@@ -3833,8 +3833,9 @@ appRoutes.get("/job_postings/insights", async (c) => {
       from job_postings where ${recent} and seniority is not null
       group by 1 order by n desc`),
     db.execute(sql`
-      select company as name, count(*)::int as n
-      from job_postings where ${recent}
+      select j.company as name, count(*)::int as n, max(cl.logo_url) as logo
+      from job_postings j left join company_logos cl on cl.company = j.company
+      where ${recent}
       group by 1 order by n desc limit 8`),
     db.execute(sql`
       select count(*)::int as total_7d,
@@ -3846,10 +3847,11 @@ appRoutes.get("/job_postings/insights", async (c) => {
     // Every role from the window with its 5-hour intake bucket, so the chart
     // can show WHO arrived in each bar, not just how many.
     db.execute(sql`
-      select floor(extract(epoch from (coalesce(visible_at, (content->>'posted_at')::timestamptz, created_at) - (now() - interval '7 days'))) / 18000)::int as b,
-             to_char(coalesce(visible_at, (content->>'posted_at')::timestamptz, created_at) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as ts,
-             slug, title, company, salary_min, salary_max, seniority
-      from job_postings where ${recent}
+      select floor(extract(epoch from (coalesce(j.visible_at, (j.content->>'posted_at')::timestamptz, j.created_at) - (now() - interval '7 days'))) / 18000)::int as b,
+             to_char(coalesce(j.visible_at, (j.content->>'posted_at')::timestamptz, j.created_at) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as ts,
+             j.slug, j.title, j.company, j.salary_min, j.salary_max, j.seniority, cl.logo_url as logo
+      from job_postings j left join company_logos cl on cl.company = j.company
+      where ${sql.raw('j.status = \'active\' and j.content->>\'non_tech\' is null and (j.visible_at is null or j.visible_at <= now()) and j.created_at >= now() - interval \'7 days\'')}
       order by 2 desc limit 600`),
   ]);
   const rows = (r: unknown) => (r as { rows?: unknown[] }).rows ?? (r as unknown[]);
