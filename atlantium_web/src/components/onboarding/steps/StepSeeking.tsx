@@ -41,7 +41,7 @@ const VISIBILITY = [
     value: "all_members" as const,
     icon: Eye,
     label: "Any lab member",
-    blurb: "Anyone in the lab can see you're open.",
+    blurb: "Anyone in the network can see you're open.",
   },
   {
     value: "private" as const,

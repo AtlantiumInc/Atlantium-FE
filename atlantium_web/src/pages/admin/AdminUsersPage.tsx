@@ -30,7 +30,7 @@ const FILTERS: { key: Filter; label: string }[] = [
 function tierLabel(tier: string | null) {
   if (tier === "club") return "Club";
   if (tier === "club_annual") return "Club (Annual)";
-  if (tier === "free") return "Open Lab";
+  if (tier === "free") return "Open Network";
   return null;
 }
 

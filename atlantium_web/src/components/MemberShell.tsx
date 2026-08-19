@@ -56,7 +56,7 @@ export function MemberShell({
 
   const needsApproval = !user?.is_approved && !user?.is_admin;
   const path = Object.keys(MEMBER_SECTIONS).find((p) => location.pathname.startsWith(p));
-  const copy = path ? MEMBER_SECTIONS[path] : { eyebrow: "Atlantium", title: "Lab" };
+  const copy = path ? MEMBER_SECTIONS[path] : { eyebrow: "Atlantium", title: "Network" };
   const activeId = Object.entries(SIDEBAR_ROUTES).find(([, route]) => route === path)?.[0] ?? "hq";
 
   return (

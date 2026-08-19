@@ -36,7 +36,7 @@ const PRICING_PLANS: PricingPlan[] = [
     popular: true,
     icon: Crown,
     features: [
-      "Everything in Open Lab",
+      "Everything in Open Network",
       "Rene — your frontier agent",
       "Member DMs across the network",
       "Club events, virtual & in-person",
@@ -63,10 +63,10 @@ const PRICING_PLANS: PricingPlan[] = [
   },
   {
     id: "free",
-    name: "Open Lab",
+    name: "Open Network",
     price: "$0",
     period: " forever",
-    description: "Everything the lab publishes",
+    description: "Everything the network publishes",
     icon: Star,
     features: [
       "Every doc, guide & field manual",
@@ -183,7 +183,7 @@ export function StepPricing({ formData, errors, onUpdate }: StepPricingProps) {
     >
       <div className="space-y-2 text-center">
         <h2 className="text-2xl font-bold tracking-tight">
-          How will you use the lab?
+          How will you use the network?
         </h2>
         <p className="text-muted-foreground">
           The docs, job board and directories are free and stay free. Club buys
