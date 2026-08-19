@@ -960,9 +960,11 @@ export function JobsPage() {
                 ? <InlineJobDetail slug={feedSlug} onClose={() => setFeedSlug(null)} />
                 : <RealtimeMarketPanel preloaded={insights} />
               : jobList}
-            <div className="mt-6 pt-6 border-t border-border/30 text-xs text-muted-foreground">
-              <span>AI Engineering Opportunities in Atlanta, GA · 50mi radius</span>
-            </div>
+            {viewMode === "board" && (
+              <div className="mt-6 pt-6 border-t border-border/30 text-xs text-muted-foreground">
+                <span>AI Engineering Opportunities in Atlanta, GA · 50mi radius</span>
+              </div>
+            )}
           </main>
         </div>
 
