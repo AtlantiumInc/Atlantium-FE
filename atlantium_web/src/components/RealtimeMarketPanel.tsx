@@ -131,13 +131,16 @@ export function RealtimeMarketPanel() {
         </span>
       </div>
 
-      {/* THE chart — intake, 5h buckets, roles on hover/tap */}
-      <div className="rounded-xl border border-border/40 bg-card/30 p-4 sm:p-5">
-        <div className="flex items-baseline justify-between mb-4">
+      {/* THE chart — title lives outside the card; the batch panel is an
+          attached right rail, flush with the card's edges */}
+      <div>
+        <div className="flex items-baseline justify-between mb-2 px-1">
           <h3 className="text-base font-bold">Roles coming in</h3>
           <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wide">5h batches · click a bar for its roles</span>
         </div>
-        <IntakeChart jobs={data.intake_5h ?? []} />
+        <div className="rounded-xl border border-border/40 bg-card/30 overflow-hidden">
+          <IntakeChart jobs={data.intake_5h ?? []} />
+        </div>
       </div>
 
       {/* The market read, written */}
