@@ -850,7 +850,7 @@ export function JobsPage() {
             <span className="text-[13px] font-semibold text-foreground whitespace-nowrap leading-tight">Atlanta Technology Market</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <span className="hidden sm:inline text-[10px] font-mono text-muted-foreground uppercase tracking-wide">updates every 4h</span>
+            <span className="hidden sm:inline text-[10px] font-mono text-muted-foreground uppercase tracking-wide">live · rolling release</span>
             {viewMode === "realtime" ? (
               <button
                 onClick={() => setViewMode("board")}
@@ -898,7 +898,7 @@ export function JobsPage() {
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
                 </span>
                 Realtime
-                <span className="ml-auto text-[10px] font-mono uppercase tracking-wide text-emerald-500/70">4h feed</span>
+                <span className="ml-auto text-[10px] font-mono uppercase tracking-wide text-emerald-500/70">live</span>
               </button>
               {filterRail}
             </div>
@@ -917,7 +917,7 @@ export function JobsPage() {
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
                   </span>
                   <span className="text-sm font-bold">Realtime feed</span>
-                  <span className="ml-auto text-[10px] font-mono uppercase tracking-wide text-muted-foreground">4h batches</span>
+                  <span className="ml-auto text-[10px] font-mono uppercase tracking-wide text-muted-foreground">rolling</span>
                 </div>
               </div>
               <RealtimeFeedRail jobs={insights?.intake_5h ?? []} />

@@ -1,54 +1,83 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
+import { MoonStar } from "lucide-react";
 import type { IntakeJob } from "@/components/IntakeChart";
-
-const API_BUCKET_HOURS = 5;
-const WINDOW_HOURS = 7 * 24;
-
-function bucketTime(b: number): Date {
-  return new Date(Date.now() - WINDOW_HOURS * 3600_000 + b * API_BUCKET_HOURS * 3600_000);
-}
-
-function batchLabel(b: number): string {
-  const d = bucketTime(b);
-  const hoursAgo = Math.max(0, Math.round((Date.now() - d.getTime()) / 3600_000));
-  if (hoursAgo < 1) return "just now";
-  if (hoursAgo < 24) return `${hoursAgo}h ago`;
-  return d.toLocaleDateString("en-US", { month: "numeric", day: "numeric" }) +
-    " " + d.toLocaleTimeString("en-US", { hour: "numeric" }).toLowerCase().replace(" ", "");
-}
 
 function fmtPay(min: number | null, max: number | null): string | null {
   if (max == null) return null;
   return `${min != null ? `$${Math.round(min / 1000)}k` : ""}–$${Math.round(max / 1000)}k`;
 }
 
+type Group = { key: string; label: string; live?: boolean; jobs: IntakeJob[] };
+
+function groupByRecency(jobs: IntakeJob[]): Group[] {
+  const now = Date.now();
+  const groups: Group[] = [
+    { key: "now", label: "Just now", live: true, jobs: [] },
+    { key: "hour", label: "Past hour", jobs: [] },
+    { key: "today", label: "Earlier today", jobs: [] },
+    { key: "yesterday", label: "Yesterday", jobs: [] },
+    { key: "week", label: "This week", jobs: [] },
+  ];
+  const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+  const startOfYesterday = startOfDay.getTime() - 24 * 3600_000;
+  for (const j of jobs) {
+    const t = j.ts ? Date.parse(j.ts) : 0;
+    const age = now - t;
+    if (age <= 15 * 60_000) groups[0].jobs.push(j);
+    else if (age <= 3600_000) groups[1].jobs.push(j);
+    else if (t >= startOfDay.getTime()) groups[2].jobs.push(j);
+    else if (t >= startOfYesterday) groups[3].jobs.push(j);
+    else groups[4].jobs.push(j);
+  }
+  for (const g of groups) g.jobs.sort((a, b) => Date.parse(b.ts ?? "") - Date.parse(a.ts ?? ""));
+  return groups.filter((g) => g.jobs.length > 0);
+}
+
+function afterHoursNote(): string | null {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York", weekday: "short", hour: "numeric", hour12: false,
+  }).formatToParts(new Date());
+  const dow = parts.find((p) => p.type === "weekday")?.value ?? "Mon";
+  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? 12);
+  if (dow === "Sat" || dow === "Sun") return "Weekend — hiring slows down. New roles resume Monday 8am ET.";
+  if (hour >= 20 || hour < 8) return "After hours — new roles resume 8am ET.";
+  return null;
+}
+
 /**
- * The left rail in realtime mode: a live feed of roles as they land on the
- * board, newest batch first, grouped by intake batch.
+ * The left rail in realtime mode: a continuous feed of roles as they release
+ * onto the board, newest first, grouped by recency. Outside business hours a
+ * notice explains the quiet instead of a stalled ticker pretending otherwise.
  */
 export function RealtimeFeedRail({ jobs }: { jobs: IntakeJob[] }) {
-  const groups = useMemo(() => {
-    const byBucket = new Map<number, IntakeJob[]>();
-    for (const j of jobs) {
-      const arr = byBucket.get(j.b) ?? [];
-      arr.push(j);
-      byBucket.set(j.b, arr);
-    }
-    return [...byBucket.entries()].sort((a, b) => b[0] - a[0]);
-  }, [jobs]);
+  const groups = useMemo(() => groupByRecency(jobs), [jobs]);
+  const note = afterHoursNote();
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
-      {groups.map(([b, batchJobs]) => (
-        <div key={b}>
+      {note && (
+        <div className="flex items-start gap-2 mx-3 mt-3 mb-1 px-3 py-2.5 rounded-lg border border-indigo-500/25 bg-indigo-500/10">
+          <MoonStar className="h-3.5 w-3.5 text-indigo-300 shrink-0 mt-0.5" />
+          <p className="text-[11px] leading-snug text-indigo-200/90">{note}</p>
+        </div>
+      )}
+      {groups.map((g) => (
+        <div key={g.key}>
           <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-1.5 bg-background/95 backdrop-blur border-b border-border/30">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-            <span className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
-              {batchLabel(b)} · {batchJobs.length} role{batchJobs.length === 1 ? "" : "s"}
+            {g.live ? (
+              <span className="relative flex h-1.5 w-1.5 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              </span>
+            ) : (
+              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
+            )}
+            <span className={`text-[10px] font-mono uppercase tracking-wide ${g.live ? "text-emerald-400" : "text-muted-foreground"}`}>
+              {g.label} · {g.jobs.length}
             </span>
           </div>
-          {batchJobs.map((j) => (
+          {g.jobs.map((j) => (
             <Link
               key={j.slug}
               to={`/jobs/${j.slug}`}
@@ -68,7 +97,7 @@ export function RealtimeFeedRail({ jobs }: { jobs: IntakeJob[] }) {
         </div>
       ))}
       {groups.length === 0 && (
-        <p className="p-4 text-xs text-muted-foreground">Waiting on the next batch…</p>
+        <p className="p-4 text-xs text-muted-foreground">Waiting on the next roles…</p>
       )}
     </div>
   );

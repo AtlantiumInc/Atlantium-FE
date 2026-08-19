@@ -3684,6 +3684,8 @@ appRoutes.get("/job_postings", async (c) => {
     // off-board (clinical, retail, trades — by title rules or agent review)
     // carries content.non_tech and never surfaces.
     sql`${jobPostings.content}->>'non_tech' is null`,
+    // Rolling release: rows surface only once their drip time arrives.
+    sql`(${jobPostings.visibleAt} is null or ${jobPostings.visibleAt} <= now())`,
   ];
   if (workplaceType) conditions.push(eq(jobPostings.workplaceType, workplaceType));
   if (seniority) conditions.push(eq(jobPostings.seniority, seniority));
@@ -3806,7 +3808,7 @@ appRoutes.get("/job_postings", async (c) => {
  */
 appRoutes.get("/job_postings/insights", async (c) => {
   const db = createDb(c.env);
-  const visible = sql`status = 'active' and content->>'non_tech' is null`;
+  const visible = sql`status = 'active' and content->>'non_tech' is null and (visible_at is null or visible_at <= now())`;
   const recent = sql`${visible} and created_at >= now() - interval '7 days'`;
 
   const [byDay, salaryBands, topTech, seniorityMix, topCompanies, totals, intakeJobs] = await Promise.all([
@@ -3844,10 +3846,11 @@ appRoutes.get("/job_postings/insights", async (c) => {
     // Every role from the window with its 5-hour intake bucket, so the chart
     // can show WHO arrived in each bar, not just how many.
     db.execute(sql`
-      select floor(extract(epoch from (coalesce((content->>'posted_at')::timestamptz, created_at) - (now() - interval '7 days'))) / 18000)::int as b,
+      select floor(extract(epoch from (coalesce(visible_at, (content->>'posted_at')::timestamptz, created_at) - (now() - interval '7 days'))) / 18000)::int as b,
+             to_char(coalesce(visible_at, (content->>'posted_at')::timestamptz, created_at) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as ts,
              slug, title, company, salary_min, salary_max, seniority
       from job_postings where ${recent}
-      order by created_at desc limit 600`),
+      order by 2 desc limit 600`),
   ]);
   const rows = (r: unknown) => (r as { rows?: unknown[] }).rows ?? (r as unknown[]);
   c.header("Cache-Control", "public, max-age=300");

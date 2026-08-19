@@ -232,6 +232,8 @@ export const jobPostings = pgTable("job_postings", {
   source: text("source").notNull().default("hiring_cafe"),
   status: text("status").notNull().default("active"),
   postedAt: timestamp("posted_at", { withTimezone: true }),
+  /** Rolling release: public surfaces show the job only once now() >= visible_at. */
+  visibleAt: timestamp("visible_at", { withTimezone: true }),
   content: jsonb("content"),
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   review: jsonb("review"),

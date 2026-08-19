@@ -14,6 +14,7 @@ import { syncJobPostings } from "./lib/jobs-sync";
 import { syncWorkdayJobs } from "./lib/ats-workday";
 import { syncUsaJobs } from "./lib/ats-usajobs";
 import { computeSalaryEstimates } from "./lib/salary-estimates";
+import { scheduleVisibility } from "./lib/visible-drip";
 import { appRoutes } from "./routes/app";
 import { contentRoutes } from "./routes/content";
 
@@ -128,6 +129,8 @@ export default {
           .then((r) => console.log("workday-sync-4h ok", JSON.stringify(r)))
           .then(() => syncUsaJobs(env))
           .then((r) => console.log("usajobs-sync-4h ok", JSON.stringify(r)))
+          .then(() => scheduleVisibility(env))
+          .then((r) => console.log("visible-drip-4h ok", JSON.stringify(r)))
           .then(() => computeSalaryEstimates(env))
           .then((r) => console.log("salary-estimates-4h ok", JSON.stringify(r)))
           .catch((error) => {
@@ -161,6 +164,8 @@ export default {
         // cleanly until USAJOBS_API_KEY/USAJOBS_USER_AGENT exist.
         .then(() => syncUsaJobs(env))
         .then((r) => console.log("usajobs-sync ok", JSON.stringify(r)))
+        .then(() => scheduleVisibility(env))
+        .then((r) => console.log("visible-drip ok", JSON.stringify(r)))
         // Estimates recompute last, over the day's fresh salary corpus.
         .then(() => computeSalaryEstimates(env))
         .then((r) => console.log("salary-estimates ok", JSON.stringify(r)))
