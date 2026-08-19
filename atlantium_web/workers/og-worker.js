@@ -50,11 +50,13 @@ export default {
     // they unfurl as the generic site card.
     if (pathname === '/jobs' || pathname === '/jobs/') {
       return handleOgRoute(request, () => staticHubOg({
-        title: 'Largest ATL Tech Job Board | Atlantium',
+        title: 'Realtime ATL Tech Job Index | Atlantium',
         description:
-          '7,600+ live Atlanta tech and AI roles — every apply link checked by AI on a rolling cycle, salary and no-degree signals included. Free to browse.',
+          "Every Atlanta tech role, updated every 4 hours — live salary distribution, verified apply links, and no-degree signals. Atlantium: Atlanta's Technology Network.",
         path: '/jobs',
-        image: 'og-jobs.png',
+        // Rendered live so the role count is never stale (static PNG froze at
+        // a number that aged out within days).
+        image: `og/jobs-index.png?v=${OG_RENDER_VERSION}`,
       }));
     }
 
@@ -78,6 +80,10 @@ export default {
 
     if ((match = pathname.match(/^\/jobs\/([^/]+)\/?$/))) {
       return handleOgRoute(request, () => fetchJobOg(match[1]));
+    }
+
+    if (pathname === '/og/jobs-index.png' || pathname === '/og/jobs-index') {
+      return renderJobsIndexOgImage(request);
     }
 
     if ((match = pathname.match(/^\/og\/jobs\/([^/]+?)(?:\.png)?\/?$/))) {
@@ -582,6 +588,84 @@ async function renderJobOgImage(slug, request) {
     headers: {
       'content-type': 'image/png',
       'cache-control': 'public, max-age=86400, s-maxage=86400',
+    },
+  });
+  await cache.put(cacheKey, response.clone());
+  return response;
+}
+
+/**
+ * The /jobs hub card, rendered live. The old static PNG baked in a role count
+ * that was wrong within a week; this reads the board's own totals so the
+ * unfurl is always true. Falls back to the shipped PNG if the API is down.
+ */
+async function renderJobsIndexOgImage(request) {
+  const cache = caches.default;
+  const cacheUrl = new URL(request.url);
+  cacheUrl.searchParams.set('v', OG_RENDER_VERSION);
+  const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
+  const cached = await cache.match(cacheKey);
+  if (cached) return cached;
+
+  let total = null;
+  let newThisWeek = null;
+  try {
+    const res = await fetch(`${ATLANTIUM_API_BASE}/job_postings?format=paged&limit=1`);
+    if (res.ok) {
+      const data = await res.json();
+      total = typeof data.total === 'number' ? data.total : null;
+      newThisWeek = data.counts && typeof data.counts.new_this_week === 'number' ? data.counts.new_this_week : null;
+    }
+  } catch (_) { /* fall through to the static card */ }
+  if (total == null) return Response.redirect(`${SITE_ORIGIN}/og-jobs.png`, 302);
+
+  const roleCount = total.toLocaleString('en-US');
+  const freshLine = newThisWeek ? `${newThisWeek.toLocaleString('en-US')} new this week` : 'Updated every 4 hours';
+
+  const html = `
+  <div style="display: flex; flex-direction: column; width: 1200px; height: 630px; background: linear-gradient(135deg, #04070d 0%, #071120 55%, #0a1a2e 100%); padding: 64px; font-family: 'Inter'; position: relative;">
+    <div style="display: flex; position: absolute; top: -200px; right: -160px; width: 560px; height: 560px; border-radius: 999px; background: rgba(16,185,129,0.13);"></div>
+    <div style="display: flex; position: absolute; bottom: -240px; left: -180px; width: 520px; height: 520px; border-radius: 999px; background: rgba(14,165,233,0.10);"></div>
+
+    <div style="display: flex; align-items: center;">
+      <div style="display: flex; font-size: 34px; font-weight: 800; color: #ffffff; letter-spacing: 2px;">ATLANTIUM</div>
+      <div style="display: flex; flex-shrink: 0; white-space: nowrap; margin-left: 18px; padding: 6px 14px; border-radius: 999px; font-size: 20px; font-weight: 600; color: #34d399; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.35); letter-spacing: 1px;">LIVE</div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; margin-top: 72px; flex-grow: 1;">
+      <div style="display: flex; font-size: 82px; font-weight: 800; color: #f8fafc; line-height: 1.05;">Realtime ATL</div>
+      <div style="display: flex; font-size: 82px; font-weight: 800; color: #f8fafc; line-height: 1.05;">Tech Job Index</div>
+      <div style="display: flex; margin-top: 30px; font-size: 30px; font-weight: 600; color: #7dd3fc;">${escapeCard(roleCount)} verified roles · ${escapeCard(freshLine)}</div>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(148,163,184,0.15); padding-top: 26px;">
+      <div style="display: flex; font-size: 24px; color: #94a3b8;">atlantium.ai/jobs</div>
+      <div style="display: flex; font-size: 24px; font-weight: 600; color: #34d399;">Atlanta's Technology Network</div>
+    </div>
+  </div>`;
+
+  const [regular, semibold, extrabold] = await Promise.all([
+    loadFont(FONT_URLS.regular),
+    loadFont(FONT_URLS.semibold),
+    loadFont(FONT_URLS.extrabold),
+  ]);
+
+  const image = new ImageResponse(html, {
+    width: 1200,
+    height: 630,
+    fonts: [
+      { name: 'Inter', data: regular, weight: 400, style: 'normal' },
+      { name: 'Inter', data: semibold, weight: 600, style: 'normal' },
+      { name: 'Inter', data: extrabold, weight: 800, style: 'normal' },
+    ],
+  });
+
+  // Short TTL: the card carries a live count, so it should not outlive a
+  // sync cycle by much.
+  const response = new Response(image.body, {
+    headers: {
+      'content-type': 'image/png',
+      'cache-control': 'public, max-age=3600, s-maxage=3600',
     },
   });
   await cache.put(cacheKey, response.clone());
