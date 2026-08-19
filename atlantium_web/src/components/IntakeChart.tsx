@@ -12,9 +12,12 @@ export type IntakeJob = {
   seniority: string | null;
 };
 
-const BUCKET_HOURS = 5;
+// The API delivers 5h-bucket indices; the display regroups them into 12h
+// half-days — 14 wider bars read far better than 34 slivers.
+const API_BUCKET_HOURS = 5;
+const BUCKET_HOURS = 12;
 const WINDOW_HOURS = 7 * 24;
-const BUCKETS = Math.ceil(WINDOW_HOURS / BUCKET_HOURS); // 34
+const BUCKETS = Math.ceil(WINDOW_HOURS / BUCKET_HOURS); // 14
 
 function bucketStart(b: number): Date {
   return new Date(Date.now() - WINDOW_HOURS * 3600_000 + b * BUCKET_HOURS * 3600_000);
@@ -22,8 +25,8 @@ function bucketStart(b: number): Date {
 
 function bucketLabel(b: number): string {
   const d = bucketStart(b);
-  return d.toLocaleDateString("en-US", { month: "numeric", day: "numeric" }) +
-    " " + d.toLocaleTimeString("en-US", { hour: "numeric" }).toLowerCase().replace(" ", "");
+  const day = d.toLocaleDateString("en-US", { month: "numeric", day: "numeric" });
+  return d.getHours() < 12 ? day : `${day} pm`;
 }
 
 function fmtPay(min: number | null, max: number | null): string | null {
@@ -103,7 +106,7 @@ export function IntakeChart({ jobs = [] }: { jobs?: IntakeJob[] }) {
   const buckets = useMemo(() => {
     const out: IntakeJob[][] = Array.from({ length: BUCKETS }, () => []);
     for (const j of jobs) {
-      const b = Math.min(BUCKETS - 1, Math.max(0, j.b));
+      const b = Math.min(BUCKETS - 1, Math.max(0, Math.floor((j.b * API_BUCKET_HOURS) / BUCKET_HOURS)));
       out[b].push(j);
     }
     return out;
@@ -133,27 +136,29 @@ export function IntakeChart({ jobs = [] }: { jobs?: IntakeJob[] }) {
     <div className="flex items-stretch h-60">
       {/* Chart — bottom-anchored so the x-axis labels sit on the baseline */}
       <div className="flex-1 min-w-0 flex flex-col justify-end p-4 sm:p-5">
-        <div className="flex items-end gap-[3px] h-40">
+        <div className="flex items-end gap-2 sm:gap-3 h-40">
           {buckets.map((bucketJobs, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0">
-              <span className="text-[9px] font-mono text-muted-foreground leading-none">
-                {bucketJobs.length > 0 ? bucketJobs.length : ""}
+            <div key={i} className="group flex-1 flex flex-col items-center gap-1.5 min-w-0">
+              <span className={`text-[10px] font-mono leading-none transition-opacity ${
+                selected === i ? "text-cyan-300 opacity-100" : "text-muted-foreground opacity-0 group-hover:opacity-100"
+              }`}>
+                {bucketJobs.length > 0 ? bucketJobs.length : "\u00a0"}
               </span>
               <button
                 aria-label={`${bucketJobs.length} roles, ${bucketLabel(i)}`}
                 aria-pressed={selected === i}
                 onClick={() => openBucket(i)}
-                className={`w-full rounded-t transition-colors ${
+                className={`w-full rounded-md transition-all ${
                   bucketJobs.length === 0
-                    ? "bg-muted/20"
+                    ? "bg-muted/15"
                     : selected === i
-                      ? "bg-cyan-300"
-                      : "bg-cyan-500/70 hover:bg-cyan-400"
+                      ? "bg-gradient-to-t from-cyan-500 to-cyan-300 shadow-[0_0_16px_rgba(34,211,238,0.35)]"
+                      : "bg-gradient-to-t from-cyan-600/60 to-cyan-400/60 hover:from-cyan-500 hover:to-cyan-300"
                 }`}
-                style={{ height: `${Math.max(2, (bucketJobs.length / max) * 128)}px` }}
+                style={{ height: `${Math.max(3, (bucketJobs.length / max) * 124)}px` }}
               />
               <span className="text-[8px] font-mono text-muted-foreground leading-none w-full text-center whitespace-nowrap overflow-visible">
-                {i % 7 === 0 ? bucketLabel(i) : " "}
+                {i % 2 === 0 ? bucketLabel(i) :" "}
               </span>
             </div>
           ))}

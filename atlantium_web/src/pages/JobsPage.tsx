@@ -864,7 +864,7 @@ export function JobsPage() {
                 }`}
               >
                 <span className={`h-1.5 w-1.5 rounded-full ${viewMode === "realtime" ? "bg-emerald-400 animate-pulse" : "bg-muted-foreground/40"}`} />
-                Realtime
+                Insights
               </button>
             </div>
           </div>

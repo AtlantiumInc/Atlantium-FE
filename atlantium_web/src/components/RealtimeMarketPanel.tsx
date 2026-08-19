@@ -130,7 +130,7 @@ export function RealtimeMarketPanel() {
             </span>
             <h3 className="text-base font-bold whitespace-nowrap">Roles coming in</h3>
           </div>
-          <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wide truncate">live · 5h batches · click a bar for its roles</span>
+          <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wide truncate">live · click a bar for its roles</span>
         </div>
         <div className="rounded-xl border border-border/40 bg-card/30 overflow-hidden">
           <IntakeChart jobs={data.intake_5h ?? []} />
