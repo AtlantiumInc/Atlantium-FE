@@ -3896,7 +3896,16 @@ appRoutes.get("/job_postings/:slug", async (c) => {
     where: eq(jobPostings.slug, c.req.param("slug")),
   });
   if (!row) throw new HttpError(404, "not_found", "Job posting not found.");
-  return c.json(publicJobPosting(row, await hasMemberBenefits(c)));
+  // Company mark travels with the posting so cards and detail views can show
+  // it without a second round trip.
+  const logoRes = await db.execute(sql`
+    select logo_url from company_logos where company = ${row.company} limit 1`);
+  const logoRaw = logoRes as unknown as { rows?: Array<{ logo_url: string | null }> } & Array<{ logo_url: string | null }>;
+  const logoRows = logoRaw.rows ?? logoRaw;
+  return c.json({
+    ...publicJobPosting(row, await hasMemberBenefits(c)),
+    company_logo: logoRows[0]?.logo_url ?? null,
+  });
 });
 
 // The official application link — the one thing on a job page that needs a

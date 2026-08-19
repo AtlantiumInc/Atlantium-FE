@@ -82,6 +82,10 @@ export default {
       return handleOgRoute(request, () => fetchJobOg(match[1]));
     }
 
+    if ((match = pathname.match(/^\/og\/social\/([^/]+?)(?:\.png)?\/?$/))) {
+      return renderSocialJobCard(match[1], request);
+    }
+
     if (pathname === '/og/jobs-index.png' || pathname === '/og/jobs-index') {
       return renderJobsIndexOgImage(request);
     }
@@ -473,7 +477,7 @@ async function renderDirectoryOgImage(kind, slug, request) {
 // Per-job OG image (1200x630 PNG rendered with satori/resvg via workers-og)
 // ---------------------------------------------------------------------------
 
-const OG_RENDER_VERSION = '4';
+const OG_RENDER_VERSION = '6';
 
 const FONT_URLS = {
   regular: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.ttf',
@@ -667,6 +671,96 @@ async function renderJobsIndexOgImage(request) {
       'content-type': 'image/png',
       'cache-control': 'public, max-age=3600, s-maxage=3600',
     },
+  });
+  await cache.put(cacheKey, response.clone());
+  return response;
+}
+
+/**
+ * Square (1080x1080) job card built for posting directly to LinkedIn/IG —
+ * not a link unfurl. Text and logo are rendered deterministically rather
+ * than generated, because the whole pitch is that these numbers are real:
+ * a model that hallucinates one digit of a salary costs more credibility
+ * than the card earns.
+ */
+async function renderSocialJobCard(slug, request) {
+  const cache = caches.default;
+  const cacheUrl = new URL(request.url);
+  cacheUrl.searchParams.set('v', OG_RENDER_VERSION);
+  const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
+  const cached = await cache.match(cacheKey);
+  if (cached) return cached;
+
+  const res = await fetch(`${ATLANTIUM_API_BASE}/job_postings/${encodeURIComponent(slug)}`);
+  if (!res.ok) return new Response('not found', { status: 404 });
+  const job = await res.json();
+  if (!job || !job.title) return new Response('not found', { status: 404 });
+
+  const fmtK = (n) => `$${Math.round(n / 1000)}k`;
+  const salary = job.salary_max
+    ? (job.salary_min ? `${fmtK(job.salary_min)} – ${fmtK(job.salary_max)}` : fmtK(job.salary_max))
+    : null;
+  // Favicons come back at 64px; ask for 256 so the mark is crisp at card scale.
+  const logo = job.company_logo ? job.company_logo.replace(/sz=\d+/, 'sz=256') : null;
+  const title = job.title.length > 58 ? `${job.title.slice(0, 55)}…` : job.title;
+  const meta = [job.seniority, job.workplace_type].filter(Boolean).join(' · ');
+  // Multi-city postings ("Charlotte or Greensboro or Atlanta or …") wrap the
+  // card. This is an Atlanta board, so say Atlanta when it is on the list;
+  // otherwise take the first city named.
+  const rawLoc = String(job.location || '');
+  const city = /atlanta/i.test(rawLoc) ? 'Atlanta' : rawLoc.split(/ or |,/)[0].trim();
+  // Certification names run long ("Control Objectives for Information and
+  // Related Technology (COBIT)"); chips only work when they stay chip-sized.
+  const tech = (Array.isArray(job.content?.tech_stack) ? job.content.tech_stack : [])
+    .filter((t) => typeof t === 'string' && t.length <= 20)
+    .slice(0, 4);
+
+  const chip = (t) => `<div style="display: flex; margin-right: 12px; margin-top: 12px; padding: 10px 20px; border-radius: 999px; font-size: 26px; color: #7dd3fc; background: rgba(6,182,212,0.10); border: 1px solid rgba(6,182,212,0.30);">${escapeCard(t)}</div>`;
+
+  const html = `
+  <div style="display: flex; flex-direction: column; width: 1080px; height: 1080px; background: linear-gradient(140deg, #04070d 0%, #071120 55%, #0a1a2e 100%); padding: 72px; font-family: 'Inter'; position: relative;">
+    <div style="display: flex; position: absolute; top: -220px; right: -180px; width: 620px; height: 620px; border-radius: 999px; background: rgba(16,185,129,0.12);"></div>
+    <div style="display: flex; position: absolute; bottom: -260px; left: -200px; width: 560px; height: 560px; border-radius: 999px; background: rgba(14,165,233,0.10);"></div>
+
+    <div style="display: flex; align-items: center;">
+      <div style="display: flex; font-size: 30px; font-weight: 800; color: #ffffff; letter-spacing: 3px;">ATLANTIUM</div>
+      <div style="display: flex; margin-left: 16px; padding: 6px 16px; border-radius: 999px; font-size: 20px; font-weight: 600; color: #34d399; background: rgba(16,185,129,0.10); border: 1px solid rgba(16,185,129,0.35); letter-spacing: 1px;">HIRING NOW</div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; margin-top: 88px; flex-grow: 1;">
+      ${salary ? `<div style="display: flex; font-size: 92px; font-weight: 800; color: #34d399; line-height: 1;">${escapeCard(salary)}</div>` : ''}
+      <div style="display: flex; margin-top: ${salary ? 40 : 0}px; font-size: ${title.length > 34 ? 54 : 64}px; font-weight: 800; color: #f8fafc; line-height: 1.15;">${escapeCard(title)}</div>
+      <div style="display: flex; align-items: center; margin-top: 34px;">
+        ${logo ? `<img src="${escapeCard(logo)}" width="60" height="60" style="border-radius: 12px;" />` : ''}
+        <div style="display: flex; margin-left: ${logo ? 20 : 0}px; font-size: 40px; font-weight: 600; color: #e2e8f0;">${escapeCard(job.company || '')}</div>
+      </div>
+      ${meta ? `<div style="display: flex; margin-top: 22px; font-size: 30px; color: #94a3b8;">${escapeCard(meta)}${city ? ` · ${escapeCard(city)}` : ''}</div>` : ''}
+      ${tech.length ? `<div style="display: flex; flex-wrap: wrap; margin-top: 24px;">${tech.map(chip).join('')}</div>` : ''}
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(148,163,184,0.15); padding-top: 32px;">
+      <div style="display: flex; font-size: 28px; color: #94a3b8;">atlantium.ai/jobs</div>
+      <div style="display: flex; font-size: 28px; font-weight: 600; color: #34d399;">Atlanta's Technology Network</div>
+    </div>
+  </div>`;
+
+  const [regular, semibold, extrabold] = await Promise.all([
+    loadFont(FONT_URLS.regular),
+    loadFont(FONT_URLS.semibold),
+    loadFont(FONT_URLS.extrabold),
+  ]);
+
+  const image = new ImageResponse(html, {
+    width: 1080,
+    height: 1080,
+    fonts: [
+      { name: 'Inter', data: regular, weight: 400, style: 'normal' },
+      { name: 'Inter', data: semibold, weight: 600, style: 'normal' },
+      { name: 'Inter', data: extrabold, weight: 800, style: 'normal' },
+    ],
+  });
+  const response = new Response(image.body, {
+    headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' },
   });
   await cache.put(cacheKey, response.clone());
   return response;
