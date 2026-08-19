@@ -3876,7 +3876,10 @@ appRoutes.get("/job_postings/insights", async (c) => {
       order by 2 desc limit 600`),
   ]);
   const rows = (r: unknown) => (r as { rows?: unknown[] }).rows ?? (r as unknown[]);
-  c.header("Cache-Control", "public, max-age=300");
+  // 60s: the dashboard polls on the minute, and the rolling release surfaces
+  // a new role roughly every five, so a longer TTL would just show stale
+  // counts on a surface that claims to be live.
+  c.header("Cache-Control", "public, max-age=60");
   return c.json({
     generated_at: new Date().toISOString(),
     window: "7d",

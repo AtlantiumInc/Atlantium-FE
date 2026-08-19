@@ -319,3 +319,13 @@
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* A role landing in the realtime feed: a brief emerald wash so a poll reads
+   as movement instead of a list that silently changed. */
+@keyframes role-arrive {
+  0%   { background-color: rgba(16, 185, 129, 0.22); }
+  100% { background-color: transparent; }
+}
+.animate-role-arrive {
+  animation: role-arrive 2.5s ease-out;
+}

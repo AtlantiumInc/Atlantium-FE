@@ -463,10 +463,36 @@ export function JobsPage() {
   }, []);
   const starredJobs = Object.values(stars);
 
+  // The dashboard claims to be live, so it has to actually be live: poll on
+  // the minute while it is open and visible. The re-render matters as much as
+  // the data — the feed's "Just now" grouping is computed from Date.now(), so
+  // without a tick those roles would stay badged "Just now" indefinitely.
+  // Hidden tabs stop polling and refresh once on return.
   useEffect(() => {
-    if (viewMode !== "realtime" || insights) return;
-    api.getJobInsights().then(setInsights).catch(() => {});
-  }, [viewMode, insights]);
+    if (viewMode !== "realtime") return;
+    let cancelled = false;
+    let lastAt = 0;
+    // Staleness is the only trigger. Both the timer and a tab regaining focus
+    // ask the same question — "is the data older than a minute?" — so a burst
+    // of visibilitychange events (rapid tab switching, embedded browsers)
+    // cannot turn into a burst of requests.
+    const STALE_MS = 55_000;
+    const load = () => {
+      if (document.visibilityState === "hidden") return;
+      if (Date.now() - lastAt < STALE_MS) return;
+      lastAt = Date.now();
+      api.getJobInsights().then((r) => { if (!cancelled) setInsights(r); }).catch(() => {});
+    };
+    load();
+    const id = setInterval(load, 60_000);
+    const onVisible = () => { if (document.visibilityState === "visible") load(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [viewMode]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MoonStar } from "lucide-react";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import type { IntakeJob } from "@/components/IntakeChart";
@@ -54,6 +54,25 @@ export function RealtimeFeedRail({ jobs, onSelect }: { jobs: IntakeJob[]; onSele
   const groups = useMemo(() => groupByRecency(jobs), [jobs]);
   const note = afterHoursNote();
 
+  // Flash roles that arrived since the last poll, so a refresh reads as
+  // movement rather than a silently different list. The first load is not a
+  // arrival event — everything would flash at once — so it only seeds the set.
+  const seen = useRef<Set<string> | null>(null);
+  const [arrived, setArrived] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    const slugs = jobs.map((j) => j.slug);
+    if (seen.current === null) {
+      seen.current = new Set(slugs);
+      return;
+    }
+    const fresh = slugs.filter((sl) => !seen.current!.has(sl));
+    for (const sl of slugs) seen.current.add(sl);
+    if (fresh.length === 0) return;
+    setArrived(new Set(fresh));
+    const t = setTimeout(() => setArrived(new Set()), 2600);
+    return () => clearTimeout(t);
+  }, [jobs]);
+
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
       {note && (
@@ -81,7 +100,9 @@ export function RealtimeFeedRail({ jobs, onSelect }: { jobs: IntakeJob[]; onSele
             <button
               key={j.slug}
               onClick={() => onSelect(j.slug)}
-              className="block w-full text-left px-4 py-2 border-b border-border/20 hover:bg-cyan-500/5 group"
+              className={`block w-full text-left px-4 py-2 border-b border-border/20 hover:bg-cyan-500/5 group ${
+                arrived.has(j.slug) ? "animate-role-arrive" : ""
+              }`}
             >
               <p className="text-xs text-foreground leading-tight truncate group-hover:text-cyan-300">{j.title}</p>
               <div className="flex items-center gap-1.5 mt-0.5">
