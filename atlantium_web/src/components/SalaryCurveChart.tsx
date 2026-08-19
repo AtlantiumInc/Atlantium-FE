@@ -117,7 +117,7 @@ export function SalaryCurveChart({ jobs = [] }: { jobs?: IntakeJob[] }) {
           <line x1={PAD_L} y1={PAD_T} x2={PAD_L} y2={H - PAD_B} stroke="currentColor" className="text-border" strokeWidth="1" />
           {[maxN, Math.round(maxN / 2)].map((n) => (
             <g key={n}>
-              <text x={PAD_L - 8} y={y(n) + 3} textAnchor="end" className="fill-muted-foreground" fontSize="9" fontFamily="monospace">{n}</text>
+              <text x={PAD_L - 8} y={y(n) + 3.5} textAnchor="end" className="fill-muted-foreground" fontSize="11" fontFamily="monospace">{n}</text>
               <line x1={PAD_L} y1={y(n)} x2={W - PAD_R} y2={y(n)} stroke="currentColor" className="text-border/40" strokeWidth="0.5" strokeDasharray="3 4" />
             </g>
           ))}
@@ -128,7 +128,7 @@ export function SalaryCurveChart({ jobs = [] }: { jobs?: IntakeJob[] }) {
             return (
               <g key={t}>
                 <line x1={x(i)} y1={H - PAD_B} x2={x(i)} y2={H - PAD_B + 4} stroke="currentColor" className="text-border" strokeWidth="1" />
-                <text x={x(i)} y={H - PAD_B + 16} textAnchor="middle" className="fill-muted-foreground" fontSize="9" fontFamily="monospace">
+                <text x={x(i)} y={H - PAD_B + 17} textAnchor="middle" className="fill-muted-foreground" fontSize="11.5" fontFamily="monospace">
                   ${t / 1000}k{t === MAX_S ? "+" : ""}
                 </text>
               </g>
