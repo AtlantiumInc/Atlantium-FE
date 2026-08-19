@@ -834,6 +834,11 @@ export function JobsPage() {
 
       <PublicNavbar />
 
+      {/* Full-width snapshot strip: spans rail, column, and right rail */}
+      <div className="relative z-10 px-4 sm:px-6 py-2 border-b border-border/30 bg-background/85 backdrop-blur-xl">
+        <MarketSnapshotBar showStats={false} />
+      </div>
+
       {/* App frame: fixed rail, one scrolling column */}
       <div className="relative z-10 flex-1 flex min-h-0">
         {/* Filter rail (desktop) */}
@@ -874,9 +879,7 @@ export function JobsPage() {
             </button>
           </div>
 
-          <div className="sticky top-0 z-20 bg-background/85 backdrop-blur-xl px-4 sm:px-6 py-2 border-b border-border/30 space-y-2">
-            {/* Full-width snapshot strip (headline + opt-in), metric tiles below */}
-            <MarketSnapshotBar showStats={false} />
+          <div className="sticky top-0 z-20 bg-background/85 backdrop-blur-xl px-4 sm:px-6 py-2 border-b border-border/30">
             <div className="max-w-3xl">{metricBar}</div>
           </div>
 
