@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, Activity } from "lucide-react";
 import { api } from "@/lib/api";
-import { IntakeChart } from "@/components/IntakeChart";
+import { SalaryCurveChart } from "@/components/SalaryCurveChart";
 
 type Insights = Awaited<ReturnType<typeof api.getJobInsights>>;
 
@@ -21,12 +21,9 @@ const fmtK = (n: number) => `$${Math.round(n / 1000)}k`;
  * roles themselves — and beneath it, the market read as written insights with
  * the figures highlighted. Every number is computed from the live board.
  */
-const AI_RE = /\b(ai|machine learning|ml|genai|llm)\b/i;
-
 export function RealtimeMarketPanel({ preloaded = null }: { preloaded?: Insights | null }) {
   const [data, setData] = useState<Insights | null>(preloaded);
   const [error, setError] = useState(false);
-  const [lensKey, setLensKey] = useState<"top" | "ai" | null>(null);
 
   useEffect(() => {
     if (preloaded) { setData(preloaded); return; }
@@ -123,20 +120,10 @@ export function RealtimeMarketPanel({ preloaded = null }: { preloaded?: Insights
   ];
 
   const intake = data.intake_5h ?? [];
-  const maxB = Math.max(0, ...intake.map((j) => j.b));
-  const recent24 = intake.filter((j) => j.b >= maxB - 4); // ~last 24h of buckets
-  const lenses = {
-    top: {
-      label: "highest paid · latest",
-      jobs: (recent24.some((j) => j.salary_max != null) ? recent24 : intake).filter((j) => j.salary_max != null).slice(0, 40),
-    },
-    ai: { label: "AI roles · 7d", jobs: intake.filter((j) => AI_RE.test(j.title)) },
-  } as const;
-  const lens = lensKey ? lenses[lensKey] : null;
 
   return (
     <div className="space-y-4">
-      {/* THE chart — one compact title row: pulse, title, lenses, hint */}
+      {/* Salary distribution — the dashboard's hero chart */}
       <div>
         <div className="flex items-center justify-between gap-3 mb-2 px-1">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -144,36 +131,12 @@ export function RealtimeMarketPanel({ preloaded = null }: { preloaded?: Insights
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
             </span>
-            <h3 className="text-base font-bold whitespace-nowrap">Roles coming in</h3>
-            <div className="flex items-center gap-1.5 ml-2">
-              <button
-                onClick={() => setLensKey(lensKey === "top" ? null : "top")}
-                aria-pressed={lensKey === "top"}
-                className={`px-2.5 py-1 rounded-full border text-[10px] font-mono uppercase tracking-wide transition-all ${
-                  lensKey === "top"
-                    ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-300"
-                    : "border-border/50 bg-card/40 text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                $ Highest paid
-              </button>
-              <button
-                onClick={() => setLensKey(lensKey === "ai" ? null : "ai")}
-                aria-pressed={lensKey === "ai"}
-                className={`px-2.5 py-1 rounded-full border text-[10px] font-mono uppercase tracking-wide transition-all ${
-                  lensKey === "ai"
-                    ? "border-violet-500/50 bg-violet-500/15 text-violet-300"
-                    : "border-border/50 bg-card/40 text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                AI roles{lenses.ai.jobs.length > 0 ? ` ${lenses.ai.jobs.length}` : ""}
-              </button>
-            </div>
+            <h3 className="text-base font-bold whitespace-nowrap">Salaries · last 7 days</h3>
           </div>
-          <span className="hidden sm:inline text-[10px] font-mono text-muted-foreground uppercase tracking-wide truncate">live · click a bar for its roles</span>
+          <span className="hidden sm:inline text-[10px] font-mono text-muted-foreground uppercase tracking-wide truncate">live · hover the curve for a band's roles</span>
         </div>
         <div className="rounded-xl border border-border/40 bg-card/30 overflow-hidden">
-          <IntakeChart jobs={intake} lens={lens ? { label: lens.label, jobs: [...lens.jobs] } : null} onClearLens={() => setLensKey(null)} />
+          <SalaryCurveChart jobs={intake} />
         </div>
       </div>
 
