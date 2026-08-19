@@ -846,30 +846,25 @@ export function JobsPage() {
 
       {/* Slim full-width strip: snapshot label + Board/Realtime switch */}
       <div className="relative z-10 px-4 sm:px-6 py-1.5 border-b border-border/30 bg-background/85 backdrop-blur-xl">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-          <div className="min-w-0">
-            <span className="font-mono text-[9px] uppercase tracking-[0.25em] text-muted-foreground block leading-tight">Daily snapshot</span>
-            <span className="text-[13px] font-semibold text-foreground whitespace-nowrap leading-tight">Atlanta Technology Network</span>
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <span className="hidden sm:inline text-[10px] font-mono text-muted-foreground uppercase tracking-wide">live · rolling release</span>
-            {viewMode === "realtime" ? (
-              <button
-                onClick={() => setViewMode("board")}
-                className="px-3.5 py-1.5 rounded-md border border-border/60 bg-card/40 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all"
-              >
-                ← Board
-              </button>
-            ) : (
-              <button
-                onClick={() => setViewMode("realtime")}
-                className="lg:hidden flex items-center gap-1.5 px-3.5 py-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-xs font-semibold text-emerald-300"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Realtime
-              </button>
-            )}
-          </div>
+        <div className="flex items-center gap-3">
+          <span className="flex-1 text-sm sm:text-base font-semibold tracking-wide text-foreground whitespace-nowrap">Atlanta Technology Network</span>
+          {/* mobile-only affordances — desktop stays bare per design */}
+          {viewMode === "realtime" ? (
+            <button
+              onClick={() => setViewMode("board")}
+              className="lg:hidden px-3 py-1.5 rounded-md border border-border/60 bg-card/40 text-xs font-semibold text-muted-foreground"
+            >
+              ← Board
+            </button>
+          ) : (
+            <button
+              onClick={() => setViewMode("realtime")}
+              className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-xs font-semibold text-emerald-300"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Dashboard
+            </button>
+          )}
         </div>
       </div>
 
@@ -879,28 +874,19 @@ export function JobsPage() {
         <aside className="hidden lg:flex flex-col w-72 xl:w-80 shrink-0 border-r border-border/40 overflow-hidden">
           {viewMode === "board" ? (
             <div className="p-5 flex flex-col gap-6 flex-1 overflow-y-auto">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
-                  <Cpu className="h-4.5 w-4.5 text-cyan-500" />
-                </div>
-                <div className="min-w-0">
-                  <h1 className="text-sm font-bold leading-tight">Tech Job Board</h1>
-                  <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                    <MapPin className="h-3 w-3" />
-                    <span>Atlanta, GA · 50mi</span>
-                  </div>
-                </div>
-              </div>
               <button
                 onClick={() => setViewMode("realtime")}
-                className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/15 transition-all"
+                className="group relative w-full overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-cyan-500/10 to-emerald-500/15 px-4 py-3 text-left transition-all hover:border-emerald-400/50 hover:shadow-[0_0_24px_rgba(16,185,129,0.15)]"
               >
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                <span className="absolute -top-8 -right-8 h-20 w-20 rounded-full bg-emerald-500/15 blur-2xl transition-opacity group-hover:opacity-150" />
+                <span className="flex items-center gap-2.5">
+                  <span className="relative flex h-2 w-2 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                  </span>
+                  <span className="text-sm font-bold text-emerald-300">View dashboard</span>
+                  <ArrowRight className="ml-auto h-4 w-4 text-emerald-400/70 transition-transform group-hover:translate-x-0.5" />
                 </span>
-                Realtime
-                <span className="ml-auto text-[10px] font-mono uppercase tracking-wide text-emerald-500/70">live</span>
               </button>
               {filterRail}
             </div>
