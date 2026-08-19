@@ -477,7 +477,7 @@ async function renderDirectoryOgImage(kind, slug, request) {
 // Per-job OG image (1200x630 PNG rendered with satori/resvg via workers-og)
 // ---------------------------------------------------------------------------
 
-const OG_RENDER_VERSION = '6';
+const OG_RENDER_VERSION = '7';
 
 const FONT_URLS = {
   regular: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.ttf',
@@ -717,10 +717,15 @@ async function renderSocialJobCard(slug, request) {
 
   const chip = (t) => `<div style="display: flex; margin-right: 12px; margin-top: 12px; padding: 10px 20px; border-radius: 999px; font-size: 26px; color: #7dd3fc; background: rgba(6,182,212,0.10); border: 1px solid rgba(6,182,212,0.30);">${escapeCard(t)}</div>`;
 
+  // Generated plate (Atlas Cloud) behind a two-stop scrim: the art carries the
+  // attention, the scrim guarantees the numbers stay readable. `bg=skyline`
+  // swaps to the aerial photograph.
+  const bgFile = new URL(request.url).searchParams.get('bg') === 'skyline' ? 'card-bg-skyline.jpg' : 'card-bg.jpg';
   const html = `
-  <div style="display: flex; flex-direction: column; width: 1080px; height: 1080px; background: linear-gradient(140deg, #04070d 0%, #071120 55%, #0a1a2e 100%); padding: 72px; font-family: 'Inter'; position: relative;">
-    <div style="display: flex; position: absolute; top: -220px; right: -180px; width: 620px; height: 620px; border-radius: 999px; background: rgba(16,185,129,0.12);"></div>
-    <div style="display: flex; position: absolute; bottom: -260px; left: -200px; width: 560px; height: 560px; border-radius: 999px; background: rgba(14,165,233,0.10);"></div>
+  <div style="display: flex; flex-direction: column; width: 1080px; height: 1080px; background: #04070d; padding: 72px; font-family: 'Inter'; position: relative;">
+    <img src="${SITE_ORIGIN}/${bgFile}" width="1080" height="1080" style="position: absolute; top: 0; left: 0;" />
+    <div style="display: flex; position: absolute; top: 0; left: 0; width: 1080px; height: 1080px; background: linear-gradient(105deg, rgba(4,7,13,0.95) 0%, rgba(4,7,13,0.88) 42%, rgba(4,7,13,0.55) 72%, rgba(4,7,13,0.35) 100%);"></div>
+    <div style="display: flex; position: absolute; top: 0; left: 0; width: 1080px; height: 1080px; background: linear-gradient(180deg, rgba(4,7,13,0.75) 0%, rgba(4,7,13,0.15) 35%, rgba(4,7,13,0.55) 82%, rgba(4,7,13,0.92) 100%);"></div>
 
     <div style="display: flex; align-items: center;">
       <div style="display: flex; font-size: 30px; font-weight: 800; color: #ffffff; letter-spacing: 3px;">ATLANTIUM</div>
