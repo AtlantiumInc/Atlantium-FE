@@ -879,17 +879,14 @@ export function JobsPage() {
             <div className="p-5 flex flex-col gap-6 flex-1 overflow-y-auto">
               <button
                 onClick={() => setViewMode("realtime")}
-                className="group relative w-full overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-cyan-500/10 to-emerald-500/15 px-4 py-3 text-left transition-all hover:border-emerald-400/50 hover:shadow-[0_0_24px_rgba(16,185,129,0.15)]"
+                className="group flex w-full items-center gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 transition-all hover:border-emerald-400/50 hover:bg-emerald-500/15"
               >
-                <span className="absolute -top-8 -right-8 h-20 w-20 rounded-full bg-emerald-500/15 blur-2xl transition-opacity group-hover:opacity-150" />
-                <span className="flex items-center gap-2.5">
-                  <span className="relative flex h-2 w-2 shrink-0">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                  </span>
-                  <span className="text-sm font-bold text-emerald-300">View dashboard</span>
-                  <ArrowRight className="ml-auto h-4 w-4 text-emerald-400/70 transition-transform group-hover:translate-x-0.5" />
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
                 </span>
+                <span className="text-sm font-semibold text-emerald-300">Open dashboard</span>
+                <ArrowRight className="ml-auto h-4 w-4 text-emerald-400/70 transition-transform group-hover:translate-x-0.5" />
               </button>
               {filterRail}
             </div>
