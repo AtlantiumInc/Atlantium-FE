@@ -15,6 +15,7 @@ import { eq, and, inArray, notInArray } from "drizzle-orm";
 import { createDb } from "../db/client";
 import { jobPostings } from "../db/schema";
 import type { Env } from "../env";
+import { activeMarket } from "./markets";
 
 const BASE = "https://hiringcafe.com";
 const UA =
@@ -114,13 +115,13 @@ async function getBuildId(): Promise<string> {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapHit(h: any): ScrapedJob {
+function mapHit(h: any, fallbackLocation = "Atlanta, Georgia, United States"): ScrapedJob {
   const pd = h.v5_processed_job_data ?? {};
   const cd = h.enriched_company_data ?? {};
   return {
     title: pd.core_job_title || h.job_information?.title || "Untitled",
     company: pd.company_name || cd.name || "Unknown",
-    location: pd.formatted_workplace_location || "Atlanta, Georgia, United States",
+    location: pd.formatted_workplace_location || fallbackLocation,
     workplace_type: pd.workplace_type || null,
     seniority: pd.seniority_level || null,
     salary_min: pd.yearly_min_compensation != null ? Math.round(pd.yearly_min_compensation) : null,
@@ -166,18 +167,22 @@ function slugify(value: string) {
 }
 
 export async function syncJobPostings(env: Env): Promise<JobsSyncResult> {
+  const market = activeMarket(env);
+  // Geography is the only city-specific input; departments and every
+  // downstream stage are identical across markets.
+  const searchState = { ...SEARCH_STATE, locations: market.locations };
   const buildId = await getBuildId();
 
   const byUrl = new Map<string, ScrapedJob>();
   for (let page = 0; page < MAX_PAGES; page++) {
-    const hits = await fetchPage(buildId, page);
+    const hits = await fetchPage(buildId, page, searchState);
     if (hits.length === 0) break;
     let fresh = 0;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const h of hits as any[]) {
       if (!h.apply_url || h.is_expired) continue;
       if (!byUrl.has(h.apply_url)) {
-        byUrl.set(h.apply_url, mapHit(h));
+        byUrl.set(h.apply_url, mapHit(h, market.defaultLocation));
         fresh++;
       }
     }
@@ -187,7 +192,7 @@ export async function syncJobPostings(env: Env): Promise<JobsSyncResult> {
 
   // Security sweep: same geography, keyword search, title-gated.
   for (const term of SWEEP_TERMS) {
-    const state = { locations: SEARCH_STATE.locations, searchQuery: term };
+    const state = { locations: market.locations, searchQuery: term };
     for (let page = 0; page < 15; page++) {
       const hits = await fetchPage(buildId, page, state);
       if (hits.length === 0) break;
@@ -195,7 +200,7 @@ export async function syncJobPostings(env: Env): Promise<JobsSyncResult> {
       for (const h of hits as any[]) {
         if (!h.apply_url || h.is_expired) continue;
         if (byUrl.has(h.apply_url)) continue;
-        const mapped = mapHit(h);
+        const mapped = mapHit(h, market.defaultLocation);
         if (!SECURITY_TITLE_RE.test(mapped.title)) continue;
         mapped.content.security = true;
         byUrl.set(h.apply_url, mapped);

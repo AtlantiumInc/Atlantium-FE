@@ -1,5 +1,8 @@
 export type Env = {
   DATABASE_URL: string;
+  /** Which city this deployment indexes: "atlanta" (default) or "denver".
+   *  Selects the hiring.cafe geography in src/lib/markets.ts. */
+  MARKET?: string;
   BETTER_AUTH_SECRET: string;
   HANDOFF_SIGNING_SECRET: string;
   APP_BASE_URL?: string;
