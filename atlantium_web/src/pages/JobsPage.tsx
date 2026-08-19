@@ -849,7 +849,7 @@ export function JobsPage() {
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
           <div className="min-w-0">
             <span className="font-mono text-[9px] uppercase tracking-[0.25em] text-muted-foreground block leading-tight">Daily snapshot</span>
-            <span className="text-[13px] font-semibold text-foreground whitespace-nowrap leading-tight">Atlanta Technology Market</span>
+            <span className="text-[13px] font-semibold text-foreground whitespace-nowrap leading-tight">Atlanta Technology Network</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
             <span className="hidden sm:inline text-[10px] font-mono text-muted-foreground uppercase tracking-wide">live · rolling release</span>
