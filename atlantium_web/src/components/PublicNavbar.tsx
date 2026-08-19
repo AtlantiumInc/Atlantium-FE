@@ -265,7 +265,7 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
             <div className="flex-1 basis-0 min-w-0 flex items-center">
               <span className="font-mono text-[11px] sm:text-xs uppercase tracking-[0.2em] text-muted-foreground truncate">
                 <span className="text-primary/60 mr-1.5">//</span>
-                {platformOpen ? "Index" : pageTitle(pathname)}
+                {platformOpen ? "Menu" : pageTitle(pathname)}
                 <span className="ml-0.5 text-primary/70 animate-pulse">▍</span>
               </span>
             </div>
