@@ -15,6 +15,7 @@ import { syncWorkdayJobs } from "./lib/ats-workday";
 import { syncUsaJobs } from "./lib/ats-usajobs";
 import { computeSalaryEstimates } from "./lib/salary-estimates";
 import { scheduleVisibility, refreshCompanyLogos } from "./lib/visible-drip";
+import { writeMarketSnapshot } from "./lib/market-snapshot";
 import { appRoutes } from "./routes/app";
 import { contentRoutes } from "./routes/content";
 
@@ -173,6 +174,11 @@ export default {
         // Estimates recompute last, over the day's fresh salary corpus.
         .then(() => computeSalaryEstimates(env))
         .then((r) => console.log("salary-estimates ok", JSON.stringify(r)))
+        // Then freeze the day. This is the only history that will exist —
+        // market_snapshots cannot be backfilled, so it runs every day, last,
+        // once the day's syncs and enrichment have settled.
+        .then(() => writeMarketSnapshot(env))
+        .then((r) => console.log("market-snapshot ok", JSON.stringify(r)))
         .catch((error) => {
           console.error("jobs-sync failed", error);
           throw error;

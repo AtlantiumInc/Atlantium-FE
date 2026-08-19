@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  date,
   index,
   integer,
   jsonb,
@@ -217,6 +218,36 @@ export const lobbyRoomRoles = pgTable("lobby_room_roles", {
 
 // Scraped Atlanta AI/tech job postings (sourced from hiring.cafe, seeded via
 // services/api/scripts/seed-jobs.ts). Public read; admin-only writes.
+/**
+ * One row per day: the market's vital signs, frozen. The live tables can only
+ * answer "what is true now"; this answers "what changed". Write-once per day,
+ * never backfillable — see drizzle/0031.
+ */
+export const marketSnapshots = pgTable("market_snapshots", {
+  day: date("day").primaryKey(),
+  totalActive: integer("total_active").notNull(),
+  newToday: integer("new_today").notNull(),
+  new7d: integer("new_7d").notNull(),
+  expiredToday: integer("expired_today").notNull(),
+  remoteCount: integer("remote_count").notNull(),
+  hybridCount: integer("hybrid_count").notNull(),
+  onsiteCount: integer("onsite_count").notNull(),
+  noDegreeCount: integer("no_degree_count").notNull(),
+  aiRoleCount: integer("ai_role_count").notNull(),
+  pricedCount: integer("priced_count").notNull(),
+  medianMin: integer("median_min"),
+  medianMax: integer("median_max"),
+  p25Max: integer("p25_max"),
+  p75Max: integer("p75_max"),
+  over200kCount: integer("over_200k_count").notNull(),
+  salaryBands: jsonb("salary_bands"),
+  seniorityMix: jsonb("seniority_mix"),
+  topTech: jsonb("top_tech"),
+  topCompanies: jsonb("top_companies"),
+  fieldMix: jsonb("field_mix"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const companyLogos = pgTable("company_logos", {
   company: text("company").primaryKey(),
   logoUrl: text("logo_url"),

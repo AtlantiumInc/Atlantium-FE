@@ -3806,6 +3806,27 @@ appRoutes.get("/job_postings", async (c) => {
  * new intake by day, salary distribution, and demand (tech, seniority,
  * companies) over the last 7 days. Pure SQL, no model in the loop.
  */
+/**
+ * The longitudinal record: one row per day of market vitals. Trend questions
+ * ("is pay drifting?", "is AI's share growing?") are answerable only here —
+ * the live tables know the present tense only.
+ */
+appRoutes.get("/job_postings/history", async (c) => {
+  const db = createDb(c.env);
+  const days = Math.min(365, Math.max(1, Number(c.req.query("days") ?? 90)));
+  const res = await db.execute(sql`
+    select day, total_active, new_today, new_7d, expired_today,
+           remote_count, hybrid_count, onsite_count, no_degree_count,
+           ai_role_count, priced_count, median_min, median_max,
+           p25_max, p75_max, over_200k_count, seniority_mix, field_mix
+    from market_snapshots
+    where day >= (now() at time zone 'America/New_York')::date - ${days}::int
+    order by day asc`);
+  const rows = (res as { rows?: unknown[] }).rows ?? (res as unknown as unknown[]);
+  c.header("Cache-Control", "public, max-age=1800");
+  return c.json({ days, count: rows.length, snapshots: rows });
+});
+
 appRoutes.get("/job_postings/insights", async (c) => {
   const db = createDb(c.env);
   const visible = sql`status = 'active' and content->>'non_tech' is null and (visible_at is null or visible_at <= now())`;
