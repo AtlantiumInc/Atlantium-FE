@@ -119,24 +119,18 @@ export function RealtimeMarketPanel() {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Pulse header */}
-      <div className="flex items-center gap-2">
-        <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-        </span>
-        <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-          Live market read · updates every 24h
-        </span>
-      </div>
-
-      {/* THE chart — title lives outside the card; the batch panel is an
-          attached right rail, flush with the card's edges */}
+    <div className="space-y-4">
+      {/* THE chart — one compact title row carries the pulse and the hint */}
       <div>
-        <div className="flex items-baseline justify-between mb-2 px-1">
-          <h3 className="text-base font-bold">Roles coming in</h3>
-          <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wide">5h batches · click a bar for its roles</span>
+        <div className="flex items-center justify-between gap-3 mb-2 px-1">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="relative flex h-2 w-2 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+            <h3 className="text-base font-bold whitespace-nowrap">Roles coming in</h3>
+          </div>
+          <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wide truncate">live · 5h batches · click a bar for its roles</span>
         </div>
         <div className="rounded-xl border border-border/40 bg-card/30 overflow-hidden">
           <IntakeChart jobs={data.intake_5h ?? []} />

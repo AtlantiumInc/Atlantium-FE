@@ -899,6 +899,7 @@ export function JobsPage() {
           {/* Mobile-only strip: board identity + the way into the filter drawer.
               Desktop needs neither — the rail says who we are and the metric
               bar says what's here. */}
+          {viewMode === "board" && (
           <div className="lg:hidden px-4 sm:px-6 pt-5 pb-3 flex items-center gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <Cpu className="h-4 w-4 text-cyan-500 shrink-0" />
@@ -912,6 +913,7 @@ export function JobsPage() {
               Filters
             </button>
           </div>
+          )}
 
           {viewMode === "board" && (
             <div className="sticky top-0 z-20 bg-background/85 backdrop-blur-xl px-4 sm:px-6 py-2 border-b border-border/30">
@@ -919,7 +921,7 @@ export function JobsPage() {
             </div>
           )}
 
-          <main className={`px-4 sm:px-6 pt-4 pb-32 lg:pb-10 ${viewMode === "realtime" ? "w-full" : "max-w-3xl"}`}>
+          <main className={`px-4 sm:px-6 pt-4 pb-32 lg:pb-10 ${viewMode === "realtime" ? "w-full pt-2" : "max-w-3xl"}`}>
             {viewMode === "realtime" ? <RealtimeMarketPanel /> : jobList}
             <div className="mt-6 pt-6 border-t border-border/30 text-xs text-muted-foreground">
               <span>AI Engineering Opportunities in Atlanta, GA · 50mi radius</span>

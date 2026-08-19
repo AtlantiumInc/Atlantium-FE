@@ -130,7 +130,7 @@ export function IntakeChart({ jobs = [] }: { jobs?: IntakeJob[] }) {
   const panelJobs = selected != null ? sortJobs(buckets[selected], sortDir) : [];
 
   return (
-    <div className="flex items-stretch">
+    <div className="flex items-stretch h-60">
       {/* Chart — bottom-anchored so the x-axis labels sit on the baseline */}
       <div className="flex-1 min-w-0 flex flex-col justify-end p-4 sm:p-5">
         <div className="flex items-end gap-[3px] h-40">
@@ -168,7 +168,7 @@ export function IntakeChart({ jobs = [] }: { jobs?: IntakeJob[] }) {
               <div className="flex items-center justify-end px-2 pt-1.5 pb-1">
                 <CompSortSwitch dir={sortDir} onChange={setSortDir} />
               </div>
-              <div className="flex-1 overflow-y-auto px-1.5 pb-1.5 min-h-0 max-h-52">
+              <div className="flex-1 overflow-y-auto px-1.5 pb-1.5 min-h-0">
                 <RoleList jobs={panelJobs} />
               </div>
             </>
