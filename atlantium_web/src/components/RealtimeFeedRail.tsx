@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Link } from "react-router-dom";
 import { MoonStar } from "lucide-react";
 import type { IntakeJob } from "@/components/IntakeChart";
 
@@ -50,7 +49,7 @@ function afterHoursNote(): string | null {
  * onto the board, newest first, grouped by recency. Outside business hours a
  * notice explains the quiet instead of a stalled ticker pretending otherwise.
  */
-export function RealtimeFeedRail({ jobs }: { jobs: IntakeJob[] }) {
+export function RealtimeFeedRail({ jobs, onSelect }: { jobs: IntakeJob[]; onSelect: (slug: string) => void }) {
   const groups = useMemo(() => groupByRecency(jobs), [jobs]);
   const note = afterHoursNote();
 
@@ -78,10 +77,10 @@ export function RealtimeFeedRail({ jobs }: { jobs: IntakeJob[] }) {
             </span>
           </div>
           {g.jobs.map((j) => (
-            <Link
+            <button
               key={j.slug}
-              to={`/jobs/${j.slug}`}
-              className="block px-4 py-2 border-b border-border/20 hover:bg-cyan-500/5 group"
+              onClick={() => onSelect(j.slug)}
+              className="block w-full text-left px-4 py-2 border-b border-border/20 hover:bg-cyan-500/5 group"
             >
               <p className="text-xs text-foreground leading-tight truncate group-hover:text-cyan-300">{j.title}</p>
               <div className="flex items-center gap-2 mt-0.5">
@@ -92,7 +91,7 @@ export function RealtimeFeedRail({ jobs }: { jobs: IntakeJob[] }) {
                   </span>
                 )}
               </div>
-            </Link>
+            </button>
           ))}
         </div>
       ))}

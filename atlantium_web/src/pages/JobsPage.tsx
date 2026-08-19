@@ -15,6 +15,7 @@ import { isNewThisWeek } from "@/lib/utils";
 import { JobReportSignupModal, useJobReportSignup } from "@/components/JobReportSignupModal";
 import { RealtimeMarketPanel } from "@/components/RealtimeMarketPanel";
 import { RealtimeFeedRail } from "@/components/RealtimeFeedRail";
+import { InlineJobDetail } from "@/components/InlineJobDetail";
 
 type Job = JobPosting & {
   // convenience aliases derived from content
@@ -423,6 +424,7 @@ export function JobsPage() {
   const [total, setTotal] = useState(0);
   const [viewMode, setViewMode] = useState<"board" | "realtime">("board");
   const [insights, setInsights] = useState<Awaited<ReturnType<typeof api.getJobInsights>> | null>(null);
+  const [feedSlug, setFeedSlug] = useState<string | null>(null);
   const [counts, setCounts] = useState({ remote: 0, hybrid: 0, new_this_week: 0, no_degree: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -906,7 +908,7 @@ export function JobsPage() {
             <>
               <div className="p-4 pb-3 border-b border-border/40">
                 <button
-                  onClick={() => setViewMode("board")}
+                  onClick={() => { setViewMode("board"); setFeedSlug(null); }}
                   className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
                 >
                   ← Back to board
@@ -920,7 +922,7 @@ export function JobsPage() {
                   <span className="ml-auto text-[10px] font-mono uppercase tracking-wide text-muted-foreground">rolling</span>
                 </div>
               </div>
-              <RealtimeFeedRail jobs={insights?.intake_5h ?? []} />
+              <RealtimeFeedRail jobs={insights?.intake_5h ?? []} onSelect={setFeedSlug} />
             </>
           )}
         </aside>
@@ -953,7 +955,11 @@ export function JobsPage() {
           )}
 
           <main className={`px-4 sm:px-6 pt-4 pb-32 lg:pb-10 ${viewMode === "realtime" ? "w-full pt-2" : "max-w-3xl"}`}>
-            {viewMode === "realtime" ? <RealtimeMarketPanel preloaded={insights} /> : jobList}
+            {viewMode === "realtime"
+              ? feedSlug
+                ? <InlineJobDetail slug={feedSlug} onClose={() => setFeedSlug(null)} />
+                : <RealtimeMarketPanel preloaded={insights} />
+              : jobList}
             <div className="mt-6 pt-6 border-t border-border/30 text-xs text-muted-foreground">
               <span>AI Engineering Opportunities in Atlanta, GA · 50mi radius</span>
             </div>
