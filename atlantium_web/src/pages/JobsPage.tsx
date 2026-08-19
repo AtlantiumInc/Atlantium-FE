@@ -849,7 +849,8 @@ export function JobsPage() {
         <div className="relative flex items-center justify-center gap-3">
           <span className="flex items-baseline gap-2 whitespace-nowrap">
             <span className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Powered by</span>
-            <span className="text-sm sm:text-base font-bold tracking-tight text-foreground">Atlantium Technology Network</span>
+            <span className="text-sm sm:text-base font-bold tracking-tight text-foreground">Atlantium</span>
+            <span className="text-sm sm:text-base font-medium tracking-tight text-muted-foreground">: Atlanta's Technology Network</span>
           </span>
           {/* mobile-only affordances — desktop stays bare per design */}
           {viewMode === "realtime" ? (
