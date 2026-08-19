@@ -82,6 +82,10 @@ export default {
       return handleOgRoute(request, () => fetchJobOg(match[1]));
     }
 
+    if (pathname === '/og/cover.png' || pathname === '/og/cover') {
+      return renderCarouselCover(request);
+    }
+
     if ((match = pathname.match(/^\/og\/social\/([^/]+?)(?:\.png)?\/?$/))) {
       return renderSocialJobCard(match[1], request);
     }
@@ -766,6 +770,98 @@ async function renderSocialJobCard(slug, request) {
   });
   const response = new Response(image.body, {
     headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' },
+  });
+  await cache.put(cacheKey, response.clone());
+  return response;
+}
+
+/**
+ * Carousel cover slide (1080x1080). The first frame has one job: stop the
+ * scroll and promise what is behind it. Live counts, so the hook is never a
+ * stale claim, plus an explicit swipe affordance — Threads and LinkedIn both
+ * bury the "1/11" indicator, and a carousel nobody swipes is a single post.
+ */
+async function renderCarouselCover(request) {
+  const url = new URL(request.url);
+  const count = url.searchParams.get('count') || '10';
+  const cache = caches.default;
+  const cacheUrl = new URL(request.url);
+  cacheUrl.searchParams.set('v', OG_RENDER_VERSION);
+  const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
+  const cached = await cache.match(cacheKey);
+  if (cached) return cached;
+
+  let total = null, over200 = null, week = null;
+  try {
+    const res = await fetch(`${ATLANTIUM_API_BASE}/job_postings?format=paged&limit=1`);
+    if (res.ok) {
+      const d = await res.json();
+      total = typeof d.total === 'number' ? d.total : null;
+      week = d.counts?.new_this_week ?? null;
+    }
+    const ins = await fetch(`${ATLANTIUM_API_BASE}/job_postings/insights`);
+    if (ins.ok) {
+      const d = await ins.json();
+      const bands = d.salary_bands || [];
+      over200 = bands.filter((b) => b.bucket >= 9).reduce((a, b) => a + b.n, 0);
+    }
+  } catch (_) { /* render without the stat row */ }
+
+  const stat = (v, l) => `
+    <div style="display: flex; flex-direction: column; margin-right: 56px;">
+      <div style="display: flex; font-size: 46px; font-weight: 800; color: #34d399;">${escapeCard(v)}</div>
+      <div style="display: flex; font-size: 21px; color: #94a3b8; letter-spacing: 1px;">${escapeCard(l)}</div>
+    </div>`;
+
+  const html = `
+  <div style="display: flex; flex-direction: column; width: 1080px; height: 1080px; background: linear-gradient(140deg, #04070d 0%, #071120 55%, #0a1a2e 100%); padding: 72px; font-family: 'Inter'; position: relative;">
+    <div style="display: flex; position: absolute; top: -240px; right: -200px; width: 680px; height: 680px; border-radius: 999px; background: rgba(16,185,129,0.14);"></div>
+    <div style="display: flex; position: absolute; bottom: -280px; left: -220px; width: 600px; height: 600px; border-radius: 999px; background: rgba(14,165,233,0.11);"></div>
+
+    <div style="display: flex; align-items: center;">
+      <div style="display: flex; font-size: 30px; font-weight: 800; color: #ffffff; letter-spacing: 3px;">ATLANTIUM</div>
+      <div style="display: flex; margin-left: 16px; padding: 6px 16px; border-radius: 999px; font-size: 20px; font-weight: 600; color: #34d399; background: rgba(16,185,129,0.10); border: 1px solid rgba(16,185,129,0.35); letter-spacing: 1px;">LIVE</div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; margin-top: 76px; flex-grow: 1;">
+      <div style="display: flex; font-size: 26px; font-weight: 600; color: #7dd3fc; letter-spacing: 3px;">THIS WEEK IN ATLANTA</div>
+      <div style="display: flex; margin-top: 26px; font-size: 104px; font-weight: 800; color: #f8fafc; line-height: 0.98;">The ${escapeCard(count)}</div>
+      <div style="display: flex; font-size: 104px; font-weight: 800; color: #f8fafc; line-height: 0.98;">highest-paying</div>
+      <div style="display: flex; font-size: 104px; font-weight: 800; color: #34d399; line-height: 0.98;">tech jobs</div>
+      ${total != null ? `<div style="display: flex; margin-top: 56px;">
+        ${stat(total.toLocaleString('en-US'), 'ROLES INDEXED')}
+        ${over200 != null ? stat(String(over200), 'PAY $200K+') : ''}
+        ${week != null ? stat(week.toLocaleString('en-US'), 'NEW THIS WEEK') : ''}
+      </div>` : ''}
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(148,163,184,0.15); padding-top: 32px;">
+      <div style="display: flex; font-size: 28px; color: #94a3b8;">atlantium.ai/jobs</div>
+      <div style="display: flex; align-items: center;">
+        <div style="display: flex; font-size: 26px; font-weight: 700; color: #34d399; letter-spacing: 3px; margin-right: 18px;">SWIPE</div>
+        <div style="display: flex; align-items: center; justify-content: center; width: 62px; height: 62px; border-radius: 999px; background: rgba(16,185,129,0.14); border: 2px solid rgba(52,211,153,0.55);">
+          <img width="30" height="30" src="data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M12 5l7 7-7 7"/></svg>')}" />
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  const [regular, semibold, extrabold] = await Promise.all([
+    loadFont(FONT_URLS.regular),
+    loadFont(FONT_URLS.semibold),
+    loadFont(FONT_URLS.extrabold),
+  ]);
+  const image = new ImageResponse(html, {
+    width: 1080,
+    height: 1080,
+    fonts: [
+      { name: 'Inter', data: regular, weight: 400, style: 'normal' },
+      { name: 'Inter', data: semibold, weight: 600, style: 'normal' },
+      { name: 'Inter', data: extrabold, weight: 800, style: 'normal' },
+    ],
+  });
+  const response = new Response(image.body, {
+    headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=1800' },
   });
   await cache.put(cacheKey, response.clone());
   return response;

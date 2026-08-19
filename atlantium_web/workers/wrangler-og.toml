@@ -11,6 +11,7 @@ routes = [
   { pattern = "atlantium.ai/og/jobs/*", zone_name = "atlantium.ai" },
   { pattern = "atlantium.ai/og/jobs-index.png", zone_name = "atlantium.ai" },
   { pattern = "atlantium.ai/og/social/*", zone_name = "atlantium.ai" },
+  { pattern = "atlantium.ai/og/cover*", zone_name = "atlantium.ai" },
   { pattern = "atlantium.ai/blog/*", zone_name = "atlantium.ai" },
   { pattern = "atlantium.ai/docs/*", zone_name = "atlantium.ai" },
   { pattern = "atlantium.ai/directory*", zone_name = "atlantium.ai" },
