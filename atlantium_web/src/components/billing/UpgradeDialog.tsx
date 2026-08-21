@@ -140,6 +140,8 @@ function PlanSummary() {
 }
 
 function PaymentForm({ plan, onDone }: { plan: Plan; onDone: () => void }) {
+  const [promoCode, setPromoCode] = useState("");
+  const [showPromo, setShowPromo] = useState(false);
   const stripe = useStripe();
   const elements = useElements();
   const { user } = useAuth();
@@ -180,7 +182,7 @@ function PaymentForm({ plan, onDone }: { plan: Plan; onDone: () => void }) {
         return;
       }
 
-      const result = await api.subscribeWithPaymentMethod(plan, paymentMethodId);
+      const result = await api.subscribeWithPaymentMethod(plan, paymentMethodId, promoCode.trim() || undefined);
       // Membership lands via webhook; refresh so the UI catches up as soon as
       // it does rather than claiming success the server hasn't recorded.
       await refresh();
@@ -196,17 +198,38 @@ function PaymentForm({ plan, onDone }: { plan: Plan; onDone: () => void }) {
     } finally {
       setIsPaying(false);
     }
-  }, [stripe, elements, plan, user, refresh, onDone]);
+  }, [stripe, elements, plan, user, refresh, onDone, promoCode]);
 
   return (
     <form onSubmit={submit} className="space-y-4">
       <PaymentElement options={{ layout: "tabs" }} />
+
+      {/* Promo code — collapsed behind a link so the default path stays clean.
+          Applied server-side at subscription creation; an invalid code fails
+          BEFORE any charge. */}
+      {showPromo ? (
+        <input
+          value={promoCode}
+          onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+          placeholder="Promo code"
+          autoFocus
+          className="w-full rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-sm uppercase tracking-wide placeholder:normal-case placeholder:tracking-normal focus:outline-none focus:border-primary/50"
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowPromo(true)}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Have a promo code?
+        </button>
+      )}
+
       {error && <p className="text-sm text-red-400">{error}</p>}
       <Button type="submit" className="w-full gap-2" disabled={!stripe || isPaying}>
         {isPaying ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-        {plan === "club_annual"
-          ? `Pay ${MEMBER_PLAN.annual.price} / year`
-          : `Pay ${MEMBER_PLAN.annual.price} / year`}
+        {`Pay ${MEMBER_PLAN.annual.price} / year`}
+        {promoCode.trim() && <span className="text-xs opacity-80">· code {promoCode.trim()}</span>}
       </Button>
     </form>
   );

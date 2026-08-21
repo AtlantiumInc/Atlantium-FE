@@ -143,7 +143,7 @@ export async function createSetupIntent(env: Env, customerId: string) {
 
 export async function createSubscription(
   env: Env,
-  input: { customerId: string; priceId: string; paymentMethodId: string; userId: string },
+  input: { customerId: string; priceId: string; paymentMethodId: string; userId: string; promotionCodeId?: string },
 ) {
   return stripeRequest<StripeSubscription>(env, "/subscriptions", form({
     customer: input.customerId,
@@ -151,7 +151,22 @@ export async function createSubscription(
     default_payment_method: input.paymentMethodId,
     "metadata[user_id]": input.userId,
     "expand[0]": "latest_invoice.payment_intent",
+    ...(input.promotionCodeId ? { "discounts[0][promotion_code]": input.promotionCodeId } : {}),
   }));
+}
+
+/** Look up a customer-facing promotion code (what a human types, e.g.
+ *  FOUNDER1). Returns the promotion_code id, or null when it doesn't exist
+ *  or is no longer active. */
+export async function resolvePromotionCode(env: Env, code: string): Promise<string | null> {
+  // stripeRequest is POST-shaped; this lookup is a GET.
+  const res = await fetch(
+    `${STRIPE_API}/promotion_codes?code=${encodeURIComponent(code.trim().toUpperCase())}&active=true&limit=1`,
+    { headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` } },
+  );
+  if (!res.ok) return null;
+  const data = await res.json() as { data: Array<{ id: string }> };
+  return data.data[0]?.id ?? null;
 }
 
 export async function attachPaymentMethod(env: Env, paymentMethodId: string, customerId: string) {

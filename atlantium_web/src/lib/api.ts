@@ -1014,13 +1014,13 @@ class ApiClient {
     return this.request("/billing/setup-intent", { method: "POST" }, ATLANTIUM_API_BASE_URL);
   }
 
-  async subscribeWithPaymentMethod(plan: "club" | "club_annual", paymentMethodId: string): Promise<{
+  async subscribeWithPaymentMethod(plan: "club" | "club_annual", paymentMethodId: string, promoCode?: string): Promise<{
     subscription_id: string;
     status: string;
     active: boolean;
   }> {
     return this.request("/billing/subscribe",
-      { method: "POST", body: JSON.stringify({ plan, payment_method_id: paymentMethodId }) },
+      { method: "POST", body: JSON.stringify({ plan, payment_method_id: paymentMethodId, ...(promoCode ? { promo_code: promoCode } : {}) }) },
       ATLANTIUM_API_BASE_URL);
   }
 

@@ -14,6 +14,7 @@ import { areConnected, canInitiate, outreachStatus } from "../lib/outreach";
 import { entitlementsFor } from "../lib/entitlements";
 import {
   attachPaymentMethod,
+  resolvePromotionCode,
   createSetupIntent,
   createSubscription,
   ensureCustomer,
@@ -1999,6 +2000,7 @@ appRoutes.post(
   zValidator("json", z.object({
     plan: z.enum(["club", "club_annual"]),
     payment_method_id: z.string().min(1),
+    promo_code: z.string().trim().max(60).optional(),
   })),
   async (c) => {
     const { db, authUser } = await requireAppUser(c);
@@ -2023,6 +2025,17 @@ appRoutes.post(
     // Stripe's own refusals (declined card, unusable payment method) are the
     // member's problem to fix, not a server fault — surface them as 400 with
     // Stripe's wording rather than a 500 the UI can only call "unknown error".
+    // A typo'd code fails BEFORE any charge, with a message naming the code —
+    // never silently billing full price.
+    let promotionCodeId: string | undefined;
+    if (input.promo_code) {
+      const resolved = await resolvePromotionCode(c.env, input.promo_code);
+      if (!resolved) {
+        throw new HttpError(400, "invalid_promo_code", `"${input.promo_code}" isn't a valid code.`);
+      }
+      promotionCodeId = resolved;
+    }
+
     let subscription;
     try {
       await attachPaymentMethod(c.env, input.payment_method_id, customerId);
@@ -2031,6 +2044,7 @@ appRoutes.post(
         priceId,
         paymentMethodId: input.payment_method_id,
         userId: authUser.id,
+        promotionCodeId,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "That payment couldn't be completed.";
