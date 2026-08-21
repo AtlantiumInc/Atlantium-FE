@@ -13,20 +13,16 @@ import {
   ArrowRight,
   Check,
   Crown,
-  Calendar,
   Star,
   Smartphone,
   Clock,
   Users,
   Zap,
   Video,
-  Handshake,
   Rocket,
   MessageSquare,
   FolderOpen,
   Lightbulb,
-  CalendarCheck,
-  Globe,
   Sparkles } from "lucide-react";
 
 function FadeIn({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
@@ -50,21 +46,21 @@ const tiers = [
     name: "Free",
     price: "$0",
     period: "forever",
-    description: "Get started with the basics",
+    description: "Everything the network publishes, open to everyone",
     icon: Star,
     color: "cyan",
     features: [
+      "The Job Index — every Atlanta role, updated every 4 hours",
       "iOS app access",
-      "Frontier feed access",
+      "Frontier feed + all guides and reports",
       "Public events",
-
       "Software perks & discounts",
     ],
   },
   {
-    name: "Club Membership",
-    price: "$29",
-    period: "/month",
+    name: "Atlantium Insider",
+    price: "$290",
+    period: "/year",
     description: "For people building their place in the network",
     popular: true,
     icon: Crown,
@@ -73,31 +69,14 @@ const tiers = [
       "Everything in Free",
       "Rene — your frontier agent",
       "Member DMs across the network",
-      "Club events, virtual & in-person",
+      "Insider events, virtual & in-person",
       "Priority event registration",
       "Unlimited directory contact reveals",
-    ],
-  },
-  {
-    name: "Annual Membership",
-    price: "$290",
-    period: "/year",
-    description: "Committed to the frontier",
-    savings: "2 months free",
-    icon: Calendar,
-    color: "emerald",
-    features: [
-      "Everything in Club",
-      "Two months free",
       "Member directory access",
-      "Quarterly performance review",
-      "Discounted services",
-      "Project support",
+      "Discounted services & project support",
     ],
   },
 ];
-
-
 
 type PricingTier = (typeof tiers)[number];
 
@@ -124,7 +103,8 @@ function PlanCta({ tier }: { tier: PricingTier }) {
     );
   }
 
-  const plan = tier.period === "/year" ? "club_annual" : "club";
+  // Annual-only for now — the monthly plan is retired.
+  const plan = "club_annual" as const;
 
   // In-page Elements, not a redirect: the member never leaves Atlantium, and
   // there is one payment flow across the platform to keep correct.
@@ -177,12 +157,12 @@ export function PricingPage() {
           </h1>
 
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-4 leading-relaxed">
-            Whether you're exploring or building full-time, there's a plan for you. Upgrade or downgrade anytime.
+            Everything the network publishes stays free. Membership is what adds the people — one plan, billed annually.
           </p>
 
           <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-sm text-muted-foreground mb-10">
             {[
-              { icon: Clock, label: "Cancel Anytime" },
+              { icon: Clock, label: "Cancel anytime" },
               { icon: Smartphone, label: "iOS App Included" },
               { icon: Video, label: "Office Hours" },
               { icon: Users, label: "Builder Community" },
@@ -198,7 +178,7 @@ export function PricingPage() {
 
       {/* Pricing cards */}
       <section className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
           {tiers.map((tier, i) => {
             const Icon = tier.icon;
             return (
@@ -212,41 +192,66 @@ export function PricingPage() {
                     </div>
                   )}
 
-                  {tier.savings && (
-                    <div className="absolute top-1 right-4 z-10">
-                      <span className="bg-emerald-500 text-white text-xs font-medium px-2 py-1 rounded-full">
-                        {tier.savings}
-                      </span>
-                    </div>
-                  )}
 
                   <SpotlightCard
-                    className={`h-full p-6 flex flex-col ${tier.popular ? "ring-2 ring-violet-500/40" : ""}`}
-                    spotlightColor={tier.popular ? "rgba(139, 92, 246, 0.12)" : "rgba(14, 165, 233, 0.08)"}
+                    className={`h-full p-6 flex flex-col relative overflow-hidden ${
+                      tier.popular
+                        ? "ring-1 ring-violet-500/50 shadow-[0_0_50px_-12px_rgba(139,92,246,0.45)]"
+                        : ""
+                    }`}
+                    spotlightColor={tier.popular ? "rgba(139, 92, 246, 0.18)" : "rgba(14, 165, 233, 0.08)"}
                   >
-                    <div className="mb-4">
-                      <h3 className="font-semibold text-lg flex items-center gap-2">
-                        {tier.name !== "Free" && <Icon className="h-4 w-4 text-yellow-500" />}
-                        {tier.name}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">{tier.description}</p>
+                    {/* The paid card earns some light: a violet bloom behind
+                        the crown and a hairline down the left edge. */}
+                    {tier.popular && (
+                      <>
+                        <div className="pointer-events-none absolute -top-24 -right-16 h-56 w-56 rounded-full bg-violet-500/20 blur-3xl" />
+                        <div className="pointer-events-none absolute inset-y-0 left-0 w-px bg-gradient-to-b from-transparent via-violet-400/60 to-transparent" />
+                      </>
+                    )}
+
+                    <div className="relative mb-4">
+                      <div className="flex items-center gap-2.5">
+                        {tier.name !== "Free" && (
+                          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/15 border border-violet-500/30">
+                            <Icon className="h-4 w-4 text-violet-300" />
+                          </span>
+                        )}
+                        <h3 className="font-semibold text-lg tracking-tight">{tier.name}</h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1.5">{tier.description}</p>
                     </div>
 
-                    <div className="mb-6">
-                      <span className="text-4xl font-bold">{tier.price}</span>
-                      <span className="text-muted-foreground"> {tier.period}</span>
+                    <div className="relative mb-6 flex items-baseline gap-1.5">
+                      <span
+                        className={`text-5xl font-bold tracking-tight ${
+                          tier.popular
+                            ? "bg-gradient-to-br from-white via-violet-100 to-violet-300 bg-clip-text text-transparent"
+                            : ""
+                        }`}
+                      >
+                        {tier.price}
+                      </span>
+                      <span className="text-sm text-muted-foreground">{tier.period}</span>
                     </div>
+                    {tier.popular && (
+                      <p className="relative -mt-4 mb-5 text-[11px] font-mono uppercase tracking-widest text-violet-300/80">
+                        Billed annually · about $24 a month
+                      </p>
+                    )}
 
-                    <ul className="space-y-3 flex-1 mb-6">
+                    <ul className="relative space-y-3 flex-1 mb-6">
                       {tier.features.map((feature) => (
                         <li key={feature} className="flex items-start gap-2 text-sm">
-                          <Check className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+                          <Check className={`h-4 w-4 shrink-0 mt-0.5 ${tier.popular ? "text-violet-400" : "text-green-500"}`} />
                           <span>{feature}</span>
                         </li>
                       ))}
                     </ul>
 
-                    <PlanCta tier={tier} />
+                    <div className="relative">
+                      <PlanCta tier={tier} />
+                    </div>
                   </SpotlightCard>
                 </div>
               </FadeIn>
@@ -255,14 +260,14 @@ export function PricingPage() {
         </div>
       </section>
 
-      {/* Club Membership Benefits — deep dive */}
+      {/* Insider Access benefits — deep dive */}
       <section className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
         <FadeIn>
           <div className="text-center mb-12">
-            <p className="text-xs font-bold text-violet-400 uppercase tracking-widest mb-3">Club Membership</p>
+            <p className="text-xs font-bold text-violet-400 uppercase tracking-widest mb-3">Insider Access</p>
             <h2 className="text-3xl sm:text-4xl font-bold">Your Seat in the Network</h2>
             <p className="text-muted-foreground mt-3 max-w-2xl mx-auto">
-              Club membership isn't content — it's standing. You can reach the people in this network, show up to the rooms where they meet, and put Rene to work on whatever you're trying to get done.
+              Insider access isn't content — it's standing. You can reach the people in this network, show up to the rooms where they meet, and put Rene to work on whatever you're trying to get done.
             </p>
           </div>
         </FadeIn>
@@ -272,22 +277,22 @@ export function PricingPage() {
             {
               icon: Sparkles,
               title: "Rene, Your Frontier Agent",
-              desc: "A member-only agent that works inside the lab with you \u2014 tracking what you're trying to get done and moving it forward between visits. Your thread with Rene opens the moment you join.",
+              desc: "A member-only agent that works the network on your behalf \u2014 getting you connected, making warm introductions to the right people, and sending you roles off the board when you're job seeking. It tracks what you're trying to get done and moves it forward between visits.",
             },
             {
               icon: MessageSquare,
               title: "Member DMs",
-              desc: "Start conversations with anyone in the network \u2014 founders, engineers, operators. Free members can only reply; Club members open the door.",
+              desc: "Start conversations with anyone in the network \u2014 founders, engineers, operators. Free members can only reply; Insiders open the door.",
             },
             {
               icon: Video,
-              title: "Club Events \u2014 Virtual & IRL",
+              title: "Insider Events \u2014 Virtual & IRL",
               desc: "Member sessions online and rooms in Atlanta. The events where the network actually meets, not the public calendar.",
             },
             {
               icon: Rocket,
               title: "Priority Event Access",
-              desc: "Skip the waitlist for high-demand events with founders, investors, and operators. Club members always get a seat at the table.",
+              desc: "Skip the waitlist for high-demand events with founders, investors, and operators. Insiders always get a seat at the table.",
             },
             {
               icon: FolderOpen,
@@ -320,56 +325,6 @@ export function PricingPage() {
         </div>
       </section>
 
-      {/* Annual Membership Perks */}
-      <section className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
-        <FadeIn>
-          <div className="relative overflow-hidden rounded-2xl">
-            <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-emerald-500 via-cyan-500 to-emerald-500 opacity-20" />
-            <SpotlightCard className="relative p-8 lg:p-12" spotlightColor="rgba(16, 185, 129, 0.1)">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
-                <div>
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-4">
-                    <Calendar className="h-3.5 w-3.5 text-emerald-400" />
-                    <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Annual Membership</span>
-                  </div>
-                  <h2 className="text-2xl sm:text-3xl font-bold mb-4">Go Annual. Get More.</h2>
-                  <p className="text-muted-foreground leading-relaxed mb-6">
-                    Annual members get two months free and unlock exclusive monthly events with founders, investors, and industry leaders. Plus networking opportunities you won't find anywhere else.
-                  </p>
-                  <Link to="/signup">
-                    <Button className="gap-2 bg-white text-black hover:bg-gray-100 border-0">
-                      Join Annual
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                </div>
-                <div className="space-y-4">
-                  {[
-                    { icon: CalendarCheck, label: "Exclusive Monthly Events", desc: "Curated gatherings with founders, operators, and investors — only for annual members." },
-                    { icon: Globe, label: "Networking Opportunities", desc: "Private introductions and access to a network of builders, hiring managers, and advisors." },
-                    { icon: Handshake, label: "Quarterly Performance Review", desc: "One-on-one sessions to assess your progress, refine your goals, and plan next steps." },
-                    { icon: Zap, label: "Discounted Services", desc: "Preferred rates on consulting, design, and development services from the Atlantium team." },
-                  ].map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <div key={item.label} className="flex gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                          <Icon className="h-[18px] w-[18px] text-emerald-400" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-foreground text-sm">{item.label}</p>
-                          <p className="text-sm text-muted-foreground">{item.desc}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </SpotlightCard>
-          </div>
-        </FadeIn>
-      </section>
-
       {/* CTA */}
       <section className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
         <FadeIn>
@@ -384,7 +339,7 @@ export function PricingPage() {
                 Ready to Build?
               </h2>
               <p className="text-muted-foreground text-lg max-w-xl mx-auto mb-8">
-                Start free or go all-in with Club. Either way, you're joining a community of builders.
+                Start free or go all-in as an Insider. Either way, you're joining a community of builders.
               </p>
               <Link to="/signup">
                 <Button size="lg" className="gap-2 bg-white text-black hover:bg-gray-100 shadow-xl shadow-black/20 border-0 text-base px-8">

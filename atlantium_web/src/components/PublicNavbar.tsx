@@ -384,6 +384,15 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
                 {/* scan line where the bar's old edge was */}
                 <div className="h-px bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent" />
                 <div className="max-w-5xl mx-auto px-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
+                  {/* Wayfinding row — above the sections, centered. Pricing
+                      sits left of Our Mission. */}
+                  <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-5 pb-1">
+                    <Link to="/" onClick={(e) => deckGo(e, "/")} className="text-xs font-semibold hover:text-primary transition-colors">Atlantium</Link>
+                    <Link to="/pricing" onClick={(e) => deckGo(e, "/pricing")} className="text-xs text-muted-foreground hover:text-foreground transition-colors">Pricing</Link>
+                    <Link to={missionLink.to} onClick={(e) => deckGo(e, missionLink.to)} className="text-xs text-muted-foreground hover:text-foreground transition-colors">Our Mission</Link>
+                    <Link to="/creator-program" onClick={(e) => deckGo(e, "/creator-program")} className="text-xs text-muted-foreground hover:text-foreground transition-colors">Partners</Link>
+                  </div>
+
                   <div className="grid md:grid-cols-2 md:divide-x divide-border/40">
                     {platformSections.map(({ num, title, items }, si) => (
                       <div key={num} className={`py-6 min-w-0 ${si === 0 ? "md:pr-8" : "md:pl-8"}`}>
@@ -450,13 +459,9 @@ export function PublicNavbar({ reading }: { reading?: { title: string; coverUrl?
                       </div>
                     ))}
                   </div>
-                  {/* footer strip — links that left the bar, plus the theme switch */}
-                  <div className="flex items-center justify-between py-3 border-t border-border/40">
-                    <div className="flex items-center gap-5">
-                      <Link to="/" onClick={(e) => deckGo(e, "/")} className="text-xs font-semibold hover:text-primary transition-colors">Atlantium</Link>
-                      <Link to={missionLink.to} onClick={(e) => deckGo(e, missionLink.to)} className="text-xs text-muted-foreground hover:text-foreground transition-colors">Our Mission</Link>
-                      <Link to="/creator-program" onClick={(e) => deckGo(e, "/creator-program")} className="text-xs text-muted-foreground hover:text-foreground transition-colors">Partners</Link>
-                    </div>
+                  {/* footer strip — just the utilities now; the wayfinding
+                      links moved above the sections. */}
+                  <div className="flex items-center justify-end py-3 border-t border-border/40">
                     <div className="flex items-center gap-4">
                       <span className="hidden sm:inline font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">esc to close</span>
                       <ThemeToggle />
