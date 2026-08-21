@@ -19,9 +19,10 @@ import { UpgradeDialog } from "./UpgradeDialog";
  * get", instead of each surface inventing its own copy.
  */
 
+/** Annual-only. The monthly plan is retired — every surface bills yearly, so
+ *  there is no `monthly` entry to accidentally render. */
 export const MEMBER_PLAN = {
-  monthly: { plan: "club" as const, price: "$29", period: "/month" },
-  annual: { plan: "club_annual" as const, price: "$290", period: "/year", note: "two months free" },
+  annual: { plan: "club_annual" as const, price: "$290", period: "/year", note: "billed annually" },
 };
 
 type BillingContextValue = {
@@ -69,7 +70,7 @@ export function useBilling() {
  * Payment happens in-page via Elements (UpgradeDialog); this remains as the
  * hosted-Checkout fallback for surfaces that would rather redirect.
  */
-export async function startPurchase(plan: "club" | "club_annual") {
+export async function startPurchase(plan: "club_annual" = "club_annual") {
   const { checkout_url } = await api.startCheckout(plan);
   window.location.href = checkout_url;
 }
@@ -78,14 +79,14 @@ type Variant = "button" | "inline" | "card";
 
 export function UpgradeCta({
   reason,
-  plan = "club",
+  plan = "club_annual",
   variant = "button",
   label,
   className,
 }: {
   /** Why this member is seeing it — shown on the card, and useful for copy. */
   reason?: string;
-  plan?: "club" | "club_annual";
+  plan?: "club_annual";
   variant?: Variant;
   label?: string;
   className?: string;
@@ -113,7 +114,7 @@ export function UpgradeCta({
     );
   }
 
-  const cta = label ?? `Upgrade — ${MEMBER_PLAN.monthly.price}${MEMBER_PLAN.monthly.period}`;
+  const cta = label ?? `Upgrade — ${MEMBER_PLAN.annual.price}${MEMBER_PLAN.annual.period}`;
 
   if (variant === "card") {
     return (
@@ -123,7 +124,7 @@ export function UpgradeCta({
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium">{reason ?? "This is part of membership"}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {MEMBER_PLAN.monthly.price}{MEMBER_PLAN.monthly.period} — member DMs, exclusive events, and the
+              {MEMBER_PLAN.annual.price}{MEMBER_PLAN.annual.period} — member DMs, exclusive events, and the
               agent. {MEMBER_PLAN.annual.price}/year gets {MEMBER_PLAN.annual.note}.
             </p>
             <Button size="sm" className="mt-3 gap-1.5" onClick={go}>{cta}</Button>

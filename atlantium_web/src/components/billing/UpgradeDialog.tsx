@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe, type Stripe, type Appearance } from "@stripe/stripe-js";
-import { Check, Loader2, ShieldCheck } from "lucide-react";
+import { Loader2, ShieldCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { MEMBER_PLAN, useBilling } from "./UpgradeCta";
 
@@ -42,20 +41,20 @@ const appearance: Appearance = {
   },
 };
 
-type Plan = "club" | "club_annual";
+type Plan = "club_annual";
 
 export function UpgradeDialog({
   open,
   onOpenChange,
   reason,
-  defaultPlan = "club",
+  defaultPlan = "club_annual",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   reason?: string;
   defaultPlan?: Plan;
 }) {
-  const [plan, setPlan] = useState<Plan>(defaultPlan);
+  const [plan] = useState<Plan>(defaultPlan);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [publishableKey, setPublishableKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -102,7 +101,7 @@ export function UpgradeDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <PlanPicker plan={plan} onChange={setPlan} />
+        <PlanSummary />
 
         {error ? (
           <p className="rounded-lg border border-border/60 bg-card/50 p-3 text-sm text-muted-foreground">{error}</p>
@@ -125,31 +124,17 @@ export function UpgradeDialog({
   );
 }
 
-function PlanPicker({ plan, onChange }: { plan: Plan; onChange: (p: Plan) => void }) {
-  const options: Array<{ value: Plan; price: string; period: string; note?: string }> = [
-    { value: "club", price: MEMBER_PLAN.monthly.price, period: "per month" },
-    { value: "club_annual", price: MEMBER_PLAN.annual.price, period: "per year", note: MEMBER_PLAN.annual.note },
-  ];
+/** One plan, so this states the terms rather than offering a choice. */
+function PlanSummary() {
   return (
-    <div className="grid grid-cols-2 gap-2">
-      {options.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          onClick={() => onChange(o.value)}
-          className={cn(
-            "rounded-xl border-2 p-3 text-left transition-colors",
-            plan === o.value ? "border-primary bg-primary/5" : "border-border/60 hover:border-primary/40",
-          )}
-        >
-          <span className="flex items-center gap-1.5 text-lg font-bold">
-            {o.price}
-            {plan === o.value && <Check className="h-3.5 w-3.5 text-primary" />}
-          </span>
-          <span className="block text-[11px] text-muted-foreground">{o.period}</span>
-          {o.note && <span className="block text-[11px] text-emerald-400">{o.note}</span>}
-        </button>
-      ))}
+    <div className="rounded-xl border border-primary/40 bg-primary/5 p-3">
+      <span className="flex items-baseline gap-1.5">
+        <span className="text-lg font-bold">{MEMBER_PLAN.annual.price}</span>
+        <span className="text-[11px] text-muted-foreground">{MEMBER_PLAN.annual.period}</span>
+      </span>
+      <span className="block text-[11px] text-muted-foreground">
+        {MEMBER_PLAN.annual.note} · about $24 a month
+      </span>
     </div>
   );
 }
@@ -221,7 +206,7 @@ function PaymentForm({ plan, onDone }: { plan: Plan; onDone: () => void }) {
         {isPaying ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
         {plan === "club_annual"
           ? `Pay ${MEMBER_PLAN.annual.price} / year`
-          : `Pay ${MEMBER_PLAN.monthly.price} / month`}
+          : `Pay ${MEMBER_PLAN.annual.price} / year`}
       </Button>
     </form>
   );
