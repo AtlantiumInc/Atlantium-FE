@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MoonStar } from "lucide-react";
+import { MoonStar, Share2 } from "lucide-react";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { shareJob } from "@/lib/share";
 import type { IntakeJob } from "@/components/IntakeChart";
 
 function fmtPay(min: number | null, max: number | null): string | null {
@@ -100,24 +101,41 @@ export function RealtimeFeedRail({ jobs, onSelect }: { jobs: IntakeJob[]; onSele
             </span>
           </div>
           {g.jobs.map((j) => (
-            <button
+            // Relative wrapper so share can sit over the row: nesting a button
+            // inside the row button would be invalid, and the row is the
+            // primary target.
+            <div
               key={j.slug}
-              onClick={() => onSelect(j.slug)}
-              className={`block w-full text-left px-4 py-2 border-b border-border/20 hover:bg-cyan-500/5 group ${
+              className={`relative border-b border-border/20 group hover:bg-cyan-500/5 ${
                 arrived.has(j.slug) ? "animate-role-arrive" : ""
               }`}
             >
-              <p className="text-xs text-foreground leading-tight truncate group-hover:text-cyan-300">{j.title}</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <CompanyLogo name={j.company} logo={j.logo} size={12} />
-                <span className="text-[10px] text-muted-foreground truncate">{j.company}</span>
-                {fmtPay(j.salary_min, j.salary_max) && (
-                  <span className="ml-auto shrink-0 text-[10px] font-mono text-emerald-400">
-                    {fmtPay(j.salary_min, j.salary_max)}
-                  </span>
-                )}
-              </div>
-            </button>
+              <button
+                onClick={() => onSelect(j.slug)}
+                className="block w-full text-left px-4 py-2"
+              >
+                <p className="text-xs text-foreground leading-tight truncate pr-7 group-hover:text-cyan-300">{j.title}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <CompanyLogo name={j.company} logo={j.logo} size={12} />
+                  <span className="text-[10px] text-muted-foreground truncate">{j.company}</span>
+                  {fmtPay(j.salary_min, j.salary_max) && (
+                    <span className="ml-auto shrink-0 text-[10px] font-mono text-emerald-400 pr-7">
+                      {fmtPay(j.salary_min, j.salary_max)}
+                    </span>
+                  )}
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); void shareJob({ slug: j.slug, title: j.title, company: j.company }); }}
+                aria-label={`Share ${j.title} at ${j.company}`}
+                // Hover-reveal on pointer devices; always there on touch, where
+                // there is no hover to reveal it with.
+                className="absolute top-1.5 right-2 h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-cyan-300 hover:bg-cyan-500/10 transition-all md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+              >
+                <Share2 className="h-3 w-3" />
+              </button>
+            </div>
           ))}
         </div>
       ))}

@@ -431,7 +431,7 @@ async function renderDirectoryOgImage(kind, slug, request) {
     <div style="display: flex; position: absolute; top: -180px; right: -140px; width: 520px; height: 520px; border-radius: 999px; background: ${THEME.glow};"></div>
     <div style="display: flex; position: absolute; bottom: -220px; left: -160px; width: 480px; height: 480px; border-radius: 999px; background: rgba(99,102,241,0.10);"></div>
 
-    <div style="display: flex; align-items: center; justify-content: space-between;">
+    <div style="display: flex; width: 100%; align-items: center; justify-content: space-between;">
       <div style="display: flex; align-items: center; flex-shrink: 0;">
         <div style="display: flex; font-size: 34px; font-weight: 800; color: #ffffff; letter-spacing: 2px;">ATLANTIUM</div>
         <div style="display: flex; flex-shrink: 0; white-space: nowrap; margin-left: 18px; padding: 6px 14px; border-radius: 999px; font-size: 20px; font-weight: 600; color: ${THEME.accent}; background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.35); letter-spacing: 1px;">${THEME.label}</div>
@@ -445,7 +445,7 @@ async function renderDirectoryOgImage(kind, slug, request) {
       <div style="display: flex; margin-top: 28px; flex-wrap: wrap;">${badges}</div>
     </div>
 
-    <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(148,163,184,0.15); padding-top: 24px;">
+    <div style="display: flex; width: 100%; align-items: center; justify-content: space-between; border-top: 1px solid rgba(148,163,184,0.15); padding-top: 24px;">
       <div style="display: flex; font-size: 22px; color: #94a3b8;">atlantium.ai/directory</div>
       <div style="display: flex; font-size: 22px; font-weight: 600; color: ${THEME.accent};">${escapeCard(cta)}</div>
     </div>
@@ -481,7 +481,7 @@ async function renderDirectoryOgImage(kind, slug, request) {
 // Per-job OG image (1200x630 PNG rendered with satori/resvg via workers-og)
 // ---------------------------------------------------------------------------
 
-const OG_RENDER_VERSION = '8';
+const OG_RENDER_VERSION = '9';
 
 const FONT_URLS = {
   regular: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.ttf',
@@ -532,12 +532,20 @@ async function renderJobOgImage(slug, request) {
   const badge = (label, color, bg, border) => `
     <div style="display: flex; align-items: center; margin-right: 14px; padding: 6px 16px; border-radius: 999px; font-size: 22px; font-weight: 600; color: ${color}; background: ${bg}; border: 1px solid ${border};">${escapeCard(label)}</div>`;
 
+  // Salary is promoted out of the badge row into its own line below — it is
+  // the fact that makes someone stop and forward the card, so it should not
+  // be the fourth pill in a row of four.
   const badges = [
     isNewThisWeek ? badge('New this week', '#22d3ee', 'rgba(6,182,212,0.15)', 'rgba(34,211,238,0.5)') : '',
     job.workplace_type ? badge(job.workplace_type, '#34d399', 'rgba(16,185,129,0.12)', 'rgba(16,185,129,0.4)') : '',
     job.seniority ? badge(job.seniority, '#a5b4fc', 'rgba(99,102,241,0.12)', 'rgba(99,102,241,0.4)') : '',
-    salary ? badge(salary, '#6ee7b7', 'rgba(16,185,129,0.08)', 'rgba(16,185,129,0.3)') : '',
+    job.review && (job.review.degree_required === 'not_required' || job.review.degree_required === 'equivalent_accepted')
+      ? badge('No degree required', '#5eead4', 'rgba(20,184,166,0.14)', 'rgba(45,212,191,0.45)')
+      : '',
   ].filter(Boolean).join('');
+
+  // Favicons come back at 64px; ask for 256 so the mark is crisp at card scale.
+  const logo = job.company_logo ? job.company_logo.replace(/sz=\d+/, 'sz=256') : null;
 
   const chips = stack
     .map(
@@ -549,29 +557,38 @@ async function renderJobOgImage(slug, request) {
   const title = job.title.length > 70 ? `${job.title.slice(0, 67)}…` : job.title;
 
   const html = `
-  <div style="display: flex; flex-direction: column; width: 1200px; height: 630px; background: linear-gradient(135deg, #04070d 0%, #071120 55%, #0a1a2e 100%); padding: 56px 64px; font-family: 'Inter'; position: relative;">
-    <div style="display: flex; position: absolute; top: -180px; right: -140px; width: 520px; height: 520px; border-radius: 999px; background: rgba(14,165,233,0.14);"></div>
-    <div style="display: flex; position: absolute; bottom: -220px; left: -160px; width: 480px; height: 480px; border-radius: 999px; background: rgba(99,102,241,0.10);"></div>
+  <div style="display: flex; width: 1200px; height: 630px; position: relative; font-family: 'Inter';">
+    <img src="${SITE_ORIGIN}/brand/jobs-og-bg.jpg" width="1200" height="630" style="position: absolute; top: 0; left: 0;" />
+    <div style="display: flex; position: absolute; top: 0; left: 0; width: 1200px; height: 630px; background: linear-gradient(90deg, rgba(3,7,12,0.96) 0%, rgba(3,7,12,0.90) 55%, rgba(3,7,12,0.55) 100%);"></div>
 
-    <div style="display: flex; align-items: center; justify-content: space-between;">
-      <div style="display: flex; align-items: center; flex-shrink: 0;">
-        <div style="display: flex; font-size: 34px; font-weight: 800; color: #ffffff; letter-spacing: 2px;">ATLANTIUM</div>
-        <div style="display: flex; flex-shrink: 0; white-space: nowrap; margin-left: 18px; padding: 6px 14px; border-radius: 999px; font-size: 20px; font-weight: 600; color: #22d3ee; background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.35); letter-spacing: 1px;">ATLANTA TECH JOBS</div>
+    <div style="display: flex; flex-direction: column; width: 1200px; height: 630px; padding: 52px 64px; position: relative;">
+      <div style="display: flex; width: 100%; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; flex-shrink: 0;">
+          <div style="display: flex; font-size: 30px; font-weight: 800; color: #ffffff; letter-spacing: 2px;">ATLANTIUM</div>
+          <div style="display: flex; flex-shrink: 0; white-space: nowrap; margin-left: 16px; padding: 5px 13px; border-radius: 999px; font-size: 18px; font-weight: 600; color: #22d3ee; background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.35); letter-spacing: 1px;">ATLANTA TECH JOBS</div>
+        </div>
+        <div style="display: flex; margin-left: 24px; font-size: 21px; color: #94a3b8;">${escapeCard(location)}</div>
       </div>
-      <div style="display: flex; margin-left: 24px; font-size: 22px; color: #64748b;">${escapeCard(location)}</div>
-    </div>
 
-    <div style="display: flex; flex-direction: column; margin-top: 64px; flex-grow: 1;">
-      <div style="display: flex; font-size: ${title.length > 40 ? 54 : 64}px; font-weight: 800; color: #f8fafc; line-height: 1.15; max-width: 1050px;">${escapeCard(title)}</div>
-      <div style="display: flex; margin-top: 20px; font-size: 32px; font-weight: 600; color: #7dd3fc;">${escapeCard(job.company || '')}</div>
-      <div style="display: flex; margin-top: 28px;">${badges}</div>
-    </div>
+      <div style="display: flex; flex-direction: column; margin-top: 44px; flex-grow: 1;">
+        <div style="display: flex; font-size: ${title.length > 40 ? 52 : 62}px; font-weight: 800; color: #f8fafc; line-height: 1.12; max-width: 1040px;">${escapeCard(title)}</div>
 
-    <div style="display: flex; flex-direction: column;">
-      ${chips ? `<div style="display: flex; flex-wrap: wrap; margin-bottom: 26px;">${chips}</div>` : ''}
-      <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(148,163,184,0.15); padding-top: 24px;">
-        <div style="display: flex; font-size: 22px; color: #94a3b8;">atlantium.ai/jobs</div>
-        <div style="display: flex; font-size: 22px; font-weight: 600; color: #34d399;">Apply now</div>
+        <div style="display: flex; align-items: center; margin-top: 18px;">
+          ${logo ? `<img src="${escapeCard(logo)}" width="38" height="38" style="border-radius: 8px; margin-right: 14px;" />` : ''}
+          <div style="display: flex; font-size: 30px; font-weight: 600; color: #7dd3fc;">${escapeCard(job.company || '')}</div>
+        </div>
+
+        ${salary ? `<div style="display: flex; margin-top: 26px; font-size: 58px; font-weight: 800; color: #34d399; line-height: 1;">${escapeCard(salary)}</div>` : ''}
+
+        ${badges ? `<div style="display: flex; margin-top: ${salary ? 26 : 32}px;">${badges}</div>` : ''}
+      </div>
+
+      <div style="display: flex; flex-direction: column;">
+        ${chips ? `<div style="display: flex; flex-wrap: wrap; margin-bottom: 22px;">${chips}</div>` : ''}
+        <div style="display: flex; width: 100%; align-items: center; justify-content: space-between; border-top: 1px solid rgba(16,185,129,0.22); padding-top: 22px;">
+          <div style="display: flex; font-size: 22px; color: #94a3b8;">atlantium.ai/jobs</div>
+          <div style="display: flex; font-size: 22px; font-weight: 600; color: #34d399;">Apply now</div>
+        </div>
       </div>
     </div>
   </div>`;
@@ -645,13 +662,14 @@ async function renderJobsIndexOgImage(request) {
         <div style="display: flex; flex-shrink: 0; white-space: nowrap; margin-left: 18px; padding: 6px 14px; border-radius: 999px; font-size: 20px; font-weight: 600; color: #34d399; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.35); letter-spacing: 1px;">LIVE</div>
       </div>
 
-      <div style="display: flex; flex-direction: column; margin-top: 64px; flex-grow: 1;">
-        <div style="display: flex; font-size: 82px; font-weight: 800; color: #f8fafc; line-height: 1.05;">Realtime ATL</div>
-        <div style="display: flex; font-size: 82px; font-weight: 800; color: #f8fafc; line-height: 1.05;">Tech Job Index</div>
-        <div style="display: flex; margin-top: 28px; font-size: 30px; font-weight: 600; color: #7dd3fc;">${escapeCard(roleCount)} verified roles · ${escapeCard(freshLine)}</div>
+      <div style="display: flex; flex-direction: column; margin-top: 56px; flex-grow: 1;">
+        <div style="display: flex; font-size: 82px; font-weight: 800; color: #f8fafc; line-height: 1.03;">Who in tech is</div>
+        <div style="display: flex; font-size: 82px; font-weight: 800; color: #f8fafc; line-height: 1.03;">hiring in Atlanta.</div>
+        <div style="display: flex; margin-top: 26px; font-size: 30px; font-weight: 600; color: #7dd3fc;">${escapeCard(roleCount)} open roles · ${escapeCard(freshLine)}</div>
+        <div style="display: flex; margin-top: 10px; font-size: 25px; color: #94a3b8;">Real salaries. Verified links. Updated every 4 hours.</div>
       </div>
 
-      <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(16,185,129,0.22); padding-top: 26px;">
+      <div style="display: flex; width: 100%; align-items: center; justify-content: space-between; border-top: 1px solid rgba(16,185,129,0.22); padding-top: 26px;">
         <div style="display: flex; font-size: 24px; color: #94a3b8;">atlantium.ai/jobs</div>
         <div style="display: flex; font-size: 24px; font-weight: 600; color: #34d399;">Atlanta's Technology Network</div>
       </div>
@@ -753,7 +771,7 @@ async function renderSocialJobCard(slug, request) {
       ${tech.length ? `<div style="display: flex; flex-wrap: wrap; margin-top: 24px;">${tech.map(chip).join('')}</div>` : ''}
     </div>
 
-    <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(148,163,184,0.15); padding-top: 32px;">
+    <div style="display: flex; width: 100%; align-items: center; justify-content: space-between; border-top: 1px solid rgba(148,163,184,0.15); padding-top: 32px;">
       <div style="display: flex; font-size: 28px; color: #94a3b8;">atlantium.ai/jobs</div>
       <div style="display: flex; font-size: 28px; font-weight: 600; color: #34d399;">Atlanta's Technology Network</div>
     </div>
@@ -841,7 +859,7 @@ async function renderCarouselCover(request) {
       </div>` : ''}
     </div>
 
-    <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(148,163,184,0.15); padding-top: 32px;">
+    <div style="display: flex; width: 100%; align-items: center; justify-content: space-between; border-top: 1px solid rgba(148,163,184,0.15); padding-top: 32px;">
       <div style="display: flex; font-size: 28px; color: #94a3b8;">atlantium.ai/jobs</div>
       <div style="display: flex; align-items: center;">
         <div style="display: flex; font-size: 26px; font-weight: 700; color: #34d399; letter-spacing: 3px; margin-right: 18px;">SWIPE</div>

@@ -2,8 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { toast } from "sonner";
-import { ExternalLink, Lock, MapPin, Briefcase, Search, Building2, Clock, ChevronDown, ChevronUp, Cpu, GraduationCap, Bell, ArrowRight, CheckCircle2, Loader2, Star, Sparkles, SlidersHorizontal, X } from "lucide-react";
+import { ExternalLink, Lock, MapPin, Briefcase, Search, Building2, Clock, ChevronDown, ChevronUp, Cpu, GraduationCap, Bell, ArrowRight, CheckCircle2, Loader2, Star, Sparkles, Share2, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PublicNavbar } from "@/components/PublicNavbar";
@@ -12,6 +11,7 @@ import SpotlightCard from "@/components/ui/SpotlightCard";
 import Aurora from "@/components/Aurora";
 import { api, type JobPosting } from "@/lib/api";
 import { isNewThisWeek } from "@/lib/utils";
+import { shareJob } from "@/lib/share";
 import { JobReportSignupModal, useJobReportSignup } from "@/components/JobReportSignupModal";
 import { RealtimeMarketPanel } from "@/components/RealtimeMarketPanel";
 import { RealtimeFeedRail } from "@/components/RealtimeFeedRail";
@@ -150,16 +150,16 @@ function JobCard({
             >
               <Star className={`h-4 w-4 ${starred ? "fill-current" : ""}`} />
             </button>
+            {/* Always visible, phones included — passing a role to someone
+                else is the most common thing people do here, so it should
+                never be a hover-only affordance. */}
             <button
               type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                toast("The AI scout is coming — starred roles will teach it what to hunt for.");
-              }}
-              aria-label="Find roles like this (coming soon)"
-              className="hidden sm:flex h-8 w-8 rounded-md border border-border/50 text-muted-foreground hover:text-cyan-300 hover:border-cyan-400/40 items-center justify-center transition-all md:opacity-0 md:group-hover:opacity-100"
+              onClick={(e) => { e.preventDefault(); void shareJob(job); }}
+              aria-label={`Share ${job.title} at ${job.company}`}
+              className="h-8 w-8 rounded-md border border-border/50 text-muted-foreground hover:text-cyan-300 hover:border-cyan-400/40 flex items-center justify-center transition-all"
             >
-              <Sparkles className="h-4 w-4" />
+              <Share2 className="h-4 w-4" />
             </button>
             <Link to={`/jobs/${job.slug}`} onClick={(e) => e.stopPropagation()}>
               <Button size="sm" variant="outline" className="gap-1.5 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300 hover:border-cyan-500/50 md:opacity-0 md:group-hover:opacity-100 transition-all h-8 text-xs sm:h-9 sm:text-sm">
