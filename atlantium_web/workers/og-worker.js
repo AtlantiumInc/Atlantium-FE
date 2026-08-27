@@ -481,7 +481,7 @@ async function renderDirectoryOgImage(kind, slug, request) {
 // Per-job OG image (1200x630 PNG rendered with satori/resvg via workers-og)
 // ---------------------------------------------------------------------------
 
-const OG_RENDER_VERSION = '9';
+const OG_RENDER_VERSION = '11';
 
 const FONT_URLS = {
   regular: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.ttf',
@@ -663,8 +663,8 @@ async function renderJobsIndexOgImage(request) {
       </div>
 
       <div style="display: flex; flex-direction: column; margin-top: 56px; flex-grow: 1;">
-        <div style="display: flex; font-size: 82px; font-weight: 800; color: #f8fafc; line-height: 1.03;">Who in tech is</div>
-        <div style="display: flex; font-size: 82px; font-weight: 800; color: #f8fafc; line-height: 1.03;">hiring in Atlanta.</div>
+        <div style="display: flex; font-size: 82px; font-weight: 800; color: #f8fafc; line-height: 1.03;">Who’s hiring</div>
+        <div style="display: flex; font-size: 82px; font-weight: 800; color: #f8fafc; line-height: 1.03;">in Atlanta tech.</div>
         <div style="display: flex; margin-top: 26px; font-size: 30px; font-weight: 600; color: #7dd3fc;">${escapeCard(roleCount)} open roles · ${escapeCard(freshLine)}</div>
         <div style="display: flex; margin-top: 10px; font-size: 25px; color: #94a3b8;">Real salaries. Verified links. Updated every 4 hours.</div>
       </div>
