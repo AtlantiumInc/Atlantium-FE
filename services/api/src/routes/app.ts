@@ -1318,7 +1318,12 @@ async function applySubscription(
     stripeSubscriptionId: sub.id,
     stripePriceId: priceId,
     cancelAtPeriodEnd: Boolean(sub.cancel_at_period_end),
-    currentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
+    // Newer Stripe API versions moved the period onto the item; fall back to
+    // the legacy top-level field so old and new payloads both land a date.
+    currentPeriodEnd: (() => {
+      const epoch = sub.current_period_end ?? sub.items?.data?.[0]?.current_period_end;
+      return epoch ? new Date(epoch * 1000) : null;
+    })(),
     updatedAt: new Date(),
   };
 

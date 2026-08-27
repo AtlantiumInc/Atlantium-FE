@@ -201,8 +201,10 @@ export type StripeSubscription = {
   status: string;
   customer: string;
   cancel_at_period_end?: boolean;
+  /** Legacy top-level field — absent on current API versions, which carry the
+   *  period on each subscription ITEM instead. Read both (see app.ts). */
   current_period_end?: number;
-  items?: { data?: Array<{ price?: { id?: string } }> };
+  items?: { data?: Array<{ price?: { id?: string }; current_period_end?: number }> };
   metadata?: Record<string, string>;
 };
 

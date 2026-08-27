@@ -3,6 +3,8 @@ import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "motion/react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { UpgradeDialog } from "@/components/billing/UpgradeDialog";
 import { PublicNavbar } from "@/components/PublicNavbar";
@@ -88,6 +90,49 @@ type PricingTier = (typeof tiers)[number];
 function PlanCta({ tier }: { tier: PricingTier }) {
   const { user } = useAuth();
   const [isStarting, setIsStarting] = useState(false);
+  const [isOpeningPortal, setIsOpeningPortal] = useState(false);
+
+  // A paying member must never be sold the thing they already own — the paid
+  // card becomes their standing plus a way to manage it, and the Free card
+  // stops competing for the click.
+  const sub = user?._subscription;
+  const isMember = Boolean(sub?.has_club_access) || sub?.subscription_status === "active";
+
+  if (isMember) {
+    if (tier.name !== "Free") {
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center justify-center gap-2 rounded-md border border-emerald-500/40 bg-emerald-500/10 py-2.5 text-sm font-semibold text-emerald-300">
+            <Check className="h-4 w-4" />
+            Your current plan
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full text-xs text-muted-foreground hover:text-foreground"
+            disabled={isOpeningPortal}
+            onClick={async () => {
+              setIsOpeningPortal(true);
+              try {
+                const { portal_url } = await api.openBillingPortal();
+                window.location.assign(portal_url);
+              } catch {
+                toast.error("Couldn't open billing — try again in a moment.");
+                setIsOpeningPortal(false);
+              }
+            }}
+          >
+            {isOpeningPortal ? "Opening…" : "Manage billing"}
+          </Button>
+        </div>
+      );
+    }
+    return (
+      <div className="py-2.5 text-center text-sm text-muted-foreground">
+        Included with your membership
+      </div>
+    );
+  }
 
   if (tier.name === "Free" || !user) {
     return (
