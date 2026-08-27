@@ -16,8 +16,12 @@ import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { createDb } from "../db/client";
 import { jobPostings, directoryEntries } from "../db/schema";
 import type { Env } from "../env";
+import { payFromWorkday } from "./salary-parse";
 
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 AtlantiumBot/0.1";
+/** Per-run ceiling on CXS detail lookups — the cron chain shares one
+ *  1,000-subrequest invocation, so pricing must never grow with board size. */
+const PRICE_LOOKUPS_PER_RUN = 120;
 const SEARCH_TERMS = ["Atlanta", "Georgia"];
 const PAGE_LIMIT = 20; // CXS max
 const MAX_PAGES_PER_TERM = 10;
@@ -101,6 +105,10 @@ export type WorkdaySyncResult = {
   reactivated: number;
   expired: number;
   failed: number;
+  /** CXS detail lookups attempted this run (bounded by PRICE_LOOKUPS_PER_RUN). */
+  priced: number;
+  /** ...of those, how many yielded a pay range. */
+  pricedFound: number;
 };
 
 export async function syncWorkdayJobs(env: Env, maxCompanies = 40): Promise<WorkdaySyncResult> {
@@ -116,7 +124,7 @@ export async function syncWorkdayJobs(env: Env, maxCompanies = 40): Promise<Work
     .orderBy(sql`coalesce(${directoryEntries.attributes}->'workday'->>'last_polled', '1970') asc`)
     .limit(maxCompanies);
 
-  const out: WorkdaySyncResult = { companies: entries.length, pulled: 0, created: 0, reactivated: 0, expired: 0, failed: 0 };
+  const out: WorkdaySyncResult = { companies: entries.length, pulled: 0, created: 0, reactivated: 0, expired: 0, failed: 0, priced: 0, pricedFound: 0 };
 
   for (const entry of entries) {
     const cfg = (entry.attributes as Record<string, unknown>).workday as WorkdayConfig;
@@ -147,8 +155,35 @@ export async function syncWorkdayJobs(env: Env, maxCompanies = 40): Promise<Work
         .insert(jobPostings)
         .values(jobs)
         .onConflictDoNothing({ target: jobPostings.applyUrl })
-        .returning({ id: jobPostings.id });
+        .returning({ id: jobPostings.id, applyUrl: jobPostings.applyUrl });
       out.created += inserted.length;
+
+      // The board search payload carries no pay, so a row inserted from it
+      // alone is unpriced — which is how every workday job on the board ended
+      // up without a salary. Price the NEW ones from the CXS detail endpoint.
+      //
+      // Only new rows, and only up to a per-run ceiling: this runs inside the
+      // shared cron invocation with its 1,000-subrequest budget, and an
+      // unbounded loop over a big first sync would exhaust it and take the
+      // rest of the chain down with it.
+      for (const row of inserted) {
+        if (out.priced >= PRICE_LOOKUPS_PER_RUN) break;
+        out.priced++;
+        const pay = await payFromWorkday(row.applyUrl, UA);
+        if (!pay) continue;
+        await db
+          .update(jobPostings)
+          .set({
+            salaryMin: pay.min,
+            salaryMax: pay.max,
+            updatedAt: new Date(),
+            content: sql`coalesce(${jobPostings.content}, '{}'::jsonb) || ${JSON.stringify({
+              salary_recovered: { basis: pay.basis, evidence: pay.evidence },
+            })}::jsonb`,
+          })
+          .where(eq(jobPostings.id, row.id));
+        out.pricedFound++;
+      }
 
       const react = await db
         .update(jobPostings)
