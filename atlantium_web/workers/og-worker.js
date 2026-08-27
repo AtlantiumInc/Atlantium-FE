@@ -481,7 +481,7 @@ async function renderDirectoryOgImage(kind, slug, request) {
 // Per-job OG image (1200x630 PNG rendered with satori/resvg via workers-og)
 // ---------------------------------------------------------------------------
 
-const OG_RENDER_VERSION = '7';
+const OG_RENDER_VERSION = '8';
 
 const FONT_URLS = {
   regular: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.ttf',
@@ -630,25 +630,31 @@ async function renderJobsIndexOgImage(request) {
   const roleCount = total.toLocaleString('en-US');
   const freshLine = newThisWeek ? `${newThisWeek.toLocaleString('en-US')} new this week` : 'Updated every 4 hours';
 
+  // Atlanta skyline plate under the type — the left half of the art is
+  // deliberately dark so the headline stays legible over it. The scrim on
+  // top guarantees that even if the plate is ever swapped for a brighter
+  // frame, the live counts stay readable.
   const html = `
-  <div style="display: flex; flex-direction: column; width: 1200px; height: 630px; background: linear-gradient(135deg, #04070d 0%, #071120 55%, #0a1a2e 100%); padding: 64px; font-family: 'Inter'; position: relative;">
-    <div style="display: flex; position: absolute; top: -200px; right: -160px; width: 560px; height: 560px; border-radius: 999px; background: rgba(16,185,129,0.13);"></div>
-    <div style="display: flex; position: absolute; bottom: -240px; left: -180px; width: 520px; height: 520px; border-radius: 999px; background: rgba(14,165,233,0.10);"></div>
+  <div style="display: flex; width: 1200px; height: 630px; position: relative; font-family: 'Inter';">
+    <img src="${SITE_ORIGIN}/brand/jobs-og-bg.jpg" width="1200" height="630" style="position: absolute; top: 0; left: 0;" />
+    <div style="display: flex; position: absolute; top: 0; left: 0; width: 1200px; height: 630px; background: linear-gradient(90deg, rgba(3,7,12,0.94) 0%, rgba(3,7,12,0.82) 45%, rgba(3,7,12,0.25) 100%);"></div>
 
-    <div style="display: flex; align-items: center;">
-      <div style="display: flex; font-size: 34px; font-weight: 800; color: #ffffff; letter-spacing: 2px;">ATLANTIUM</div>
-      <div style="display: flex; flex-shrink: 0; white-space: nowrap; margin-left: 18px; padding: 6px 14px; border-radius: 999px; font-size: 20px; font-weight: 600; color: #34d399; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.35); letter-spacing: 1px;">LIVE</div>
-    </div>
+    <div style="display: flex; flex-direction: column; width: 1200px; height: 630px; padding: 64px; position: relative;">
+      <div style="display: flex; align-items: center;">
+        <div style="display: flex; font-size: 34px; font-weight: 800; color: #ffffff; letter-spacing: 2px;">ATLANTIUM</div>
+        <div style="display: flex; flex-shrink: 0; white-space: nowrap; margin-left: 18px; padding: 6px 14px; border-radius: 999px; font-size: 20px; font-weight: 600; color: #34d399; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.35); letter-spacing: 1px;">LIVE</div>
+      </div>
 
-    <div style="display: flex; flex-direction: column; margin-top: 72px; flex-grow: 1;">
-      <div style="display: flex; font-size: 82px; font-weight: 800; color: #f8fafc; line-height: 1.05;">Realtime ATL</div>
-      <div style="display: flex; font-size: 82px; font-weight: 800; color: #f8fafc; line-height: 1.05;">Tech Job Index</div>
-      <div style="display: flex; margin-top: 30px; font-size: 30px; font-weight: 600; color: #7dd3fc;">${escapeCard(roleCount)} verified roles · ${escapeCard(freshLine)}</div>
-    </div>
+      <div style="display: flex; flex-direction: column; margin-top: 64px; flex-grow: 1;">
+        <div style="display: flex; font-size: 82px; font-weight: 800; color: #f8fafc; line-height: 1.05;">Realtime ATL</div>
+        <div style="display: flex; font-size: 82px; font-weight: 800; color: #f8fafc; line-height: 1.05;">Tech Job Index</div>
+        <div style="display: flex; margin-top: 28px; font-size: 30px; font-weight: 600; color: #7dd3fc;">${escapeCard(roleCount)} verified roles · ${escapeCard(freshLine)}</div>
+      </div>
 
-    <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(148,163,184,0.15); padding-top: 26px;">
-      <div style="display: flex; font-size: 24px; color: #94a3b8;">atlantium.ai/jobs</div>
-      <div style="display: flex; font-size: 24px; font-weight: 600; color: #34d399;">Atlanta's Technology Network</div>
+      <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(16,185,129,0.22); padding-top: 26px;">
+        <div style="display: flex; font-size: 24px; color: #94a3b8;">atlantium.ai/jobs</div>
+        <div style="display: flex; font-size: 24px; font-weight: 600; color: #34d399;">Atlanta's Technology Network</div>
+      </div>
     </div>
   </div>`;
 
