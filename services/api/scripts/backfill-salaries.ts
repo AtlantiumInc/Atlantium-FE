@@ -18,7 +18,8 @@
  *   DATABASE_URL=<neon> npx tsx scripts/backfill-salaries.ts --days=5 --apply
  */
 import { neon } from "@neondatabase/serverless";
-import { extractPay, toText, cxsUrl, type Pay } from "../src/lib/salary-parse";
+import { extractPay, toText, type Pay } from "../src/lib/salary-parse";
+import { cxsUrl } from "../src/lib/workday-cxs";
 
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";

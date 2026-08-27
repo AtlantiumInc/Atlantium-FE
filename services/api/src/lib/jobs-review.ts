@@ -22,6 +22,7 @@ import { and, eq, gte, isNull, lt, lte, or, sql, asc } from "drizzle-orm";
 import { createDb, type Db } from "../db/client";
 import { jobPostings, reviewBatches } from "../db/schema";
 import type { Env } from "../env";
+import { cxsUrl, probeWorkday } from "./workday-cxs";
 
 const ANTHROPIC_BASE = "https://api.anthropic.com/v1";
 const REVIEW_MODEL = "claude-haiku-4-5";
@@ -141,6 +142,21 @@ type FetchedPage =
   | { kind: "unreachable"; reason: string };
 
 async function fetchPage(url: string): Promise<FetchedPage> {
+  // Workday renders client-side: the apply URL returns 200 and no text whether
+  // the requisition is open or deleted, so it always landed on the
+  // "empty_page → unreachable" branch below and was never expirable. Roughly
+  // 2,900 postings — 40% of the board — were stuck there. The CXS endpoint
+  // behind the page answers definitively, and its JSON body carries the
+  // description too, so these become fully reviewable rather than merely
+  // classifiable.
+  if (cxsUrl(url)) {
+    const probe = await probeWorkday(url, UA, FETCH_TIMEOUT_MS);
+    if (probe.state === "gone") return { kind: "dead", reason: "workday_cxs_gone" };
+    if (probe.state === "unknown") return { kind: "unreachable", reason: probe.reason };
+    const text = stripHtml(probe.text);
+    return text.length < 200 ? { kind: "unreachable", reason: "empty_page" } : { kind: "ok", text };
+  }
+
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);

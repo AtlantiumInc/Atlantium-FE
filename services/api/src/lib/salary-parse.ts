@@ -7,6 +7,8 @@
  * copies of this regex drifted.
  */
 
+import { probeWorkday } from "./workday-cxs";
+
 export const HOURS_PER_YEAR = 2080;
 
 // Bounds reject the other numbers on a careers page: signing bonuses, 401k
@@ -82,47 +84,8 @@ export function extractPay(text: string): Pay | null {
   return null;
 }
 
-/**
- * Rewrite a Workday apply URL into its CXS detail endpoint.
- *
- * The rendered Workday page is a JS shell with no text in it, so scraping the
- * apply URL yields nothing. The JSON behind it carries the full posting,
- * pay included.
- */
-export function cxsUrl(applyUrl: string): string | null {
-  let u: URL;
-  try {
-    u = new URL(applyUrl);
-  } catch {
-    return null;
-  }
-  if (!/myworkdayjobs\.com$/i.test(u.hostname)) return null;
-  const tenant = u.hostname.split(".")[0];
-  const parts = u.pathname.split("/").filter(Boolean); // [en-US, Site, job, ...rest]
-  const jobIdx = parts.indexOf("job");
-  if (jobIdx < 1) return null;
-  const site = parts[jobIdx - 1];
-  return `https://${u.hostname}/wday/cxs/${tenant}/${site}/${parts.slice(jobIdx).join("/")}`;
-}
-
-/** Fetch a Workday posting's JSON and read the pay out of it. Null on any failure. */
+/** Read the pay out of a Workday posting. Null if it is gone or unreadable. */
 export async function payFromWorkday(applyUrl: string, ua: string): Promise<Pay | null> {
-  const cxs = cxsUrl(applyUrl);
-  if (!cxs) return null;
-  const ctl = new AbortController();
-  const to = setTimeout(() => ctl.abort(), 12_000);
-  try {
-    const res = await fetch(cxs, {
-      headers: { Accept: "application/json", "User-Agent": ua },
-      signal: ctl.signal,
-    });
-    if (!res.ok) return null;
-    // Pay usually sits inside the description HTML rather than a typed field,
-    // so read the whole payload as text.
-    return extractPay(toText(await res.text()));
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(to);
-  }
+  const probe = await probeWorkday(applyUrl, ua);
+  return probe.state === "live" ? extractPay(toText(probe.text)) : null;
 }
